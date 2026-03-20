@@ -1,0 +1,19 @@
+# --- THE COGNITION (OLLAMA) ---
+  ollama:
+    image: ollama/ollama
+    container_name: sharpishly-ollama
+    volumes:
+      - ./llm/ollama:/root/.ollama
+    networks:
+      - sharpishly-net
+
+  # --- THE COGNITION (QDRANT VECTOR DB) ---
+  qdrant:
+    image: qdrant/qdrant
+    container_name: sharpishly-qdrant
+    ports:
+      - "6333:6333"
+    volumes:
+      - ./llm/vectordb:/qdrant/storage
+    networks:
+      - sharpishly-net

@@ -1,0 +1,42 @@
+services:
+  # --- THE BRAIN (PHP 8.2-FPM) ---
+  php:
+    image: php:8.2-fpm-alpine
+    container_name: sharpishly-php
+    volumes:
+      - .:/var/www/html
+    networks:
+      - sharpishly-net
+
+  # --- THE SKIN (NGINX) ---
+  nginx:
+    image: nginx:alpine
+    container_name: sharpishly-nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - .:/var/www/html
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - php
+    networks:
+      - sharpishly-net
+
+  # --- THE MEMORY (MYSQL) ---
+  db:
+    image: mysql:8.0
+    container_name: sharpishly-db
+    environment:
+      MYSQL_DATABASE: sharpishly_db
+      MYSQL_ROOT_PASSWORD: root_password
+    volumes:
+      - mysql_data:/var/var/lib/mysql
+    networks:
+      - sharpishly-net
+
+networks:
+  sharpishly-net:
+    driver: bridge
+
+volumes:
+  mysql_data:
