@@ -1,0 +1,31 @@
+# --- System / IDE ---
+.DS_Store
+.vscode/
+.idea/
+
+# --- Environment & Secrets ---
+.env
+.env.local
+.env.*.local
+
+# --- Centralized Storage ---
+# We keep the folders but ignore the contents
+storage/uploads/*
+storage/exports/*
+storage/backups/*
+storage/temp/*
+!storage/**/.gitkeep
+
+# --- LLM / AI Infrastructure ---
+# Ignore massive model weights and vector indexes
+llm/ollama/*
+llm/vectordb/*
+ai/venv/
+__pycache__/
+*.pyc
+!llm/**/.gitkeep
+
+# --- Web Application ---
+web/php/logs/*.log
+web/php/vendor/
+node_modules/
