@@ -1,82 +1,80 @@
 <?php
 declare(strict_types=1);
-// Location: php/src/bootstrap.php
-namespace App;
-
-use App\Services\Location;
-use App\Services\Logger;
-use App\Db;
-use App\Models\HomeModel;
 
 /**
- * ────────────────────────────────────────────────
- *  SHARPISHLY BOOTSTRAP – minimal & predictable
- * ────────────────────────────────────────────────
+ * THOMASONS V3 – Bootstrap
+ * PSR-4 Autoloader + Core Service Initialization
+ * (Logging redirected to standard error output)
  */
 
-// 1. Load Location service manually (needed for base path)
-$locationFile = __DIR__ . '/Services/Location.php';
-if (!file_exists($locationFile)) {
-    die("Critical: Location service not found at $locationFile");
-}
-require_once $locationFile;
+namespace App;
 
-// 2. Simple singleton-style registry
-class Registry
-{
+// 1. Define immutable core paths
+define('APP_ROOT', dirname(__DIR__, 3) . '/');
+define('SRC_ROOT', __DIR__ . '/');
+
+// 2. PSR-4 Autoloader
+spl_autoload_register(function (string $class): void {
+    $prefix    = 'App\\';
+    $base_dir  = SRC_ROOT;
+    $prefixLen = strlen($prefix);
+
+    if (strncmp($prefix, $class, $prefixLen) !== 0) return;
+
+    $relative = substr($class, $prefixLen);
+    $file     = $base_dir . str_replace('\\', '/', $relative) . '.php';
+
+    if (file_exists($file)) {
+        require_once $file;
+    }
+});
+
+// 3. Singleton-style Registry
+class Registry {
     private static array $instances = [];
 
-    public static function get(string $class, ...$args): object
-    {
+    public static function get(string $class, ...$args): object {
         $class = ltrim($class, '\\');
         if (!isset(self::$instances[$class])) {
+            if (!class_exists($class)) {
+                throw new \RuntimeException("Class not found: $class");
+            }
             self::$instances[$class] = new $class(...$args);
         }
         return self::$instances[$class];
     }
 }
 
-// 3. Set up base path early
-$baseDir = rtrim(Registry::get(Location::class)->baseDir(), '/') . '/';
+// 4. Early initialization
+use App\Services\Location;
+$location = Registry::get(Location::class);
 
-// 4. Autoloader – tests first, then app code
-spl_autoload_register(function (string $class) use ($baseDir): void {
-    $class = ltrim($class, '\\');
-
-    if (str_starts_with($class, 'App\\Tests\\')) {
-        $path = $baseDir . 'tests/unit/' . str_replace('\\', '/', substr($class, 10)) . '.php';
-    } elseif (str_starts_with($class, 'App\\')) {
-        $path = $baseDir . 'php/src/' . str_replace('\\', '/', substr($class, 4)) . '.php';
-    } else {
-        return;
-    }
-
-    if (file_exists($path)) {
-        require_once $path;
-    }
+// 5. Error & Exception Handling (Stream to Docker Logs)
+set_error_handler(function (int $errno, string $errstr, string $errfile, int $errline): bool {
+    // Return false to let PHP's default handler send the error to the server log (stderr)
+    return false; 
 });
 
-// 5. Core initialization
-try {
-    Registry::get(Db::class); // Ensure DB is connected
+set_exception_handler(function (\Throwable $e): void {
+    $message = sprintf(
+        "Uncaught %s: %s in %s:%d\nStack trace:\n%s",
+        get_class($e), $e->getMessage(), $e->getFile(), $e->getLine(), $e->getTraceAsString()
+    );
 
-    // Run migrations only in CLI (workers, cron, tests, artisan-like commands)
-    if (php_sapi_name() === 'cli') {
-        Registry::get(HomeModel::class)->migrate();
-        error_log("CLI bootstrap: migrations checked.");
+    // Send to PHP's system log (which Docker captures)
+    error_log($message);
+
+    if (PHP_SAPI !== 'cli') {
+        http_response_code(500);
+        echo "Internal Server Error";
     }
+    exit(1);
+});
 
-    // Optional: warm up expensive services
-    if (class_exists('App\Services\VectorService')) {
-        Registry::get('App\Services\VectorService');
+register_shutdown_function(function (): void {
+    $error = error_get_last();
+    $fatals = [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR];
+    if ($error && in_array($error['type'], $fatals, true)) {
+        error_log(sprintf("Fatal Error: %s in %s:%d", $error['message'], $error['file'], $error['line']));
     }
-
-    Logger::info("Bootstrap completed.", ['sapi' => php_sapi_name()], 'system');
-
-} catch (\Throwable $e) {
-    error_log("Bootstrap failed: " . $e->getMessage());
-    if (php_sapi_name() === 'cli') {
-        exit(1);
-    }
-    // In web context → let the error handler / 500 page deal with it
-}
+});

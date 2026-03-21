@@ -34,5 +34,9 @@ A professional-grade, service-oriented architecture for a Neural Pipeline. It tr
 - **Storage Base:** `/var/www/html/storage/`
 - **Frontend Root:** `/var/www/html/web/frontend/`
 
+## ⚖️ DESIGN DECISIONS
+- **Logging Strategy (2026-03-21):** Pivoted from persistent file-based logging (`storage/logs`) to ephemeral standard output (`stderr`). This bypasses Docker/Host permission conflicts and centralizes debugging via `docker compose logs -f php`.
+- **Infrastructure:** Using a minimalist `dev-up.sh` for atomic environment resets (down -v, up --build).
+
 ---
 *Note: This file is a living document. Refer to it before suggesting any solution to ensure compliance with the "Thomasons" structural standard.*
