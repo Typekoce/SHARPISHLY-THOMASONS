@@ -34,6 +34,7 @@ class HomeController extends BaseController
             $data = [
                 'module' => 'Home',
                 'status' => 'operational',
+                'action' => 'index',
                 'timestamp' => time()
             ];
 
@@ -72,4 +73,5 @@ class HomeController extends BaseController
             $this->json(['status' => 'error', 'message' => $e->getMessage()], 500);
         }
     }
+    
 }

@@ -2,62 +2,34 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/bootstrap.php';
-// Location: php/src/index.php
-use App\Controllers\HomeController;
 
-// ────────────────────────────────────────────────
-//  Extract subdomain & path
-// ────────────────────────────────────────────────
-$host      = $_SERVER['HTTP_HOST']      ?? 'localhost';
-$uri       = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? '/';
-$uriParts  = explode('/', trim($uri, '/'));
-$firstSlug = $uriParts[0] ?? '';
+// 1. Get the path and split it
+$uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+$parts = explode('/', trim($uri, '/')); 
 
-$hostParts   = explode('.', $host);
-$subdomain   = count($hostParts) >= 3 ? $hostParts[0] : null;
-
-// ────────────────────────────────────────────────
-//  Tier 1 – Subdomain routing (docs.sharpishly.vm → DocsController)
-// ────────────────────────────────────────────────
-if ($subdomain && !in_array($subdomain, ['www', 'sharpishly', 'localhost'])) {
-    $controllerClass = "App\\Controllers\\" . ucfirst($subdomain) . "Controller";
-
-    if (class_exists($controllerClass)) {
-        (new $controllerClass())->index();
-        exit;
-    }
+// 2. Remove the 'php' or 'api' prefix if present
+if (($parts[0] ?? '') === 'php' || ($parts[0] ?? '') === 'api') {
+    array_shift($parts);
 }
 
-// ────────────────────────────────────────────────
-//  Tier 2 – Hard-coded / special paths
-// ────────────────────────────────────────────────
-$specialRoutes = [
-    '/jeff_bezo' => 'App\\Controllers\\AmazonController',
-    '/neural'    => 'App\\Controllers\\OllamaController',
-    '/docs'      => 'App\\Controllers\\DocsController',
-    // Add more here as needed – very explicit & easy to read
-];
+// 3. Map to Controller and Method
+$controllerName = ucfirst($parts[0] ?? 'Home');
+$methodName     = $parts[1] ?? 'index';
+$params         = array_slice($parts, 2);
 
-if (isset($specialRoutes[$uri])) {
-    (new $specialRoutes[$uri]())->index();
-    exit;
-}
+$className = "App\\Controllers\\{$controllerName}Controller";
 
-// ────────────────────────────────────────────────
-//  Tier 3 – Slug-based auto-mapping (most common case)
-// ────────────────────────────────────────────────
-$controllerName = ucfirst(str_replace('_', '', ucwords($firstSlug, '_')));
-$controllerClass = "App\\Controllers\\{$controllerName}Controller";
-
-if (class_exists($controllerClass)) {
-    $controller = new $controllerClass();
-    $method     = $uriParts[1] ?? 'index';
-
-    if (method_exists($controller, $method)) {
-        $controller->$method(...array_slice($uriParts, 2));
+// 4. Execute
+if (class_exists($className)) {
+    $controller = new $className();
+    if (method_exists($controller, $methodName)) {
+        // Equivalent to your call_user_func request, but object-aware
+        $controller->{$methodName}(...$params);
     } else {
-        $controller->index();
+        header("HTTP/1.1 404 Not Found");
+        echo json_encode(["error" => "Method $methodName not found in $controllerName"]);
     }
 } else {
-    (new HomeController())->index();
+    header("HTTP/1.1 404 Not Found");
+    echo json_encode(["error" => "Controller $className not found"]);
 }

@@ -5,6 +5,7 @@ namespace App\Controllers;
 // Location: php/src/Controllers/ScaffoldController.php
 use App\Registry;
 use Exception;
+use App\Services\Migrator;
 
 /**
  * SCAFFOLD CONTROLLER
@@ -71,5 +72,29 @@ class ScaffoldController extends BaseController
         } catch (Exception $e) {
             $this->json(['status' => 'error', 'message' => $e->getMessage()], 500);
         }
+    }
+
+    public function migrate(): void
+    {
+        // Enforce JSON header for the dev-up script
+        header('Content-Type: application/json');
+
+        try {
+            $migrator = new Migrator();
+            $results = $migrator->run();
+            
+            echo json_encode([
+                'status' => 'success',
+                'applied' => $results,
+                'timestamp' => date('Y-m-d H:i:s')
+            ], JSON_PRETTY_PRINT);
+        } catch (\Throwable $e) {
+            http_response_code(500);
+            echo json_encode([
+                'status' => 'error',
+                'message' => $e->getMessage()
+            ]);
+        }
+        exit;
     }
 }
