@@ -1,12 +1,40 @@
 services:
   # --- THE BRAIN (PHP 8.2-FPM) ---
+  # Switched to 'build' to include pdo_mysql from your Dockerfile
   php:
-    image: php:8.2-fpm-alpine
+    build:
+      context: .
+      dockerfile: ./infra/php/Dockerfile
     container_name: sharpishly-php
     volumes:
       - .:/var/www/html
+      - ./storage:/var/www/html/storage
+    depends_on:
+      - db
     networks:
       - sharpishly-net
+
+  # --- THE NEURAL WORKER (Background Consumer) ---
+  # Uses the same image as 'php' but runs the worker script
+  php-worker:
+    build:
+      context: .
+      dockerfile: ./infra/php/Dockerfile
+    container_name: sharpishly-worker
+    restart: always
+    command: ["php", "/var/www/html/web/php/src/worker.php"]
+    volumes:
+      - .:/var/www/html
+      - ./storage:/var/www/html/storage
+    depends_on:
+      - db
+    networks:
+      - sharpishly-net
+    environment:
+      - DB_HOST=sharpishly-db
+      - DB_NAME=sharpishly_db
+      - DB_USER=root
+      - DB_PASS=root_password
 
   # --- THE SKIN (NGINX) ---
   nginx:
@@ -17,7 +45,6 @@ services:
     volumes:
       - .:/var/www/html
       - ./infra/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
-#      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
       - php
     networks:
@@ -31,7 +58,7 @@ services:
       MYSQL_DATABASE: sharpishly_db
       MYSQL_ROOT_PASSWORD: root_password
     volumes:
-      - mysql_data:/var/var/lib/mysql
+      - mysql_data:/var/lib/mysql
     networks:
       - sharpishly-net
 

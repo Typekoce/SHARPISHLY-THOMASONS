@@ -38,5 +38,15 @@ A professional-grade, service-oriented architecture for a Neural Pipeline. It tr
 - **Logging Strategy (2026-03-21):** Pivoted from persistent file-based logging (`storage/logs`) to ephemeral standard output (`stderr`). This bypasses Docker/Host permission conflicts and centralizes debugging via `docker compose logs -f php`.
 - **Infrastructure:** Using a minimalist `dev-up.sh` for atomic environment resets (down -v, up --build).
 
+## System Status (2026-03-22)
+- **Routing:** Functional. Minimalist mapping logic implemented in `web/php/src/index.php`.
+- **Database:** Routing to DB service confirmed. Currently blocked by missing `pdo_mysql` driver in PHP container.
+- **Frontend:** SPA queue system ready for live job ID polling.
+
+## Technical Constraints
+- No Composer local installation; using GitHub Actions for autoloading.
+- Raw SQL is strictly forbidden; using PDO prepared statements.
+- Async processing via `php-worker` (pending service definition).
+
 ---
 *Note: This file is a living document. Refer to it before suggesting any solution to ensure compliance with the "Thomasons" structural standard.*
