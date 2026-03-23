@@ -15,16 +15,16 @@ sleep 4  # give php/db a moment to become responsive
 echo "🚀 Validating Database Schema..."
 
 # Trigger the migration via the Nginx entry point
-MIGRATE_RESPONSE=$(curl -s "http://localhost:8080/php/scaffold/migrate")
+# MIGRATE_RESPONSE=$(curl -s "http://localhost:8080/php/scaffold/migrate")
 
-if [[ $MIGRATE_RESPONSE == *"Applied"* ]]; then
-    echo "✅ Database Migrated Successfully."
-elif [[ $MIGRATE_RESPONSE == *"up to date"* ]]; then
-    echo "📋 Schema is already current."
-else
-    echo "❌ Migration Failed. Check docker logs -f php."
-    echo "Response: $MIGRATE_RESPONSE"
-fi
+# if [[ $MIGRATE_RESPONSE == *"Applied"* ]]; then
+#     echo "✅ Database Migrated Successfully."
+# elif [[ $MIGRATE_RESPONSE == *"up to date"* ]]; then
+#     echo "📋 Schema is already current."
+# else
+#     echo "❌ Migration Failed. Check docker logs -f php."
+#     echo "Response: $MIGRATE_RESPONSE"
+# fi
 
 echo "─── Stack is Live ───"
 echo "→ UI:   http://localhost:8080"

@@ -48,5 +48,10 @@ A professional-grade, service-oriented architecture for a Neural Pipeline. It tr
 - Raw SQL is strictly forbidden; using PDO prepared statements.
 - Async processing via `php-worker` (pending service definition).
 
+## System Status (2026-03-23)
+- **Infrastructure:** BROKEN. Despite reverting to "known-working" YAML and .env, the PHP container is failing to resolve the database hostname.
+- **Blocker:** DNS/Name resolution failure within the Docker bridge network.
+- **Progress:** Zero. The afternoon was spent troubleshooting credential and networking loops that did not result in a successful migration.
+
 ---
 *Note: This file is a living document. Refer to it before suggesting any solution to ensure compliance with the "Thomasons" structural standard.*

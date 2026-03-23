@@ -1,6 +1,6 @@
+version: '3.8'
+
 services:
-  # --- THE BRAIN (PHP 8.2-FPM) ---
-  # Switched to 'build' to include pdo_mysql from your Dockerfile
   php:
     build:
       context: .
@@ -14,8 +14,6 @@ services:
     networks:
       - sharpishly-net
 
-  # --- THE NEURAL WORKER (Background Consumer) ---
-  # Uses the same image as 'php' but runs the worker script
   php-worker:
     build:
       context: .
@@ -30,13 +28,7 @@ services:
       - db
     networks:
       - sharpishly-net
-    environment:
-      - DB_HOST=${DB_HOST}
-      - DB_NAME=${DB_NAME}
-      - DB_USER=${DB_USER}
-      - DB_PASS=${DB_PASS}
 
-  # --- THE SKIN (NGINX) ---
   nginx:
     image: nginx:alpine
     container_name: sharpishly-nginx
@@ -50,20 +42,20 @@ services:
     networks:
       - sharpishly-net
 
-  # --- THE MEMORY (MYSQL) ---
   db:
     image: mysql:8.0
     container_name: sharpishly-db
     environment:
-      - DB_HOST=${DB_HOST}
-      - DB_NAME=${DB_NAME}
-      - DB_USER=${DB_USER}
-      - DB_PASS=${DB_PASS}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_ROOT_PASSWORD: ${DB_PASS}
     volumes:
       - mysql_data:/var/lib/mysql
     networks:
       - sharpishly-net
 
+# ────────────────────────────────────────────────
+# IMPORTANT: networks and volumes must be at ROOT level (same as services)
+# ────────────────────────────────────────────────
 networks:
   sharpishly-net:
     driver: bridge
