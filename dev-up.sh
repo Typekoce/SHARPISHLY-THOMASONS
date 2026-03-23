@@ -4,7 +4,7 @@ set -euo pipefail
 echo "─── Resetting Thomasons V3 Stack ───"
 
 # 1. Clean shutdown (volumes included for fresh DB state in dev)
-docker compose down --remove-orphans --volumes --timeout 8 > /dev/null 2>&1 || true
+docker compose down -v --remove-orphans --volumes --timeout 8 > /dev/null 2>&1 || true
 
 # 2. Rebuild & start
 docker compose up -d --build --force-recreate

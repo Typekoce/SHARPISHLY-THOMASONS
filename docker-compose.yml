@@ -4,7 +4,7 @@ services:
   php:
     build:
       context: .
-      dockerfile: ./infra/php/Dockerfile
+      dockerfile: Dockerfile
     container_name: sharpishly-php
     volumes:
       - .:/var/www/html
@@ -19,7 +19,7 @@ services:
   php-worker:
     build:
       context: .
-      dockerfile: ./infra/php/Dockerfile
+      dockerfile: Dockerfile
     container_name: sharpishly-worker
     restart: always
     command: ["php", "/var/www/html/web/php/src/worker.php"]
@@ -31,10 +31,10 @@ services:
     networks:
       - sharpishly-net
     environment:
-      - DB_HOST=sharpishly-db
-      - DB_NAME=sharpishly_db
-      - DB_USER=root
-      - DB_PASS=root_password
+      - DB_HOST=${DB_HOST}
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASS=${DB_PASS}
 
   # --- THE SKIN (NGINX) ---
   nginx:
@@ -55,8 +55,10 @@ services:
     image: mysql:8.0
     container_name: sharpishly-db
     environment:
-      MYSQL_DATABASE: sharpishly_db
-      MYSQL_ROOT_PASSWORD: root_password
+      - DB_HOST=${DB_HOST}
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASS=${DB_PASS}
     volumes:
       - mysql_data:/var/lib/mysql
     networks:
