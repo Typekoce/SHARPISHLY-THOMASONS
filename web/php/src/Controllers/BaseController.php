@@ -3,15 +3,15 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 // Location: php/src/Controllers/BaseController.php
-use App\Registry;
-use App\Db;
+use App\Core\Registry;
+use App\Services\Db;
 use App\Services\Location;
-use App\Smarty;
+use App\Services\Smarty;
 
 abstract class BaseController {
-    protected Db $db;
-    protected Location $loc;
-    protected Smarty $smarty;
+    public $db;
+    public $loc;
+    public $smarty;
 
     public function __construct() {
         // Use the shared instances from Registry

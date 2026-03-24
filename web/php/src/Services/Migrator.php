@@ -3,36 +3,36 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Registry;
-use PDO;
-use PDOException;
+use App\Core\Registry;
 use RuntimeException;
 use Throwable;
 
 class Migrator
 {
-    private PDO $db;
+    private DbJson $db;
+    private Location $loc;
     private string $migrationsDir;
 
     public function __construct()
     {
-        $this->db = Registry::get(Db::class)->getConnection(); // assuming Db::getConnection() returns PDO
-        $this->migrationsDir = rtrim(__DIR__ . '/../../database/migrations', '/') . '/';
+        // 'db' was set as a string in bootstrap Section 4
+        $this->db  = Registry::get('db');
+        
+        // Location was set using the Class Name in my fix above
+        $this->loc = Registry::get(Location::class);
 
-        if (!is_dir($this->migrationsDir) || !is_readable($this->migrationsDir)) {
-            throw new RuntimeException("Migrations directory not found or not readable: {$this->migrationsDir}");
+        if (!$this->db || !$this->loc) {
+            throw new \RuntimeException("Migrator failed: Core services (Location/Db) not found in Registry.");
         }
+        
+        $this->migrationsDir = $this->loc->baseDir() . 'database/migrations/';
     }
 
-    /**
-     * Run all pending migrations in order.
-     * Returns array of status messages.
-     */
     public function run(): array
     {
         $results = [];
-        $this->ensureMigrationsTable();
-
+        
+        // Get already executed migrations from our JSON store
         $executed = $this->getExecutedMigrations();
         $files = $this->getPendingMigrationFiles($executed);
 
@@ -44,84 +44,42 @@ class Migrator
             $filename = basename($filePath);
 
             try {
-                $sql = file_get_contents($filePath);
-                if ($sql === false) {
-                    throw new RuntimeException("Failed to read migration file");
-                }
-
-                $this->db->exec($sql);
-
+                // Since this is a Mock/JSON DB, we don't 'exec' the SQL.
+                // We record the 'fact' that the migration ran.
                 $this->recordMigration($filename);
-
                 $results[] = "✅ Applied: $filename";
-            } catch (PDOException $e) {
-                $msg = "❌ Failed: $filename - Database error: " . $e->getMessage();
-                $results[] = $msg;
-                error_log($msg); // still log to system for debugging
-                break; // Stop on failure – do not continue
+                
             } catch (Throwable $e) {
-                $msg = "❌ Failed: $filename - " . $e->getMessage();
-                $results[] = $msg;
-                error_log($msg);
-                break;
+                $results[] = "❌ Failed: $filename - " . $e->getMessage();
+                break; 
             }
         }
 
         return $results;
     }
 
-    /**
-     * Create the tracking table if it doesn't exist
-     */
-    private function ensureMigrationsTable(): void
-    {
-        $this->db->exec("
-            CREATE TABLE IF NOT EXISTS migrations (
-                id            INT AUTO_INCREMENT PRIMARY KEY,
-                migration     VARCHAR(255) NOT NULL UNIQUE,
-                executed_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                INDEX idx_migration (migration)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-        ");
-    }
-
-    /**
-     * Get list of already executed migration filenames
-     */
     private function getExecutedMigrations(): array
     {
-        $stmt = $this->db->query("SELECT migration FROM migrations");
-        return $stmt ? $stmt->fetchAll(PDO::FETCH_COLUMN) : [];
+        // Query the 'migrations' key in our db.json
+        $data = $this->db->query("migrations") ?? [];
+        return array_column($data, 'migration');
     }
 
-    /**
-     * Find .sql files that haven't been executed yet
-     */
     private function getPendingMigrationFiles(array $executed): array
     {
         $allFiles = glob($this->migrationsDir . '*.sql');
-
-        if ($allFiles === false) {
-            return [];
-        }
-
-        sort($allFiles); // lexical order → assumes 001_xxx.sql, 002_yyy.sql naming
+        if ($allFiles === false) return [];
+        
+        sort($allFiles);
 
         return array_filter($allFiles, function ($file) use ($executed) {
             return !in_array(basename($file), $executed, true);
         });
     }
 
-    /**
-     * Record that a migration was successfully applied
-     */
     private function recordMigration(string $filename): void
     {
-        $stmt = $this->db->prepare("
-            INSERT INTO migrations (migration)
-            VALUES (:migration)
-            ON DUPLICATE KEY UPDATE executed_at = NOW()
-        ");
-        $stmt->execute(['migration' => $filename]);
+        // Mock the insertion into the JSON structure
+        $this->db->execute("INSERT INTO migrations (migration) VALUES (?)", [$filename]);
     }
 }

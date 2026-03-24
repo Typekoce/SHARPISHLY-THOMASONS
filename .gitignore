@@ -15,6 +15,7 @@ storage/exports/*
 storage/backups/*
 storage/temp/*
 !storage/**/.gitkeep
+storage/
 
 # --- LLM / AI Infrastructure ---
 # Ignore massive model weights and vector indexes
