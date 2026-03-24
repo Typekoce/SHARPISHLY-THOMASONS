@@ -3,40 +3,88 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
-use App\Services\OllamaService; // We'll refactor callOllama here
+use App\Core\Registry;
+use App\Services\Location;
 use App\Services\VectorSearchService;
+use App\Services\OllamaService;
 use App\Services\WordDocService;
+use Exception;
 
 class ReportController extends BaseController
 {
+    private Location $location;
+
+    public function __construct()
+    {
+        parent::__construct();
+        $this->location = Registry::make(Location::class);
+    }
+
     /**
      * POST /php/report/generate
-     * Payload: { "query": "residential properties with pre-1980s cladding" }
+     * Orchestrates: Semantic Search -> AI Extraction -> Word Doc Generation
      */
     public function generate(): void
     {
-        $input = json_decode(file_get_contents('php://input'), true);
-        $query = $input['query'] ?? '';
+        try {
+            $input = json_decode(file_get_contents('php://input'), true);
+            $query = $input['query'] ?? '';
 
-        // 1. Find the "Facts" in the Vector DB
-        $searchService = new VectorSearchService();
-        $context = $searchService->search($query, 10); // Get top 10 matches
+            if (empty($query)) {
+                throw new Exception("Please provide a search query (e.g., 'Pre-1980s cladding').");
+            }
 
-        // 2. Ask Ollama to format the data for a table (Entity Extraction)
-        $ollama = new OllamaService();
-        $extractionPrompt = "Extract a list of properties from this context. 
-                             Return ONLY valid JSON with keys: address, cladding_type, year.
-                             Context: " . $context;
-        
-        $jsonData = $ollama->ask($extractionPrompt);
+            // 1. Semantic Search (Java Bridge)
+            // Pulling the search service via Registry
+            $searchService = Registry::make(VectorSearchService::class);
+            $searchResults = $searchService->search($query, 10);
 
-        // 3. Inject into Word Template
-        $word = new WordDocService();
-        $filePath = $word->createFromTemplate(
-            'cladding_report_template.docx', 
-            json_decode($jsonData, true)
-        );
+            if (empty($searchResults)) {
+                $this->json(['status' => 'empty', 'message' => 'No matching property records found.'], 404);
+                return;
+            }
 
-        $this->json(['download_url' => '/storage/reports/' . basename($filePath)]);
+            // 2. AI Entity Extraction (Ollama)
+            // We turn the raw vector chunks into a structured data array
+            $ollama = Registry::make(OllamaService::class);
+            $contextString = implode("\n", array_column($searchResults, 'text'));
+            
+            $prompt = "You are a professional building surveyor. Extract property data from the context.
+                       Return ONLY a JSON array of objects with keys: ADDRESS, MATERIAL, YEAR.
+                       Context: " . $contextString;
+
+            $rawJson = $ollama->ask($prompt);
+            $extractedData = json_decode($rawJson, true);
+
+            if (!$extractedData) {
+                throw new Exception("AI failed to extract structured property data.");
+            }
+
+            // 3. Word Document Generation
+            $word = Registry::make(WordDocService::class);
+            
+            // We'll use the first match for a single-property report, 
+            // or pass the whole array if your template supports loops.
+            $reportData = $extractedData[0] ?? $extractedData;
+
+            $reportFileName = $word->generateReport(
+                'cladding_report_template.docx', 
+                $reportData
+            );
+
+            // 4. Return the relative download path
+            $this->json([
+                'status' => 'success',
+                'download_url' => '/storage/reports/' . $reportFileName,
+                'preview' => $reportData
+            ]);
+
+        } catch (Exception $e) {
+            error_log("Report Generation Error: " . $e->getMessage());
+            $this->json([
+                'status' => 'error',
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 }

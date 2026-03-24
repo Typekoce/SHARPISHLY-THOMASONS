@@ -4,49 +4,66 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use Exception;
-use App\Registry;
+use App\Core\Registry;
+use App\Services\Location;
 
 class FileController extends BaseController
 {
+    private Location $location;
+
+    public function __construct()
+    {
+        parent::__construct();
+        // Resolve the centralized location service
+        $this->location = Registry::make(Location::class);
+    }
+
     /**
-     * POST /php/File/upload
-     * Handles multipart/form-data from the SPA
+     * POST /php/upload
+     * Handles multipart/form-data from the Surveyor SPA
      */
     public function upload(): void
     {
         try {
             if (empty($_FILES['file'])) {
-                throw new Exception("No file part in request.");
+                throw new Exception("No file received in the request.");
             }
 
             $file = $_FILES['file'];
             if ($file['error'] !== UPLOAD_ERR_OK) {
-                throw new Exception("Upload failed with error code: " . $file['error']);
+                throw new Exception("Upload failed with PHP error code: " . $file['error']);
             }
 
-            // 1. Setup paths
-            $rawDir = '/var/www/html/storage/uploads/raw';
+            // 1. Setup paths via Location Service
+            $rawDir = $this->location->uploads(); 
+            
             if (!is_dir($rawDir)) {
-                mkdir($rawDir, 0775, true);
+                // Use 0777 to ensure Docker container and Host stay in sync
+                if (!mkdir($rawDir, 0777, true)) {
+                    throw new Exception("Server Error: Cannot create upload directory.");
+                }
             }
 
             $filename = basename($file['name']);
-            $targetPath = $rawDir . '/' . $filename;
+            $targetPath = $this->location->uploads($filename);
 
-            // 2. Move File
+            // 2. Move File to /storage/uploads/raw
             if (!move_uploaded_file($file['tmp_name'], $targetPath)) {
-                throw new Exception("Could not move uploaded file to storage.");
+                throw new Exception("FileSystem Error: Could not move file to storage.");
             }
 
-            // 3. Log Job in DB (DbJson or MySQL)
-            // Using positional placeholders to keep it compatible with our DB wrappers
+            // 3. Queue Job for the Worker
+            // We store the path relative to the storage root to keep DB clean
+            $relativeResultPath = $this->location->relative($targetPath);
+
             $this->db->execute(
                 "INSERT INTO jobs (type, payload, status, created_at) VALUES (?, ?, ?, ?)",
                 [
                     'csv_ingest', 
                     json_encode([
-                        'path' => $targetPath,
-                        'original_name' => $filename
+                        'path' => $targetPath, // Full path for the worker
+                        'original_name' => $filename,
+                        'relative_path' => $relativeResultPath
                     ]),
                     'pending',
                     date('Y-m-d H:i:s')
@@ -55,11 +72,13 @@ class FileController extends BaseController
 
             $this->json([
                 'status' => 'success',
-                'message' => 'File received and ingestion job queued.',
-                'file' => $filename
+                'message' => 'Report received. Neural ingestion queued.',
+                'file' => $filename,
+                'job_id' => $this->db->lastInsertId()
             ]);
 
         } catch (Exception $e) {
+            error_log("Upload Error: " . $e->getMessage());
             $this->json([
                 'status' => 'error',
                 'message' => $e->getMessage()
@@ -68,12 +87,13 @@ class FileController extends BaseController
     }
 
     /**
-     * GET /php/File/status
-     * Polling endpoint for the SPA to check job progress
+     * GET /php/status
+     * Polling endpoint for the SPA to check if cladding analysis is done
      */
     public function status(): void
     {
-        $jobs = $this->db->query("SELECT * FROM jobs ORDER BY id DESC LIMIT 5");
+        // Fetch recent jobs so the surveyor sees the queue moving
+        $jobs = $this->db->query("SELECT * FROM jobs ORDER BY id DESC LIMIT 10");
         $this->json($jobs);
     }
 }

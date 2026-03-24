@@ -48,7 +48,7 @@ services:
       - .:/var/www/html
     command: >
       sh -c "apt-get update && apt-get install -y usbutils iproute2 util-linux pciutils python3 python3-pip 
-      && php /var/www/html/php/src/worker.php || tail -f /dev/null"
+      && php /var/www/html/web/php/src/worker.php || tail -f /dev/null"
     depends_on:
       db:
         condition: service_healthy
