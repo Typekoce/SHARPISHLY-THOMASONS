@@ -1,41 +1,14 @@
 <?php
 declare(strict_types=1);
 
-/**
- * THOMASONS V3 – Bootstrap
- * PSR-4 Autoloader + Core Service Initialization
- * (Logging redirected to standard error output)
- */
-
 namespace App;
 
-// Start DbJson implementation
-<?php
-// ... existing autoloader logic ...
-
+use App\Core\Registry;
 use App\Services\Db;
 use App\Services\DbJson;
-use App\Core\Registry;
+use App\Services\Location;
 
-// 1. Check the Environment Flag
-$isDevMode = (getenv('APP_DEV') === 'true');
-
-// 2. The Decision Logic
-if ($isDevMode) {
-    // Force JSON for speed and reliability during development
-    Registry::set('db', new DbJson());
-} else {
-    try {
-        // Attempt Real MySQL (Attempt 1)
-        Registry::set('db', new Db());
-    } catch (\Exception $e) {
-        // Fallback to JSON if MySQL is down (Attempt 2)
-        error_log("MySQL Unavailable: " . $e->getMessage());
-        Registry::set('db', new DbJson());
-    }
-}
-
-// 1. Define immutable core paths
+// 1. Define immutable core paths (MOVE THIS ABOVE AUTOLOADER)
 define('APP_ROOT', dirname(__DIR__, 3) . '/');
 define('SRC_ROOT', __DIR__ . '/');
 
@@ -55,52 +28,21 @@ spl_autoload_register(function (string $class): void {
     }
 });
 
-// 3. Singleton-style Registry
-class Registry {
-    private static array $instances = [];
+// 3. The Decision Logic
+$isDevMode = (getenv('APP_DEV') === 'true');
 
-    public static function get(string $class, ...$args): object {
-        $class = ltrim($class, '\\');
-        if (!isset(self::$instances[$class])) {
-            if (!class_exists($class)) {
-                throw new \RuntimeException("Class not found: $class");
-            }
-            self::$instances[$class] = new $class(...$args);
-        }
-        return self::$instances[$class];
+if ($isDevMode) {
+    Registry::set('db', new DbJson());
+} else {
+    try {
+        Registry::set('db', new Db());
+    } catch (\Exception $e) {
+        error_log("MySQL Unavailable: " . $e->getMessage());
+        Registry::set('db', new DbJson());
     }
 }
 
-// 4. Early initialization
-use App\Services\Location;
-$location = Registry::get(Location::class);
+// 4. Initialization using "make" for class-based singletons
+$location = Registry::make(Location::class);
 
-// 5. Error & Exception Handling (Stream to Docker Logs)
-set_error_handler(function (int $errno, string $errstr, string $errfile, int $errline): bool {
-    // Return false to let PHP's default handler send the error to the server log (stderr)
-    return false; 
-});
-
-set_exception_handler(function (\Throwable $e): void {
-    $message = sprintf(
-        "Uncaught %s: %s in %s:%d\nStack trace:\n%s",
-        get_class($e), $e->getMessage(), $e->getFile(), $e->getLine(), $e->getTraceAsString()
-    );
-
-    // Send to PHP's system log (which Docker captures)
-    error_log($message);
-
-    if (PHP_SAPI !== 'cli') {
-        http_response_code(500);
-        echo "Internal Server Error";
-    }
-    exit(1);
-});
-
-register_shutdown_function(function (): void {
-    $error = error_get_last();
-    $fatals = [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR];
-    if ($error && in_array($error['type'], $fatals, true)) {
-        error_log(sprintf("Fatal Error: %s in %s:%d", $error['message'], $error['file'], $error['line']));
-    }
-});
+// ... rest of error handlers ...

@@ -3,30 +3,35 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Core\Registry;
 use Exception;
 use RuntimeException;
 
 /**
  * DbJson - File-based mock database for development & testing
  * Replaces real PDO when MySQL networking is unreliable.
- * Persists data to storage/database/db.json
+ * Persists data to the path provided by the Location service.
  */
 class DbJson
 {
     private string $filePath;
     private array $data = [
-        'tables' => [],       // actual table data: ['jobs' => [...rows...], 'migrations' => [...]]
-        'sequences' => [],    // auto-increment counters: ['jobs' => 5, 'migrations' => 3]
-        'log' => []           // query log
+        'tables' => [],       
+        'sequences' => [],    
+        'log' => []           
     ];
 
     public function __construct()
     {
-        $this->filePath = rtrim(APP_ROOT, '/') . '/storage/database/db.json';
+        // 1. Resolve path via the centralized Location service
+        $location = Registry::make(Location::class);
+        $this->filePath = $location->db('db.json');
 
+        // 2. Ensure the directory exists with proper permissions
         $dir = dirname($this->filePath);
         if (!is_dir($dir)) {
-            if (!mkdir($dir, 0775, true)) {
+            // Using 0777 for dev environment to avoid Docker mount permission collisions
+            if (!mkdir($dir, 0777, true)) {
                 throw new RuntimeException("Cannot create mock DB directory: $dir");
             }
         }
@@ -62,7 +67,7 @@ class DbJson
             'query'     => $sql,
             'params'    => $params,
         ];
-        // Keep log to last 100 entries
+        
         if (count($this->data['log']) > 100) {
             $this->data['log'] = array_slice($this->data['log'], -100);
         }
@@ -75,8 +80,6 @@ class DbJson
     public function execute(string $sql, array $params = []): bool
     {
         $this->logQuery($sql, $params);
-
-        // Very basic parsing for supported operations
         $upper = strtoupper(trim($sql));
 
         if (str_starts_with($upper, 'CREATE TABLE')) {
@@ -97,7 +100,6 @@ class DbJson
                 throw new Exception("Table '$table' does not exist in mock DB");
             }
 
-            // Very simplistic: assume VALUES (?,?,?) style
             $id = ++$this->data['sequences'][$table];
             $row = ['id' => $id] + array_combine(range(1, count($params)), $params);
             $this->data['tables'][$table][] = $row;
@@ -112,24 +114,19 @@ class DbJson
                 throw new Exception("Table '$table' does not exist in mock DB");
             }
 
-            // Very limited: only supports WHERE id = ?
             if (preg_match('/WHERE id = \?/i', $sql)) {
                 $id = (int)($params[0] ?? 0);
                 foreach ($this->data['tables'][$table] as &$row) {
                     if (($row['id'] ?? 0) === $id) {
-                        // Apply updates (very naive – assumes params after WHERE)
-                        $updates = array_slice($params, 1);
-                        // You'd need real parser here in real life – this is demo only
-                        $row['updated_at'] = date('c'); // example
+                        $row['updated_at'] = date('c'); 
                         $this->save();
                         return true;
                     }
                 }
             }
-            return true; // optimistic
+            return true; 
         }
 
-        // Default: assume success for unsupported ops (migrations, etc.)
         return true;
     }
 
@@ -139,7 +136,6 @@ class DbJson
     public function query(string $sql, array $params = []): array
     {
         $this->logQuery($sql, $params);
-
         $upper = strtoupper(trim($sql));
 
         if (str_starts_with($upper, 'SELECT')) {
@@ -152,7 +148,6 @@ class DbJson
 
             $rows = $this->data['tables'][$table];
 
-            // Very basic WHERE id = ?
             if (preg_match('/WHERE id = \?/i', $sql)) {
                 $id = (int)($params[0] ?? 0);
                 foreach ($rows as $row) {
@@ -163,7 +158,6 @@ class DbJson
                 return [];
             }
 
-            // Default: return all
             return $rows;
         }
 
@@ -172,13 +166,9 @@ class DbJson
 
     public function lastInsertId(): string
     {
-        // Returns last auto-increment value (simplified)
         return (string)max($this->data['sequences'] ?? [0]);
     }
 
-    /**
-     * Quick debug helper – view all stored data
-     */
     public function dump(): array
     {
         return $this->data;

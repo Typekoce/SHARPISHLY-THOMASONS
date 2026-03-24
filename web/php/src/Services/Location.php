@@ -35,4 +35,18 @@ class Location {
     public function relative(string $absolutePath): string {
         return str_replace($this->base, '', $absolutePath);
     }
+    public function reports(string $file = ''): string {
+        return $this->storage('reports/' . ltrim($file, '/'));
+    }
+
+    public function templates(string $file = ''): string {
+        return $this->storage('templates/' . ltrim($file, '/'));
+    }
+
+    /**
+     * Helper for the Mock DB path
+     */
+    public function db(string $file = 'db.json'): string {
+        return $this->storage('database/' . ltrim($file, '/'));
+    }
 }
