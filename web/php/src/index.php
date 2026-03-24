@@ -11,7 +11,8 @@ require_once __DIR__ . '/bootstrap.php';
 $aliases = [
     'upload'     => ['File', 'upload'],
     'job-status' => ['File', 'status'],
-    'search'     => ['Search', 'query']
+    'search'     => ['Search', 'query'],
+    'chat'       => ['Chat', 'ask'] // New Chat route
 ];
 
 // 2. Parse the URI path
