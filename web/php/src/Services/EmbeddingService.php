@@ -44,4 +44,32 @@ class EmbeddingService
         error_log("Java Bridge Failure: " . trim($output));
         return false;
     }
+
+    /**
+     * Just fetches the embedding from Ollama without interacting with the Java DB.
+     */
+    public function getVectorOnly(string $text): array
+    {
+        $ch = curl_init("http://ollama:11434/api/embeddings");
+        
+        $payload = json_encode([
+            "model" => "nomic-embed-text",
+            "prompt" => $text
+        ]);
+
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode !== 200) {
+            throw new Exception("Ollama connection failed. Is the model 'nomic-embed-text' pulled?");
+        }
+
+        $data = json_decode($response, true);
+        return $data['embedding'] ?? throw new Exception("Malformed response from Ollama");
+    }
 }
