@@ -1,16 +1,35 @@
 version: '3.8'
 
 services:
+  db:
+    image: mysql:8.0
+    container_name: sharpishly-db
+    environment:
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_ROOT_PASSWORD: ${DB_PASS}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - sharpishly-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "--silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
   php:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: sharpishly-php
+    env_file: .env
     volumes:
       - .:/var/www/html
       - ./storage:/var/www/html/storage
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     networks:
       - sharpishly-net
 
@@ -19,13 +38,15 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: sharpishly-worker
-    restart: always
+    restart: unless-stopped
     command: ["php", "/var/www/html/web/php/src/worker.php"]
+    env_file: .env
     volumes:
       - .:/var/www/html
       - ./storage:/var/www/html/storage
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     networks:
       - sharpishly-net
 
@@ -42,20 +63,6 @@ services:
     networks:
       - sharpishly-net
 
-  db:
-    image: mysql:8.0
-    container_name: sharpishly-db
-    environment:
-      MYSQL_DATABASE: ${DB_NAME}
-      MYSQL_ROOT_PASSWORD: ${DB_PASS}
-    volumes:
-      - mysql_data:/var/lib/mysql
-    networks:
-      - sharpishly-net
-
-# ────────────────────────────────────────────────
-# IMPORTANT: networks and volumes must be at ROOT level (same as services)
-# ────────────────────────────────────────────────
 networks:
   sharpishly-net:
     driver: bridge

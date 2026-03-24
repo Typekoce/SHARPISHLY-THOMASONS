@@ -9,6 +9,32 @@ declare(strict_types=1);
 
 namespace App;
 
+// Start DbJson implementation
+<?php
+// ... existing autoloader logic ...
+
+use App\Services\Db;
+use App\Services\DbJson;
+use App\Core\Registry;
+
+// 1. Check the Environment Flag
+$isDevMode = (getenv('APP_DEV') === 'true');
+
+// 2. The Decision Logic
+if ($isDevMode) {
+    // Force JSON for speed and reliability during development
+    Registry::set('db', new DbJson());
+} else {
+    try {
+        // Attempt Real MySQL (Attempt 1)
+        Registry::set('db', new Db());
+    } catch (\Exception $e) {
+        // Fallback to JSON if MySQL is down (Attempt 2)
+        error_log("MySQL Unavailable: " . $e->getMessage());
+        Registry::set('db', new DbJson());
+    }
+}
+
 // 1. Define immutable core paths
 define('APP_ROOT', dirname(__DIR__, 3) . '/');
 define('SRC_ROOT', __DIR__ . '/');

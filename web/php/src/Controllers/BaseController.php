@@ -15,7 +15,7 @@ abstract class BaseController {
 
     public function __construct() {
         // Use the shared instances from Registry
-        $this->db     = Registry::get(Db::class);
+        $this->db     = Registry::get('db');
         $this->loc    = Registry::get(Location::class);
         
         // Initialize Smarty

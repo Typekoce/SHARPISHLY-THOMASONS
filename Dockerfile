@@ -1,19 +1,11 @@
-FROM php:8.2-fpm
+FROM php:8.2-fpm-alpine
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    libpq-dev \
-    libzip-dev \
-    zip \
-    unzip \
-    git \
-    curl
+RUN apk add --no-cache \
+    git curl libzip-dev zip unzip \
+    && docker-php-ext-install pdo pdo_mysql zip
 
-# Install PHP extensions (The Fix for "could not find driver")
-RUN docker-php-ext-install pdo pdo_mysql zip
-
-# Set working directory
 WORKDIR /var/www/html
 
-# Adjust permissions for storage
-RUN chown -R www-data:www-data /var/www/html
+RUN mkdir -p /var/www/html/storage/{database,uploads,logs} \
+    && chown -R www-data:www-data /var/www/html/storage \
+    && chmod -R 775 /var/www/html/storage
