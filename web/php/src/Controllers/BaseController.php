@@ -2,37 +2,59 @@
 declare(strict_types=1);
 
 namespace App\Controllers;
-// Location: php/src/Controllers/BaseController.php
-use App\Core\Registry;
-use App\Services\Db;
+
+/**
+ * THOMASONS V3 – BaseController
+ * The abstract blueprint for all application controllers.
+ * Enforces DRY principles by centralizing service retrieval and response handling.
+ */
+
+use App\Registry;
 use App\Services\Location;
 use App\Services\Smarty;
 
-abstract class BaseController {
-    public $db;
-    public $loc;
-    public $smarty;
+abstract class BaseController
+{
+    protected $db;
+    protected $loc;
+    protected $smarty;
 
-    public function __construct() {
-        // Use the shared instances from Registry
+    /**
+     * Constructor: Bridges the Controller to the Global Registry.
+     * Child controllers MUST call parent::__construct() if they define their own constructor.
+     */
+    public function __construct()
+    {
+        // Pull shared instances from the Registry (Populated in bootstrap.php)
         $this->db     = Registry::get('db');
         $this->loc    = Registry::get(Location::class);
-        
-        // Initialize Smarty
-        $this->smarty = new Smarty();
+        $this->smarty = Registry::get(Smarty::class);
+
+        // Standardize Security Headers for Native App & Web compatibility
+        header('X-Content-Type-Options: nosniff');
+        header('X-Frame-Options: DENY');
+        header('Access-Control-Allow-Origin: *'); 
     }
 
-    protected function json(mixed $data, int $code = 200): void {
-        header('Content-Type: application/json; charset=utf-8');
-        http_response_code($code);
+    /**
+     * Standardized JSON Response Handler
+     */
+    protected function json(array $data, int $code = 200): void
+    {
+        if (!headers_sent()) {
+            header('Content-Type: application/json; charset=utf-8');
+            http_response_code($code);
+        }
         echo json_encode($data);
         exit;
     }
 
     /**
-     * Orchestrates Header, Main, and Footer views using Smarty.
+     * Orchestrates Header, Main, and Footer views using the Smarty engine.
+     * Use this for Web-facing pages.
      */
-    protected function render(array $data, array $views): void {
+    protected function render(array $data, array $views): void
+    {
         $output = '';
         foreach ($views as $name => $path) {
             $output .= $this->renderView($path, $data);
@@ -41,21 +63,19 @@ abstract class BaseController {
     }
 
     /**
-     * Loads a view file and processes it via the Smarty engine.
+     * Loads a view file and processes it via the Smarty service.
      */
-    protected function renderView(string $path, array $data): string {
-        /**
-         * Refactored to use Location service.
-         * Assumes $this->loc->baseDir() returns /var/www/html/
-         */
-        $file = $this->loc->baseDir() . "php/views/$path.html";
+    protected function renderView(string $path, array $data): string
+    {
+        // Use the Location service for absolute pathing
+        $viewPath = $this->loc->baseDir() . "php/views/{$path}.html";
         
-        if (!file_exists($file)) {
+        if (!file_exists($viewPath)) {
+            error_log("View not found: " . $viewPath);
             return "";
         }
 
-        $content = file_get_contents($file);
-        
-        return $this->smarty->render($content, $data);
+        $template = file_get_contents($viewPath);
+        return $this->smarty->render($template, $data);
     }
 }

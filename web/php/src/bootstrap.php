@@ -3,9 +3,11 @@ declare(strict_types=1);
 
 namespace App;
 
+use App\Core\Registry; // Fixed: Now pulling from the Core namespace
 use App\Services\Db;
 use App\Services\DbJson;
 use App\Services\Location;
+use App\Services\Smarty;
 use Throwable;
 
 /**
@@ -14,7 +16,7 @@ use Throwable;
  */
 
 // ────────────────────────────────────────────────
-// 1. Define immutable core paths (MUST be before autoloader)
+// 1. Define immutable core paths
 // ────────────────────────────────────────────────
 define('APP_ROOT', dirname(__DIR__, 3) . '/');
 define('SRC_ROOT', __DIR__ . '/');
@@ -40,65 +42,36 @@ spl_autoload_register(function (string $class): void {
 });
 
 // ────────────────────────────────────────────────
-// 3. Registry Setup (Simple Singleton Manager)
-// ────────────────────────────────────────────────
-class Registry
-{
-    private static array $instances = [];
-
-    public static function set(string $key, object $instance): void
-    {
-        self::$instances[$key] = $instance;
-    }
-
-    public static function get(string $key): object
-    {
-        if (!isset(self::$instances[$key])) {
-            throw new \RuntimeException("Service not registered: $key");
-        }
-        return self::$instances[$key];
-    }
-
-    /**
-     * Factory-style make (for classes that need constructor args)
-     */
-    public static function make(string $class, ...$args): object
-    {
-        return new $class(...$args);
-    }
-}
-
-// ────────────────────────────────────────────────
-// 4. Database Decision Logic (Real Db vs DbJson fallback)
+// 3. Database Decision Logic (Registry initialized here)
 // ────────────────────────────────────────────────
 $isDevMode = (getenv('APP_ENV') === 'development' || getenv('APP_DEV') === 'true');
 
 try {
+    // Registry::set is called using the App\Core\Registry namespace
     if ($isDevMode) {
-        // Use JSON mock in development for faster iteration
         Registry::set('db', new DbJson());
-        error_log("Using DbJson (development mode)");
     } else {
         Registry::set('db', new Db());
-        error_log("Using real MySQL database");
     }
 } catch (Throwable $e) {
-    error_log("MySQL connection failed: " . $e->getMessage() . " → Falling back to DbJson");
-    Registry::set('db', new DbJson());
+    error_log("DB Failure: " . $e->getMessage());
+    Registry::set('db', new DbJson()); // Safety fallback
 }
 
 // ────────────────────────────────────────────────
-// 5. Core Services Initialization
+// 4. Core Services Initialization
 // ────────────────────────────────────────────────
-$location = Registry::make(Location::class);
+// We use ::class keys to ensure consumer/provider consistency
+Registry::set(Location::class, new Location());
+Registry::set(Smarty::class, new Smarty());
 
 // ────────────────────────────────────────────────
-// 6. Error & Exception Handling
+// 5. Error & Exception Handling
 // ────────────────────────────────────────────────
 set_error_handler(function (int $errno, string $errstr, string $errfile, int $errline): bool {
     error_log(sprintf("[%s] PHP Error [%d]: %s in %s:%d", 
         date('Y-m-d H:i:s'), $errno, $errstr, $errfile, $errline));
-    return false; // Let PHP continue with default behavior
+    return false; 
 });
 
 set_exception_handler(function (Throwable $e): void {
@@ -110,7 +83,12 @@ set_exception_handler(function (Throwable $e): void {
         exit(1);
     }
 
-    http_response_code(500);
+    // Ensure no previous output (like echos) has ruined the JSON header
+    if (!headers_sent()) {
+        http_response_code(500);
+        header('Content-Type: application/json; charset=utf-8');
+    }
+
     echo json_encode([
         'status'  => 'error',
         'message' => 'Internal Server Error'
@@ -118,12 +96,9 @@ set_exception_handler(function (Throwable $e): void {
     exit;
 });
 
-// Optional: Catch fatal errors on shutdown
 register_shutdown_function(function (): void {
     $error = error_get_last();
     if ($error && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) {
         error_log("Fatal Error: " . $error['message'] . " in " . $error['file'] . ":" . $error['line']);
     }
 });
-
-// echo "Bootstrap completed successfully.\n";

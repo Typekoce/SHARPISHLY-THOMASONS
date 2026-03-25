@@ -1,3 +1,5 @@
+-- THOMASONS V3: Migration 001
+-- Target: CREATE TABLE IF NOT EXISTS csv_contents 
 CREATE TABLE IF NOT EXISTS csv_contents (
     id INT AUTO_INCREMENT PRIMARY KEY,
     filename VARCHAR(255) NOT NULL,
