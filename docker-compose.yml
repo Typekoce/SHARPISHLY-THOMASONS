@@ -23,13 +23,12 @@ services:
   php:
     build: .
     container_name: sharpishly-php
-    user: "0:0"
     env_file:
       - .env
     volumes:
       - .:/var/www/html
       - ./php/custom.ini:/usr/local/etc/php/conf.d/custom.ini:ro
-      - ./storage:/var/www/html/web/storage
+      - ./storage:/var/www/html/storage
     depends_on:
       db:
         condition: service_healthy

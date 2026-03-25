@@ -9,7 +9,7 @@ namespace App\Controllers;
  * Enforces DRY principles by centralizing service retrieval and response handling.
  */
 
-use App\Registry;
+use App\Core\Registry;
 use App\Services\Location;
 use App\Services\Smarty;
 
@@ -31,9 +31,9 @@ abstract class BaseController
         $this->smarty = Registry::get(Smarty::class);
 
         // Standardize Security Headers for Native App & Web compatibility
-        header('X-Content-Type-Options: nosniff');
-        header('X-Frame-Options: DENY');
-        header('Access-Control-Allow-Origin: *'); 
+        // header('X-Content-Type-Options: nosniff');
+        // header('X-Frame-Options: DENY');
+        // header('Access-Control-Allow-Origin: *'); 
     }
 
     /**

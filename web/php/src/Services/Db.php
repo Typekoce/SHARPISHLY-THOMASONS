@@ -5,59 +5,47 @@ namespace App\Services;
 
 use PDO;
 use Exception;
+use PDOException;
 
 /**
- * @file Db.php
- * @package App
- * @brief Database Abstraction & Self-Healing Schema Manager.
- *
- * A PDO wrapper that enforces the "Zero-Manual-SQL" rule in controllers.
- * It provides methods for automated table migrations and safe data 
- * persistence.
- *
- * @details 
- * - Automated Table Creation: Checks for table existence before queries.
- * - Prepared Statements: Prevents SQL injection across the entire stack.
- * - Singleton Access: Managed via the App\Registry for resource efficiency.
+ * Db - MySQL Production Service
+ * Optimized for Docker internal networking (db:3306).
  */
 class Db {
     private PDO $pdo;
 
     public function __construct() {
+        // Pulling directly from your provided .env keys
         $host = getenv('DB_HOST') ?: 'db';
         $db   = getenv('DB_NAME') ?: 'sharpishly';
-        $user = getenv('DB_USER') ?: 'user';
-        $pass = getenv('DB_PASS') ?: 'pass';
+        $user = getenv('DB_USER') ?: 'root';
+        $pass = getenv('DB_PASS') ?: 'root_password';
+        
         $dsn  = "mysql:host=$host;dbname=$db;charset=utf8mb4";
 
         $options = [
             PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             PDO::ATTR_EMULATE_PREPARES   => false,
+            PDO::ATTR_TIMEOUT            => 5, // Prevent hanging on dead connections
         ];
 
         try {
             $this->pdo = new PDO($dsn, $user, $pass, $options);
-        } catch (\PDOException $e) {
-            throw new Exception("Database Connection Failed: " . $e->getMessage());
+        } catch (PDOException $e) {
+            // Re-throwing as a generic Exception to keep Registry errors clean
+            throw new Exception("MySQL Connection Failed: " . $e->getMessage());
         }
     }
 
     /**
-     * Creates a table. Signature supports raw strings or structured arrays.
+     * Automates 'CREATE TABLE' based on structured definitions.
      */
     public function createTable(string $table, string|array $definition): bool {
-        $columnSql = '';
-
         if (is_array($definition)) {
             $parts = [];
             foreach ($definition as $column => $spec) {
-                // If key is numeric, assume the value is the raw line
-                if (is_numeric($column)) {
-                    $parts[] = $spec;
-                } else {
-                    $parts[] = "`$column` $spec";
-                }
+                $parts[] = is_numeric($column) ? $spec : "`$column` $spec";
             }
             $columnSql = implode(",\n            ", $parts);
         } else {
@@ -72,7 +60,7 @@ class Db {
     }
 
     /**
-     * Helper to verify column existence before ALTER commands
+     * Checks if a column exists (useful for zero-downtime migrations).
      */
     public function columnExists(string $table, string $column): bool {
         try {
@@ -85,7 +73,7 @@ class Db {
     }
 
     /**
-     * Structured finding via $conditions array
+     * Structured SELECT. Example: find(['tbl'=>'jobs', 'where'=>['id'=>1]])
      */
     public function find(array $params): array {
         $tbl    = $params['tbl'];
@@ -96,7 +84,6 @@ class Db {
         if (isset($params['where'])) {
             $conds = [];
             foreach ($params['where'] as $col => $val) {
-                // ADDED BACKTICKS: Prevents issues with reserved words
                 $conds[] = "`$col` = ?";
                 $values[] = $val;
             }
@@ -113,16 +100,13 @@ class Db {
     }
 
     /**
-     * UPSERT: Insert or update on key conflict
+     * UPSERT logic: Inserts new or updates existing based on Unique Keys.
      */
-    public function save(array $data): int|bool {
-        $tbl = $data['tbl'];
-        unset($data['tbl']);
-
+    public function save(string $table, array $data): int|bool {
         $columns = implode('`, `', array_keys($data));
         $placeholders = implode(', ', array_fill(0, count($data), '?'));
         
-        $sql = "INSERT INTO `$tbl` (`$columns`) VALUES ($placeholders) 
+        $sql = "INSERT INTO `$table` (`$columns`) VALUES ($placeholders) 
                 ON DUPLICATE KEY UPDATE ";
         
         $updates = [];
@@ -138,19 +122,11 @@ class Db {
         return $id ? (int)$id : true;
     }
 
-    /**
-     * Structural changes
-     */
-    public function alter(string $table, string $action, string $name, string $spec): bool {
-        $sql = "ALTER TABLE `$table` $action `$name` $spec";
-        return $this->execute($sql);
+    public function execute(string $sql, array $params = []): bool {
+        return $this->pdo->prepare($sql)->execute($params);
     }
 
-    /**
-     * Base execution helper
-     */
-    public function execute(string $sql, array $params = []): bool {
-        $stmt = $this->pdo->prepare($sql);
-        return $stmt->execute($params);
+    public function lastInsertId(): string {
+        return $this->pdo->lastInsertId();
     }
 }

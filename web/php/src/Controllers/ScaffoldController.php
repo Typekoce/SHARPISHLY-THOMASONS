@@ -5,7 +5,6 @@ namespace App\Controllers;
 
 // CRITICAL FIX: Match the Registry namespace defined in bootstrap.php
 use App\Core\Registry; 
-use App\Services\Migrator;
 use Exception;
 use Throwable;
 
@@ -48,27 +47,69 @@ class ScaffoldController extends BaseController
 
     /**
      * GET /php/scaffold/migrate
-     * Executes the SQL migration sequence (001-005).
+     * Builds the essential tables for the project.
      */
     public function migrate(): void
     {
         try {
-            // Migrator is initialized; it will pull the DB from the Registry internally
-            $migrator = new Migrator();
-            $results  = $migrator->run();
-            
+            if (!$this->db) {
+                throw new Exception("Database connection not found in Registry.");
+            }
+
+            $tables = $this->getTableDefinitions();
+            $applied = [];
+
+            foreach ($tables as $name => $schema) {
+                /**
+                 * FIX: Based on PHP TypeError, createTable expects (string $table, array $columns)
+                 * rather than a single wrapper array.
+                 */
+                $this->db->createTable($name, $schema);
+                
+                $applied[] = "Table '$name' is ready.";
+            }
+
             $this->json([
-                'status'    => 'success',
-                'applied'   => $results,
+                'status' => 'success',
+                'applied' => $applied,
                 'timestamp' => date('Y-m-d H:i:s')
             ]);
+
         } catch (Throwable $e) {
-            // Note: debug_backtrace is useful for Dev but should be hidden in Prod
             $this->json([
-                'status'  => 'error',
-                'message' => "Migration Failed: " . $e->getMessage(),
-                'trace'   => (getenv('APP_ENV') === 'development') ? $e->getTraceAsString() : 'hidden'
+                'status' => 'error',
+                'message' => $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Define the blueprint for the application tables
+     */
+    private function getTableDefinitions(): array
+    {
+        return [
+            'jobs' => [
+                'id'         => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'title'      => 'VARCHAR(255) NOT NULL',
+                'payload'    => 'TEXT',
+                'status'     => 'VARCHAR(50) DEFAULT "pending"',
+                'created_at' => 'DATETIME DEFAULT CURRENT_TIMESTAMP'
+            ],
+            'users' => [
+                'id'         => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'username'   => 'VARCHAR(100) NOT NULL UNIQUE',
+                'email'      => 'VARCHAR(255) NOT NULL UNIQUE',
+                'password'   => 'VARCHAR(255) NOT NULL',
+                'created_at' => 'DATETIME DEFAULT CURRENT_TIMESTAMP'
+            ],
+            'logs' => [
+                'id'         => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'level'      => 'VARCHAR(20)',
+                'message'    => 'TEXT',
+                'context'    => 'JSON',
+                'created_at' => 'DATETIME DEFAULT CURRENT_TIMESTAMP'
+            ]
+        ];
     }
 }

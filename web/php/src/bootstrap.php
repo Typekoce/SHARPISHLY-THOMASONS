@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace App;
 
-use App\Core\Registry; // Fixed: Now pulling from the Core namespace
+use App\Core\Registry;
 use App\Services\Db;
 use App\Services\DbJson;
 use App\Services\Location;
@@ -12,7 +12,8 @@ use Throwable;
 
 /**
  * THOMASONS V3 – Bootstrap
- * Core initialization, autoloading, and service registration.
+ * Core initialization and service registration.
+ * * NOTE: Services are registered in order of dependency.
  */
 
 // ────────────────────────────────────────────────
@@ -42,29 +43,35 @@ spl_autoload_register(function (string $class): void {
 });
 
 // ────────────────────────────────────────────────
-// 3. Database Decision Logic (Registry initialized here)
+// 3. Register "Passive" Core Services FIRST
+// These services have no dependencies and are required by others.
 // ────────────────────────────────────────────────
+$location = new Location();
+Registry::set(Location::class, $location);
+
+$smarty = new Smarty();
+Registry::set(Smarty::class, $smarty);
+
+// ────────────────────────────────────────────────
+// 4. Database Decision Logic
+// ────────────────────────────────────────────────
+
+// Ensure these matches your .env exactly: APP_DEV=false
 $isDevMode = (getenv('APP_ENV') === 'development' || getenv('APP_DEV') === 'true');
 
 try {
-    // Registry::set is called using the App\Core\Registry namespace
     if ($isDevMode) {
-        Registry::set('db', new DbJson());
+        // This is likely what is running right now!
+        Registry::set('db', new \App\Services\DbJson());
     } else {
-        Registry::set('db', new Db());
+        // We NEED this to run for the Migrator to work with MySQL
+        Registry::set('db', new \App\Services\Db());
     }
 } catch (Throwable $e) {
     error_log("DB Failure: " . $e->getMessage());
-    Registry::set('db', new DbJson()); // Safety fallback
+    // If MySQL fails, it falls back to DbJson here, which causes the type error in Migrator
+    Registry::set('db', new \App\Services\DbJson());
 }
-
-// ────────────────────────────────────────────────
-// 4. Core Services Initialization
-// ────────────────────────────────────────────────
-// We use ::class keys to ensure consumer/provider consistency
-Registry::set(Location::class, new Location());
-Registry::set(Smarty::class, new Smarty());
-
 // ────────────────────────────────────────────────
 // 5. Error & Exception Handling
 // ────────────────────────────────────────────────
@@ -83,7 +90,6 @@ set_exception_handler(function (Throwable $e): void {
         exit(1);
     }
 
-    // Ensure no previous output (like echos) has ruined the JSON header
     if (!headers_sent()) {
         http_response_code(500);
         header('Content-Type: application/json; charset=utf-8');
@@ -91,7 +97,9 @@ set_exception_handler(function (Throwable $e): void {
 
     echo json_encode([
         'status'  => 'error',
-        'message' => 'Internal Server Error'
+        'message' => 'Internal Server Error',
+        // Optional: Include trace only in dev mode
+        'debug'   => (getenv('APP_ENV') === 'development') ? $e->getMessage() : null
     ]);
     exit;
 });

@@ -2,58 +2,72 @@
 declare(strict_types=1);
 
 namespace App\Controllers;
-// Location: php/src/Controllers/ScaffoldController.php
-use App\Registry;
+
+// Location: php/src/Controllers/HomeController.php
+use App\Core\Registry;
 use Exception;
 
 /**
  * HOME CONTROLLER
- * Use this as a blueprint for new modules (e.g., Email, Calendar, Social).
+ * Handles core module routes and administrative views like job logs.
  */
 class HomeController extends BaseController
 {
     /**
-     * @var mixed The primary model for this controller
+     * Constructor: Initializes BaseController (Registry, DB, Loc)
      */
-    private $model;
-
     public function __construct()
     {
-        // Initialize specific models or services via Registry here
-        // $this->model = new \App\Models\ExampleModel();
+        parent::__construct();
     }
 
     /**
-     * GET /php/scaffold
+     * GET /php/home
      * Default entry point for the module.
      */
     public function index(): void
     {
         try {
-            // Business logic goes here
             $data = [
-                'module' => 'Home',
-                'status' => 'operational',
-                'action' => 'index',
+                'module'    => 'Home',
+                'status'    => 'operational',
+                'action'    => 'index',
                 'timestamp' => time()
             ];
 
             $this->json($data);
         } catch (Exception $e) {
             $this->json([
-                'status' => 'error',
-                'message' => 'Failed to load Scaffold data.'
+                'status'  => 'error',
+                'message' => 'Failed to load Home data.'
             ], 500);
         }
     }
 
     /**
-     * POST /php/scaffold/action
+     * GET /php/home/jobs
+     * Fetches all records from the jobs table.
+     */
+    public function jobs(): void
+    {
+        $conditions = [
+            'tbl'   => 'jobs',
+            'order' => ['id' => 'DESC']
+        ];
+
+        // Using the Db wrapper's find method (No raw SQL)
+        $rs = $this->db->find($conditions);
+
+        // If the table is empty, this returns an empty array []
+        $this->json($rs);
+    }
+
+    /**
+     * POST /php/home/action
      * Example of a write/update action.
      */
     public function action(): void
     {
-        // 1. Get JSON input
         $input = json_decode(file_get_contents('php://input'), true);
 
         if (!$input) {
@@ -62,16 +76,15 @@ class HomeController extends BaseController
         }
 
         try {
-            // 2. Process via Model (Using App\Db internally)
-            // $result = $this->model->saveSomething($input);
+            // Example of a write operation via the DB abstraction
+            // $this->db->insert(['tbl' => 'logs', 'data' => $input]);
 
             $this->json([
-                'status' => 'success',
+                'status'  => 'success',
                 'message' => 'Action completed successfully.'
             ]);
         } catch (Exception $e) {
             $this->json(['status' => 'error', 'message' => $e->getMessage()], 500);
         }
     }
-    
 }
