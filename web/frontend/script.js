@@ -37,19 +37,17 @@ const View = {
             </div>
 
             <div class="row g-4">
-                <!-- Sidebar stats -->
                 <div class="col-lg-3">
                     <div class="card shadow-sm bg-dark text-white p-4 sticky-top" style="top: 1rem;">
                         <h6 class="text-uppercase small fw-bold text-secondary mb-3">Pipeline Status</h6>
                         <div id="statsSummary" class="fs-5 fw-bold">Ready • 0 files</div>
                         <hr class="border-secondary my-3">
-                        <small class="text-secondary">Connected to: <strong>sharpishly.vm</strong></small>
+                        <small class="text-secondary">Connected to: <strong>sharpishly-php</strong></small>
                     </div>
                 </div>
 
-                <!-- Main area -->
                 <div class="col-lg-9">
-                    <div class="card shadow-sm p-5 text-center mb-4 dropzone" id="dropzone">
+                    <div class="card shadow-sm p-5 text-center mb-4 dropzone" id="dropzone" style="cursor: pointer; border: 2px dashed #dee2e6;">
                         <h4 class="mb-3">Drop CSV / TXT files here</h4>
                         <p class="text-muted mb-4">or click to select • max 50 MB per file</p>
                         <input type="file" id="fileInput" multiple hidden accept=".csv,.txt">
@@ -73,17 +71,17 @@ const View = {
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <div class="flex-grow-1">
                             <h6 class="mb-1 fw-bold text-truncate">${name}</h6>
-                            <small class="text-${isDone ? (status === 'Complete' ? 'success' : 'danger') : 'primary'} fw-bold">
+                            <small class="text-${status === 'Complete' ? 'success' : (status === 'Failed' ? 'danger' : 'primary')} fw-bold">
                                 ${status}${currentStage ? ` • ${stage.label}` : ''}
                             </small>
                         </div>
-                        <span class="badge ${isDone ? (status === 'Complete' ? 'bg-success' : 'bg-danger') : 'bg-secondary'}">
+                        <span class="badge ${status === 'Complete' ? 'bg-success' : (status === 'Failed' ? 'bg-danger' : 'bg-secondary')}">
                             ${status}
                         </span>
                     </div>
 
                     <div class="progress mb-3" style="height: 10px; background: #e9ecef;">
-                        <div class="progress-bar ${isActive ? 'progress-bar-striped progress-bar-animated' : ''} ${isDone ? 'bg-success' : 'bg-info'}"
+                        <div class="progress-bar ${isActive ? 'progress-bar-striped progress-bar-animated' : ''} ${status === 'Complete' ? 'bg-success' : (status === 'Failed' ? 'bg-danger' : 'bg-info')}"
                              style="width: ${overallProgress}%"></div>
                     </div>
 
@@ -98,8 +96,9 @@ const View = {
                         }).join('')}
                     </div>
 
-                    <!-- Live logs per file (optional – can be toggled) -->
-                    <div id="logs-${name.replace(/\W/g,'')}" class="mt-3 small text-muted"></div>
+                    <div id="logs-${name.replace(/\W/g,'')}" class="mt-3 p-2 bg-light rounded small text-muted border" style="min-height: 40px; font-family: monospace;">
+                        Waiting for pipeline to start...
+                    </div>
                 </div>
             </div>`;
     }
@@ -144,13 +143,9 @@ const Controller = {
         if (!fileList?.length) return;
 
         Array.from(fileList).forEach(file => {
-            if (!['text/csv', 'text/plain'].includes(file.type)) {
-                alert(`Skipping ${file.name} – only CSV/TXT supported`);
-                return;
-            }
             Model.queue.push({
                 name: file.name,
-                file,                    // keep reference for upload
+                file,
                 status: 'Queued',
                 overallProgress: 0,
                 completedStages: [],
@@ -171,114 +166,108 @@ const Controller = {
 
         const stats = {
             total: Model.queue.length,
-            queued: Model.queue.filter(f => f.status === 'Queued').length,
             active: Model.queue.filter(f => f.status === 'Processing').length,
             done:   Model.queue.filter(f => ['Complete','Failed'].includes(f.status)).length
         };
 
         const summary = document.getElementById('statsSummary');
         if (summary) {
-            if (stats.active > 0) {
-                summary.textContent = `Processing ${stats.active} file${stats.active > 1 ? 's' : ''}...`;
-            } else if (stats.done > 0) {
-                summary.textContent = `${stats.done}/${stats.total} complete`;
-            } else {
-                summary.textContent = `${stats.total} file${stats.total !== 1 ? 's' : ''} queued`;
-            }
+            summary.textContent = stats.active > 0 ? `Processing ${stats.active} file(s)...` : `${stats.done}/${stats.total} complete`;
         }
     },
 
     async processQueue() {
         if (Model.isUploading) return;
-        Model.isUploading = true;
 
-        while (true) {
-            const item = Model.queue.find(f => f.status === 'Queued');
-            if (!item) break;
-
-            item.status = 'Processing';
-            item.currentStage = 'upload';
-            this.refreshQueue();
-
-            try {
-                const formData = new FormData();
-                formData.append('csv_data', item.file);
-
-                const res = await fetch('/php/upload', {  // ← your real endpoint
-                    method: 'POST',
-                    body: formData
-                });
-
-                if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
-
-                const data = await res.json();
-
-                if (data.status !== 'accepted' || !data.job_id) {
-                    throw new Error(data.message || 'No job ID received');
-                }
-
-                item.jobId = data.job_id;
-                this.startProgressPolling(item);
-
-            } catch (err) {
-                console.error(err);
-                item.status = 'Failed';
-                item.currentStage = null;
-                // Optional: show error in UI
-                const logEl = document.getElementById(`logs-${item.name.replace(/\W/g,'')}`);
-                if (logEl) logEl.innerHTML += `<div class="text-danger">Error: ${err.message}</div>`;
-            }
-
-            this.refreshQueue();
+        const item = Model.queue.find(f => f.status === 'Queued');
+        if (!item) {
+            Model.isUploading = false;
+            return;
         }
 
+        Model.isUploading = true;
+        item.status = 'Processing';
+        item.currentStage = 'upload';
+        this.refreshQueue();
+
+        try {
+            const formData = new FormData();
+            formData.append('csv_data', item.file); // Matches BaseController / UploadController lookup
+
+            const res = await fetch('/php/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await res.json();
+
+            if (!res.ok || data.status === 'error') {
+                throw new Error(data.message || 'Server upload rejected');
+            }
+
+            item.jobId = data.job_id;
+            item.completedStages.push('upload');
+            item.overallProgress = 20;
+            
+            this.startProgressPolling(item);
+
+        } catch (err) {
+            item.status = 'Failed';
+            item.currentStage = null;
+            const logEl = document.getElementById(`logs-${item.name.replace(/\W/g,'')}`);
+            if (logEl) logEl.innerHTML = `<span class="text-danger">✖ ${err.message}</span>`;
+        }
+
+        this.refreshQueue();
         Model.isUploading = false;
+        this.processQueue(); // Move to next item
     },
 
     startProgressPolling(item) {
         if (!item.jobId) return;
 
-        const logContainer = document.getElementById(`logs-${item.name.replace(/\W/g,'')}`);
-        if (!logContainer) return;
+        const logId = `logs-${item.name.replace(/\W/g,'')}`;
+        const logContainer = document.getElementById(logId);
 
         const poll = async () => {
             try {
+                // Hits the /php/job-status/{id} alias defined in index.php
                 const res = await fetch(`/php/job-status/${item.jobId}`);
-                if (!res.ok) throw new Error('Status fetch failed');
+                if (!res.ok) return;
 
                 const data = await res.json();
+                
+                // 1. Sync Stages
+                if (data.current_step?.toLowerCase().includes('chunk')) item.currentStage = 'chunk';
+                if (data.current_step?.toLowerCase().includes('vector')) item.currentStage = 'embed';
+                
+                // 2. Sync Progress
+                const steps = data.steps_json ? JSON.parse(data.steps_json) : [];
+                item.overallProgress = Math.min(95, 20 + (steps.length * 10));
 
-                // Update progress from backend steps
-                const stepCount = data.history?.length || 0;
-                item.overallProgress = Math.min(100, stepCount * 8); // rough estimate
-                item.currentStage = data.current?.includes('Embedding') ? 'embed' :
-                                   data.current?.includes('Chunk') ? 'chunk' : item.currentStage;
+                // 3. Update Log View
+                if (logContainer && steps.length > 0) {
+                    logContainer.innerHTML = steps.slice(-3).map(s => `<div>[${s.t}] ${s.m}</div>`).join('');
+                }
 
-                if (logContainer) {
-                    logContainer.innerHTML = data.history
-                        .slice(-5) // last 5 steps only
-                        .map(s => `<div class="small">[${s.t}] ${s.m}</div>`)
-                        .join('');
+                // 4. Handle End States
+                if (['completed', 'failed'].includes(data.status)) {
+                    clearInterval(interval);
+                    item.status = data.status === 'completed' ? 'Complete' : 'Failed';
+                    item.overallProgress = data.status === 'completed' ? 100 : item.overallProgress;
+                    item.currentStage = null;
+                    if (data.status === 'completed') item.completedStages = ['upload', 'chunk', 'embed', 'index'];
                 }
 
                 this.refreshQueue();
-
-                if (['completed','failed'].includes(data.status)) {
-                    clearInterval(interval);
-                    item.status = data.status === 'completed' ? 'Complete' : 'Failed';
-                    item.currentStage = null;
-                    item.overallProgress = 100;
-                    this.refreshQueue();
-                }
             } catch (err) {
                 console.warn('Polling error:', err);
             }
         };
 
-        const interval = setInterval(poll, 1800);
-        poll(); // immediate first poll
+        const interval = setInterval(poll, 2000);
+        poll();
     }
 };
 
-// ────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => Controller.init());

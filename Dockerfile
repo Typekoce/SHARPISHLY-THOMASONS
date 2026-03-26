@@ -32,6 +32,11 @@ RUN mkdir -p /var/www/html/storage/database \
     chmod -R 775 /var/www/html/storage \
                  /var/www/html/llm/foozie-vector-db/data
 
+# Verify log file existence for immediate 'tail -f' compatibility
+RUN touch /var/www/html/storage/logs/app.log && \
+    chown www-data:www-data /var/www/html/storage/logs/app.log && \
+    chmod 664 /var/www/html/storage/logs/app.log
+
 # 6. Ensure the PHP process runs as the correct user 
 # (This matches the permissions set above)
 USER www-data

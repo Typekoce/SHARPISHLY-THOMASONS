@@ -9,21 +9,27 @@ namespace App\Services;
  * Ensures all file operations target the /storage root outside the public web folder.
  */
 class Location {
-    // We derive the base from the APP_ROOT constant defined in bootstrap.php
-    // This points to /var/www/html/storage/
+    /**
+     * The absolute path to the storage directory.
+     * In your Docker environment, this is /var/www/html/storage/
+     */
     private string $base;
 
     public function __construct() {
-        // Fallback to a hardcoded path if APP_ROOT isn't defined, 
-        // but ideally uses the dynamic root.
-        $this->base = defined('APP_ROOT') ? APP_ROOT . 'storage/' : '/var/www/html/storage/';
+        // We prioritize the absolute Docker path to ensure Web and Worker are synced.
+        // Fallback to APP_ROOT only if we are running in a different environment.
+        if (is_dir('/var/www/html/storage')) {
+            $this->base = '/var/www/html/storage/';
+        } else {
+            $this->base = defined('APP_ROOT') ? APP_ROOT . 'storage/' : dirname(__DIR__, 4) . '/storage/';
+        }
     }
 
     /**
      * Standard project root
      */
     public function baseDir(): string {
-        return defined('APP_ROOT') ? APP_ROOT : dirname($this->base) . '/';
+        return dirname($this->base) . '/';
     }
 
     /**
@@ -31,10 +37,15 @@ class Location {
      */
     public function storage(string $path = ''): string {
         $fullPath = $this->base . ltrim($path, '/');
-        // Ensure trailing slash for directories if no filename is provided
-        return (pathinfo($fullPath, PATHINFO_EXTENSION) === '') 
-            ? rtrim($fullPath, '/') . '/' 
-            : $fullPath;
+        
+        // Check if the path ends in a filename or is a directory
+        $extension = pathinfo($fullPath, PATHINFO_EXTENSION);
+        
+        if ($extension === '' && !empty($path)) {
+            return rtrim($fullPath, '/') . '/';
+        }
+        
+        return $fullPath;
     }
 
     public function uploads(string $file = ''): string {

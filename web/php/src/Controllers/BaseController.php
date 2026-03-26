@@ -12,12 +12,14 @@ namespace App\Controllers;
 use App\Core\Registry;
 use App\Services\Location;
 use App\Services\Smarty;
+use App\Services\Logger;
 
 abstract class BaseController
 {
     protected $db;
     protected $loc;
     protected $smarty;
+    public $logger;
 
     /**
      * Constructor: Bridges the Controller to the Global Registry.
@@ -29,6 +31,7 @@ abstract class BaseController
         $this->db     = Registry::get('db');
         $this->loc    = Registry::get(Location::class);
         $this->smarty = Registry::get(Smarty::class);
+        $this->logger = Registry::get(Logger::class);
 
         // Standardize Security Headers for Native App & Web compatibility
         // header('X-Content-Type-Options: nosniff');

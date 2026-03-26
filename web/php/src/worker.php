@@ -1,114 +1,72 @@
 <?php
 declare(strict_types=1);
 
+// worker.php
 require_once __DIR__ . '/bootstrap.php';
 
 use App\Core\Registry;
+use App\Services\Logger;
 use App\Services\Location;
-use App\Services\ChunkingService;
-use App\Services\EmbeddingService;
 
-/**
- * Updates the HUD (Heads-Up Display) in the Surveyor SPA
- */
-function logStep($db, int $jobId, string $message, array &$steps): void
-{
-    $timestamp = date('H:i:s');
-    $steps[] = ['t' => $timestamp, 'm' => $message];
+// 1. Initialize Thomasons Core Services from Registry
+$db     = Registry::get('db');
+$log    = Registry::get('logger'); // Our new Logger class
+$loc    = Registry::get(\App\Services\Location::class);
 
-    if (count($steps) > 50) {
-        $steps = array_slice($steps, -50);
-    }
-
-    $db->execute("
-        UPDATE jobs 
-        SET 
-            current_step = ?,
-            steps_json   = ?,
-            updated_at   = ?
-        WHERE id = ?
-    ", [
-        $message,
-        json_encode($steps, JSON_THROW_ON_ERROR),
-        date('Y-m-d H:i:s'),
-        $jobId
-    ]);
-}
-
-// 1. Initialize Thomasons Core Services
-$db        = Registry::get('db');
-$location  = Registry::make(Location::class);
-$chunker   = Registry::make(ChunkingService::class);
-$embedder  = Registry::make(EmbeddingService::class);
-
-echo "🚀 Surveyor Worker Online. Monitoring root storage: " . $location->storage() . "\n";
+echo "🚀 Neural Worker Online. Monitoring: " . $loc->storage() . PHP_EOL;
+$log->info("Worker Started", ['pid' => getmypid()]);
 
 while (true) {
-    // 2. Poll for pending property reports
-    $jobs = $db->query("SELECT * FROM jobs WHERE status = 'pending' LIMIT 1");
+    // 2. Poll for pending jobs using the DB abstraction (No raw SQL)
+    // Assuming your DB class has a query or fetch method that returns an array
+    $jobs = $db->query("jobs", ['status' => 'pending'], "id ASC", 1);
 
     if (empty($jobs)) {
-        sleep(2); // Save CPU cycles
+        sleep(3); // Save CPU cycles
         continue;
     }
 
-    $job = $jobs[0];
-    $jobId = (int)$job['id'];
+    $job     = $jobs[0];
+    $jobId   = (int)$job['id'];
     $payload = json_decode($job['payload'], true);
-    $steps = [];
-
-    $log = function(string $msg) use ($db, $jobId, &$steps) {
-        echo "[$jobId] $msg\n";
-        logStep($db, $jobId, $msg, $steps);
-    };
+    
+    $log->info("Job Picked Up", ['job_id' => $jobId, 'file' => $payload['name'] ?? 'unknown']);
 
     try {
-        $log("📂 Opening report for neural analysis...");
+        // 3. Update Job to 'processing'
+        $db->update('jobs', ['status' => 'processing', 'updated_at' => date('Y-m-d H:i:s')], $jobId);
+
+        // 4. Validate File Existence
+        $filePath = $payload['path'] ?? '';
         
-        // Ensure we are looking in the correct absolute path
-        $filePath = $payload['path']; 
-        
-        if (!file_exists($filePath)) {
-            throw new Exception("Source file missing in storage: " . $filePath);
+        if (!$filePath || !file_exists($filePath)) {
+            throw new Exception("File not found at path: " . $filePath);
         }
 
-        // 3. Load Content (Handling large files via lines)
-        $rawContent = file_get_contents($filePath);
+        // 5. Bare-Bones Simulation of the Pipeline
+        $log->info("Processing File", ['path' => $filePath, 'size' => filesize($filePath)]);
         
-        $log("🔍 Content loaded (" . strlen($rawContent) . " bytes). Beginning semantic chunking...");
+        // --- This is where Chunking/Embedding will go tomorrow ---
+        usleep(500000); // Simulate 0.5s of "work"
+        // --------------------------------------------------------
 
-        // 4. Use ChunkingService with Overlap (Critical for Cladding Context)
-        $chunks = $chunker->split($rawContent, 800, 150);
-        $totalChunks = count($chunks);
+        // 6. Mark as Complete
+        $db->update('jobs', [
+            'status'      => 'completed',
+            'finished_at' => date('Y-m-d H:i:s')
+        ], $jobId);
 
-        foreach ($chunks as $index => $text) {
-            // Heartbeat for the Surveyor Dashboard
-            if ($index % 5 === 0 || $index === $totalChunks - 1) {
-                $log(sprintf("🧠 Vectorizing segment %d/%d...", $index + 1, $totalChunks));
-            }
-
-            // 5. Generate Vector via Ollama + Java Bridge
-            // We create a unique ID including the Job ID to allow bulk deletion if needed
-            $vectorId = "prop_job_{$jobId}_c{$index}";
-            
-            // This calls your EmbeddingService -> Ollama -> Java findTopK/store
-            $success = $embedder->store($text, $vectorId);
-            
-            if (!$success) {
-                throw new Exception("Neural Bridge Timeout at segment $index");
-            }
-        }
-
-        $log("✅ Neural Ingestion Complete. Data available for semantic search.");
-        
-        $db->execute("UPDATE jobs SET status = ?, finished_at = ? WHERE id = ?", 
-            ['completed', date('Y-m-d H:i:s'), $jobId]);
+        $log->info("Job Success", ['job_id' => $jobId]);
 
     } catch (Throwable $e) {
-        $errorMsg = $e->getMessage();
-        $log("❌ Failed: " . substr($errorMsg, 0, 120));
-        
-        $db->execute("UPDATE jobs SET status = ?, error_log = ? WHERE id = ?", 
-            ['failed', $errorMsg . "\n" . $e->getTraceAsString(), $jobId]);
+        $log->error("Worker Job Failure", [
+            'job_id' => $jobId,
+            'error'  => $e->getMessage()
+        ]);
+
+        $db->update('jobs', [
+            'status'    => 'failed',
+            'error_log' => $e->getMessage()
+        ], $jobId);
     }
 }
