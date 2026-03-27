@@ -3,19 +3,10 @@ import json
 import os
 import mysql.connector
 from src.ollama import OllamaService
-
-# ai/worker.py
 from src.processor import TextProcessor
-# from src.ollama import OllamaService
-
-# Now your logic is lean:
-# processor = TextProcessor()
-# ollama = OllamaService()
-# chunks = processor.prepare_for_ollama(content)
-# vectors = ollama.get_embeddings(chunks)
 
 def get_db_connection():
-    # Connect to the Docker service name 'sharpishly-db'
+    """Connect to the Docker service name 'sharpishly-db' using .env credentials."""
     return mysql.connector.connect(
         host=os.getenv("DB_HOST", "sharpishly-db"),
         user=os.getenv("DB_USER", "root"),
@@ -24,18 +15,31 @@ def get_db_connection():
         autocommit=True
     )
 
-def update_job(cursor, db, job_id, status, step):
-    cursor.execute(
-        "UPDATE jobs SET status = %s, current_step = %s WHERE id = %s",
-        (status, step, job_id)
-    )
+def update_job(cursor, db, job_id, status, step_id, message):
+    """
+    Updates the job for SPA visual feedback.
+    step_id matches frontend: 'upload' | 'chunk' | 'embed' | 'index'
+    """
+    timestamp = time.strftime('%H:%M:%S')
+    log_entry = json.dumps({"t": timestamp, "m": message})
+    
+    query = """
+        UPDATE jobs 
+        SET status = %s, 
+            current_step = %s, 
+            steps_json = JSON_ARRAY_APPEND(steps_json, '$', CAST(%s AS JSON)) 
+        WHERE id = %s
+    """
+    cursor.execute(query, (status, step_id, log_entry, job_id))
     db.commit()
 
 def work_loop():
-    print("🚀 Neural Worker Started. Polling for 'neural_ingest' jobs...")
+    print("🚀 Neural Worker Online. Monitoring 'neural_ingest' jobs...")
     ollama = OllamaService()
+    processor = TextProcessor()
     
     while True:
+        db = None
         try:
             db = get_db_connection()
             cursor = db.cursor(dictionary=True)
@@ -55,43 +59,48 @@ def work_loop():
             payload = json.loads(job['payload'])
             file_path = payload.get('path')
 
-            # 2. Start Processing
-            update_job(cursor, db, job_id, 'processing', 'Reading file from storage...')
+            # --- STAGE: CHUNK ---
+            update_job(cursor, db, job_id, 'processing', 'chunk', 'Splitting document into semantic blocks...')
             
             if not os.path.exists(file_path):
-                raise Exception(f"File not found: {file_path}")
+                raise Exception(f"File missing in shared storage: {file_path}")
 
             with open(file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
 
-            # 3. Embedding Generation
-            update_job(cursor, db, job_id, 'processing', 'Generating vectors via Ollama...')
-            
-            # Simple chunking logic (Flat Pattern)
-            chunks = [content[i:i+1000] for i in range(0, len(content), 1000)]
+            chunks = processor.prepare_for_ollama(content)
+
+            # --- STAGE: EMBED ---
+            update_job(cursor, db, job_id, 'processing', 'embed', f'Generating vectors for {len(chunks)} chunks...')
             embeddings = ollama.get_embeddings(chunks)
 
-            if embeddings:
-                # 4. Save to Vectors Table
-                for i, vector in enumerate(embeddings):
-                    cursor.execute(
-                        "INSERT INTO vectors (job_id, content, embedding) VALUES (%s, %s, %s)",
-                        (job_id, chunks[i], json.dumps(vector))
-                    )
-                
-                update_job(cursor, db, job_id, 'completed', 'Ingestion complete.')
-                print(f"✅ Job {job_id} finalized.")
+            if not embeddings:
+                raise Exception("Ollama failed to return embeddings.")
+
+            # --- STAGE: INDEX ---
+            update_job(cursor, db, job_id, 'processing', 'index', 'Persisting vectors to database...')
+            
+            for i, vector in enumerate(embeddings):
+                cursor.execute(
+                    "INSERT INTO vectors (job_id, content, embedding) VALUES (%s, %s, %s)",
+                    (job_id, chunks[i], json.dumps(vector))
+                )
+            
+            # --- FINALIZE ---
+            update_job(cursor, db, job_id, 'completed', 'index', 'Neural Ingestion Complete.')
+            print(f"✅ Job {job_id} successfully indexed.")
             
             db.close()
 
         except Exception as e:
-            print(f"❌ Error: {str(e)}")
-            # Attempt to mark as failed if we still have a DB connection
-            try:
-                update_job(cursor, db, job_id, 'failed', str(e))
-                db.close()
-            except:
-                pass
+            error_msg = str(e)
+            print(f"❌ Error: {error_msg}")
+            if db and db.is_connected():
+                try:
+                    update_job(cursor, db, job_id, 'failed', 'upload', f"Critical Error: {error_msg}")
+                    db.close()
+                except:
+                    pass
             time.sleep(10)
 
 if __name__ == "__main__":
