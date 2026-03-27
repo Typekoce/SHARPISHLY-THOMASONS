@@ -7,33 +7,31 @@ use Exception;
 use Throwable;
 
 /**
- * SCAFFOLD CONTROLLER
- * Orchestrates database migrations and structural integrity checks.
+ * SCAFFOLD CONTROLLER - Full Schema Reset
+ * Orchestrates the creation of the normalized Neural Ingestion database.
  */
 class ScaffoldController extends BaseController
 {
     /**
-     * GET /php/scaffold/migrate
-     * The primary entry point for the migrate.sh script.
+     * Primary entry point for database initialization.
      */
     public function migrate(): void
     {
         try {
-            // $this->db is automatically populated by BaseController::__construct()
             if (!$this->db) {
-                throw new Exception("Database Service (Registry['db']) failed to initialize.");
+                throw new Exception("Database Service failed to initialize.");
             }
 
             $applied = [];
-            $definitions = $this->getTableDefinitions();
-
+            
             // 1. Core Table Synchronization
+            $definitions = $this->getTableDefinitions();
             foreach ($definitions as $name => $schema) {
                 $this->db->createTable($name, $schema);
-                $applied[] = "Base table verified: $name";
+                $applied[] = "Table verified: $name";
             }
 
-            // 2. Incremental Schema Alterations (The Delta Patches)
+            // 2. Incremental Schema Alterations (Empty for new baseline)
             $patches = $this->applyAlterations();
             $applied = array_merge($applied, $patches);
 
@@ -44,7 +42,6 @@ class ScaffoldController extends BaseController
             ]);
 
         } catch (Throwable $e) {
-            // Catching Throwable handles both Errors and Exceptions
             $this->json([
                 'status'  => 'error',
                 'message' => $e->getMessage(),
@@ -55,68 +52,72 @@ class ScaffoldController extends BaseController
     }
 
     /**
-     * Managed Delta Migrations
-     * Ensures new columns exist without breaking existing data.
+     * Managed Delta Migrations 
+     * (Reset to empty as all columns are now in the Master Blueprint)
      */
     private function applyAlterations(): array
     {
-        $log = [];
-        
-        /**
-         * UNIQUE PATCHES ONLY
-         * Do not repeat columns across versions. 
-         * v1_0_1 handles progress tracking.
-         * v1_0_2 handles the completion timestamp.
-         */
-        $alterations = [
-            'v1_0_1' => [
-                'table' => 'jobs',
-                'add'   => [
-                    'current_step' => 'VARCHAR(255) DEFAULT NULL',
-                    'progress'     => 'INT DEFAULT 0'
-                ]
-            ],
-            'v1_0_2' => [
-                'table' => 'jobs',
-                'add'   => [
-                    'finished_at'  => 'DATETIME DEFAULT NULL'
-                ]
-            ]
-        ];
-
-        foreach ($alterations as $version => $patch) {
-            $table = $patch['table'];
-            foreach ($patch['add'] as $column => $definition) {
-                // This check will skip current_step/progress because they already exist
-                if (!$this->db->columnExists($table, $column)) {
-                    $sql = "ALTER TABLE `$table` ADD COLUMN `$column` $definition";
-                    $this->db->execute($sql);
-                    $log[] = "Patch $version: Added '$column' to '$table'.";
-                }
-            }
-        }
-
-        return $log;
+        return []; 
     }
 
     /**
-     * The Master Blueprint
+     * The Master Blueprint (Normalized Schema)
      */
     private function getTableDefinitions(): array
     {
         return [
-            'jobs' => [
-                'id'         => 'INT AUTO_INCREMENT PRIMARY KEY',
-                'title'      => 'VARCHAR(255) NOT NULL',
-                'payload'    => 'TEXT',
-                'status'     => 'VARCHAR(50) DEFAULT "pending"',
-                'created_at' => 'DATETIME DEFAULT CURRENT_TIMESTAMP'
-            ],
             'users' => [
                 'id'         => 'INT AUTO_INCREMENT PRIMARY KEY',
                 'username'   => 'VARCHAR(100) NOT NULL UNIQUE',
-                'email'      => 'VARCHAR(255) NOT NULL UNIQUE',
                 'password'   => 'VARCHAR(255) NOT NULL',
+                'created_at' => 'DATETIME DEFAULT CURRENT_TIMESTAMP'
+            ],
+            'addresses' => [
+                'id'          => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'user_id'     => 'INT NOT NULL',
+                'line_1'      => 'VARCHAR(255)',
+                'city'        => 'VARCHAR(100)',
+                'postcode'    => 'VARCHAR(20)',
+                'created_at'  => 'DATETIME DEFAULT CURRENT_TIMESTAMP'
+            ],
+            'telephones' => [
+                'id'          => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'user_id'     => 'INT NOT NULL',
+                'number'      => 'VARCHAR(50) NOT NULL',
+                'type'        => 'VARCHAR(20) DEFAULT "mobile"',
+                'created_at'  => 'DATETIME DEFAULT CURRENT_TIMESTAMP'
+            ],
+            'emails' => [
+                'id'          => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'user_id'     => 'INT NOT NULL',
+                'address'     => 'VARCHAR(255) NOT NULL UNIQUE',
+                'is_primary'  => 'TINYINT(1) DEFAULT 0',
+                'created_at'  => 'DATETIME DEFAULT CURRENT_TIMESTAMP'
+            ],
+            'employers' => [
+                'id'          => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'user_id'     => 'INT NOT NULL',
+                'company'     => 'VARCHAR(255) NOT NULL',
+                'job_title'   => 'VARCHAR(255)',
+                'start_date'  => 'DATE',
+                'created_at'  => 'DATETIME DEFAULT CURRENT_TIMESTAMP'
+            ],
+            'jobs' => [
+                'id'           => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'title'        => 'VARCHAR(255) NOT NULL',
+                'type'         => 'VARCHAR(50) DEFAULT "neural_ingest"',
+                'payload'      => 'TEXT',
+                'status'       => 'VARCHAR(50) DEFAULT "pending"',
+                'current_step' => 'VARCHAR(255) DEFAULT NULL',
+                'progress'     => 'INT DEFAULT 0',
+                'finished_at'  => 'DATETIME DEFAULT NULL',
+                'created_at'   => 'DATETIME DEFAULT CURRENT_TIMESTAMP'
+            ],
+            'vectors' => [
+                'id'         => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'job_id'     => 'INT NOT NULL',
+                'content'    => 'TEXT NOT NULL',
+                'embedding'  => 'JSON NOT NULL',
                 'created_at' => 'DATETIME DEFAULT CURRENT_TIMESTAMP'
             ],
             'logs' => [
