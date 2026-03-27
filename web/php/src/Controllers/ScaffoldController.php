@@ -3,79 +3,104 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
-// CRITICAL FIX: Match the Registry namespace defined in bootstrap.php
 use Exception;
 use Throwable;
 
 /**
  * SCAFFOLD CONTROLLER
- * Serves as the primary entry point for system maintenance and module blueprints.
+ * Orchestrates database migrations and structural integrity checks.
  */
 class ScaffoldController extends BaseController
 {
     /**
-     * GET /php/scaffold
-     * Health check for the Scaffold module.
-     */
-    public function index(): void
-    {
-        try {
-            $data = [
-                'module'    => 'Scaffold',
-                'status'    => 'operational',
-                'registry'  => 'connected',
-                'timestamp' => time()
-            ];
-
-            $this->json($data);
-        } catch (Exception $e) {
-            $this->json([
-                'status'  => 'error',
-                'message' => 'Failed to load Scaffold data.'
-            ], 500);
-        }
-    }
-
-    /**
      * GET /php/scaffold/migrate
-     * Builds the essential tables for the project.
+     * The primary entry point for the migrate.sh script.
      */
     public function migrate(): void
     {
         try {
+            // $this->db is automatically populated by BaseController::__construct()
             if (!$this->db) {
-                throw new Exception("Database connection not found in Registry.");
+                throw new Exception("Database Service (Registry['db']) failed to initialize.");
             }
 
-            $tables = $this->getTableDefinitions();
             $applied = [];
+            $definitions = $this->getTableDefinitions();
 
-            foreach ($tables as $name => $schema) {
-                /**
-                 * FIX: Based on PHP TypeError, createTable expects (string $table, array $columns)
-                 * rather than a single wrapper array.
-                 */
+            // 1. Core Table Synchronization
+            foreach ($definitions as $name => $schema) {
                 $this->db->createTable($name, $schema);
-                
-                $applied[] = "Table '$name' is ready.";
+                $applied[] = "Base table verified: $name";
             }
+
+            // 2. Incremental Schema Alterations (The Delta Patches)
+            $patches = $this->applyAlterations();
+            $applied = array_merge($applied, $patches);
 
             $this->json([
-                'status' => 'success',
-                'applied' => $applied,
+                'status'    => 'success',
+                'applied'   => $applied,
                 'timestamp' => date('Y-m-d H:i:s')
             ]);
 
         } catch (Throwable $e) {
+            // Catching Throwable handles both Errors and Exceptions
             $this->json([
-                'status' => 'error',
-                'message' => $e->getMessage()
+                'status'  => 'error',
+                'message' => $e->getMessage(),
+                'file'    => basename($e->getFile()),
+                'line'    => $e->getLine()
             ], 500);
         }
     }
 
     /**
-     * Define the blueprint for the application tables
+     * Managed Delta Migrations
+     * Ensures new columns exist without breaking existing data.
+     */
+    private function applyAlterations(): array
+    {
+        $log = [];
+        
+        /**
+         * UNIQUE PATCHES ONLY
+         * Do not repeat columns across versions. 
+         * v1_0_1 handles progress tracking.
+         * v1_0_2 handles the completion timestamp.
+         */
+        $alterations = [
+            'v1_0_1' => [
+                'table' => 'jobs',
+                'add'   => [
+                    'current_step' => 'VARCHAR(255) DEFAULT NULL',
+                    'progress'     => 'INT DEFAULT 0'
+                ]
+            ],
+            'v1_0_2' => [
+                'table' => 'jobs',
+                'add'   => [
+                    'finished_at'  => 'DATETIME DEFAULT NULL'
+                ]
+            ]
+        ];
+
+        foreach ($alterations as $version => $patch) {
+            $table = $patch['table'];
+            foreach ($patch['add'] as $column => $definition) {
+                // This check will skip current_step/progress because they already exist
+                if (!$this->db->columnExists($table, $column)) {
+                    $sql = "ALTER TABLE `$table` ADD COLUMN `$column` $definition";
+                    $this->db->execute($sql);
+                    $log[] = "Patch $version: Added '$column' to '$table'.";
+                }
+            }
+        }
+
+        return $log;
+    }
+
+    /**
+     * The Master Blueprint
      */
     private function getTableDefinitions(): array
     {

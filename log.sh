@@ -6,4 +6,4 @@ line='----------------'
 clear
 
 # View tail of log
-tail -f storage/logs/*.log
+tail -f storage/log/*.log

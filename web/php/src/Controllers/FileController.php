@@ -10,8 +10,7 @@ class FileController extends BaseController
 {
     /**
      * POST /php/upload
-     * Handles multipart/form-data from the Surveyor SPA.
-     * Inherits $this->db, $this->loc, $this->logger from BaseController.
+     * Orchestrates file reception and job queuing.
      */
     public function upload(): void
     {
@@ -22,21 +21,21 @@ class FileController extends BaseController
                 throw new Exception("Upload failed: Code " . $file['error']);
             }
 
-            // 1. Prepare Storage via Inherited Location Service ($this->loc)
+            // 1. Storage via Location Service ($this->loc)
             $targetPath = $this->loc->uploads(basename($file['name']));
             
             if (!move_uploaded_file($file['tmp_name'], $targetPath)) {
                 throw new Exception("FileSystem Error: Could not move file to storage.");
             }
 
-            // 2. Pre-process text using our retained Service (Semantic Cleaning)
+            // 2. Pre-process text (Semantic Cleaning)
             $processor = new TextProcessor();
             $rawContent = file_get_contents($targetPath);
             $cleanChunks = $processor->prepare($rawContent, ['source' => $file['name']]);
 
-            // 3. Queue Job using inherited DB instance ($this->db)
-            // Using a structured insert instead of raw SQL strings
-            $jobId = $this->db->insert('jobs', [
+            // 3. Queue Job using existing save() method
+            // save() handles the INSERT and returns the lastInsertId
+            $jobId = $this->db->save('jobs', [
                 'type'       => 'neural_ingest',
                 'status'     => 'pending',
                 'payload'    => json_encode([
@@ -61,12 +60,17 @@ class FileController extends BaseController
 
     /**
      * GET /php/status
-     * Polling endpoint for the SPA.
+     * Polling endpoint using existing find() method.
      */
     public function status(): void
     {
-        // Use abstract fetch method to keep SQL logic out of the controller
-        $jobs = $this->db->select("SELECT * FROM jobs ORDER BY id DESC LIMIT 10");
+        // Using your structured find() pattern
+        $jobs = $this->db->find([
+            'tbl'   => 'jobs',
+            'order' => ['id' => 'DESC'],
+            'limit' => 10
+        ]);
+
         $this->json($jobs);
     }
 }
