@@ -6,16 +6,16 @@ namespace App\Services;
 use PDO;
 use Exception;
 use PDOException;
+use Throwable;
 
 /**
  * Db - MySQL Production Service
- * Optimized for Docker internal networking (db:3306).
+ * Optimized for Docker internal networking with Defensive Schema Mapping.
  */
 class Db {
     private PDO $pdo;
 
     public function __construct() {
-        // Pulling directly from your provided .env keys
         $host = getenv('DB_HOST') ?: 'db';
         $db   = getenv('DB_NAME') ?: 'sharpishly';
         $user = getenv('DB_USER') ?: 'root';
@@ -27,15 +27,62 @@ class Db {
             PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             PDO::ATTR_EMULATE_PREPARES   => false,
-            PDO::ATTR_TIMEOUT            => 5, // Prevent hanging on dead connections
+            PDO::ATTR_TIMEOUT            => 5,
         ];
 
         try {
             $this->pdo = new PDO($dsn, $user, $pass, $options);
         } catch (PDOException $e) {
-            // Re-throwing as a generic Exception to keep Registry errors clean
             throw new Exception("MySQL Connection Failed: " . $e->getMessage());
         }
+    }
+
+    /**
+     * Cross-references input data against actual DB columns to prevent 1054 errors.
+     */
+    private function filterData(string $table, array $data): array {
+        try {
+            $stmt = $this->pdo->prepare("DESCRIBE `$table` ");
+            $stmt->execute();
+            $existingColumns = $stmt->fetchAll(PDO::FETCH_COLUMN);
+            
+            // Return only keys that actually exist in the database table
+            return array_intersect_key($data, array_flip($existingColumns));
+        } catch (Throwable $e) {
+            error_log("Schema Check Failed for $table: " . $e->getMessage());
+            return $data; // Fallback to original if DESCRIBE fails
+        }
+    }
+
+    /**
+     * UPSERT logic: Now filtered against the "Source of Truth" (the table schema).
+     */
+    public function save(string $table, array $data): int|bool {
+        // DEFENSIVE: Remove columns that do not exist in the database
+        $data = $this->filterData($table, $data);
+
+        if (empty($data)) {
+            error_log("Db::save aborted: No valid columns found for table '$table'");
+            return false;
+        }
+
+        $columns = implode('`, `', array_keys($data));
+        $placeholders = implode(', ', array_fill(0, count($data), '?'));
+        
+        $sql = "INSERT INTO `$table` (`$columns`) VALUES ($placeholders) 
+                ON DUPLICATE KEY UPDATE ";
+        
+        $updates = [];
+        foreach ($data as $col => $val) {
+            $updates[] = "`$col` = VALUES(`$col`)";
+        }
+        $sql .= implode(', ', $updates);
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute(array_values($data));
+        
+        $id = $this->pdo->lastInsertId();
+        return $id ? (int)$id : true;
     }
 
     /**
@@ -59,9 +106,6 @@ class Db {
         return $this->execute($sql);
     }
 
-    /**
-     * Checks if a column exists (useful for zero-downtime migrations).
-     */
     public function columnExists(string $table, string $column): bool {
         try {
             $stmt = $this->pdo->prepare("SHOW COLUMNS FROM `$table` LIKE ?");
@@ -72,9 +116,6 @@ class Db {
         }
     }
 
-    /**
-     * Structured SELECT. Example: find(['tbl'=>'jobs', 'where'=>['id'=>1]])
-     */
     public function find(array $params): array {
         $tbl    = $params['tbl'];
         $fields = isset($params['fields']) ? implode(', ', $params['fields']) : '*';
@@ -97,29 +138,6 @@ class Db {
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($values);
         return $stmt->fetchAll();
-    }
-
-    /**
-     * UPSERT logic: Inserts new or updates existing based on Unique Keys.
-     */
-    public function save(string $table, array $data): int|bool {
-        $columns = implode('`, `', array_keys($data));
-        $placeholders = implode(', ', array_fill(0, count($data), '?'));
-        
-        $sql = "INSERT INTO `$table` (`$columns`) VALUES ($placeholders) 
-                ON DUPLICATE KEY UPDATE ";
-        
-        $updates = [];
-        foreach ($data as $col => $val) {
-            $updates[] = "`$col` = VALUES(`$col`)";
-        }
-        $sql .= implode(', ', $updates);
-
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute(array_values($data));
-        
-        $id = $this->pdo->lastInsertId();
-        return $id ? (int)$id : true;
     }
 
     public function execute(string $sql, array $params = []): bool {
