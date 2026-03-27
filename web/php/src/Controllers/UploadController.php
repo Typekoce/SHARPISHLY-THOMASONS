@@ -3,9 +3,6 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
-use Exception;
-use Throwable;
-
 /**
  * UPLOAD CONTROLLER
  * Handles multi-selection file uploads for the Neural Pipeline.

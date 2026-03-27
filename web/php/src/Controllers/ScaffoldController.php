@@ -4,7 +4,6 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 // CRITICAL FIX: Match the Registry namespace defined in bootstrap.php
-use App\Core\Registry; 
 use Exception;
 use Throwable;
 
@@ -14,14 +13,6 @@ use Throwable;
  */
 class ScaffoldController extends BaseController
 {
-    /**
-     * Constructor: Initializes BaseController (Registry, DB, Loc)
-     */
-    public function __construct()
-    {
-        parent::__construct();
-    }
-
     /**
      * GET /php/scaffold
      * Health check for the Scaffold module.

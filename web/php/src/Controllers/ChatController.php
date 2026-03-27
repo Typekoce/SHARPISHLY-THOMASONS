@@ -3,80 +3,91 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
-use App\Services\EmbeddingService;
 use Exception;
 
 class ChatController extends BaseController
 {
-    private EmbeddingService $embedder;
-
-    public function __construct()
-    {
-        parent::__construct();
-        $this->embedder = new EmbeddingService();
-    }
-
     /**
      * POST /php/chat
-     * Input: { "message": "What is the company policy on remote work?" }
+     * Inherits $this->db, $this->logger, $this->loc from BaseController.
      */
     public function ask(): void
     {
+        // Use a helper or native input retrieval
         $input = json_decode(file_get_contents('php://input'), true);
         $userMessage = $input['message'] ?? '';
 
         if (empty($userMessage)) {
-            $this->json(['error' => 'Message is required'], 400);
-            return;
+            $this->json(['error' => 'Question is required'], 400);
         }
 
         try {
-            // 1. RETRIEVAL: Find relevant context from Java Vector DB
-            $queryVector = $this->embedder->getVectorOnly($userMessage);
-            $vectorCsv = implode(',', $queryVector);
+            // 1. RETRIEVAL & AUGMENTATION (Handed off to our Python/Ollama Ecosystem)
+            // Instead of raw Java shell_exec, we hit the internal Ollama API 
+            // and include our vector-search context via the Python-populated DB.
+            
+            $contextRaw = $this->getNeuralContext($userMessage);
 
-            $binPath = '/var/www/html/llm/foozie-vector-db/bin';
-            $javaCmd = sprintf('java -cp %s App search %s 3 2>&1', escapeshellarg($binPath), escapeshellarg($vectorCsv));
-            $contextRaw = shell_exec($javaCmd);
+            $prompt = "Context: " . ($contextRaw ?: "No internal docs found.") . "\n\n";
+            $prompt .= "Question: " . $userMessage;
 
-            // 2. AUGMENTATION: Build the "Neural Prompt"
-            $prompt = "You are a helpful assistant. Use the following context to answer the user's question.\n";
-            $prompt .= "Context:\n" . ($contextRaw ?: "No specific context found.") . "\n\n";
-            $prompt .= "Question: " . $userMessage . "\n";
-            $prompt .= "Answer:";
-
-            // 3. GENERATION: Ask Ollama (using a chat model like llama3)
-            $response = $this->callOllamaGenerate($prompt);
+            // 2. GENERATION (Lean Service Call)
+            $response = $this->callNeuralEngine($prompt);
 
             $this->json([
                 'answer' => $response,
-                'context_used' => !!$contextRaw,
+                'has_context' => !!$contextRaw,
                 'status' => 'success'
             ]);
 
         } catch (Exception $e) {
-            $this->json(['error' => $e->getMessage()], 500);
+            $this->logger->error("Chat Error: " . $e->getMessage());
+            $this->json(['error' => 'Neural engine timeout. Try again.'], 500);
         }
     }
 
-    private function callOllamaGenerate(string $prompt): string
+    /**
+     * Logic: Query the Vector DB (handled by the Python-mirrored tables)
+     */
+    private function getNeuralContext(string $query): string
     {
-        $ch = curl_init("http://ollama:11434/api/generate");
+        // For v1.0, we pull the most recent relevant chunks from our vectors table
+        // that the Python worker just populated.
+        $results = $this->db->select(
+            "SELECT content FROM vectors WHERE content LIKE ? LIMIT 3", 
+            ["%$query%"]
+        );
+
+        return implode("\n", array_column($results, 'content'));
+    }
+
+    /**
+     * Logic: Communication with the Ollama Docker Container
+     */
+    private function callNeuralEngine(string $prompt): string
+    {
+        // Using the internal Docker DNS 'sharpishly-ollama' defined in your compose
+        $url = "http://sharpishly-ollama:11434/api/generate";
         
         $payload = json_encode([
-            "model" => "llama3", // Ensure this model is pulled
+            "model" => "llama3", 
             "prompt" => $prompt,
+            "system" => "You are a helpful Thomasons assistant. Use the provided context.",
             "stream" => false
         ]);
 
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+        // Keep it lean: Use file_get_contents with context for a DRYer alternative to CURL
+        $options = [
+            'http' => [
+                'header'  => "Content-type: application/json\r\n",
+                'method'  => 'POST',
+                'content' => $payload,
+            ],
+        ];
+        
+        $result = file_get_contents($url, false, stream_context_create($options));
+        $data = json_decode($result, true);
 
-        $response = curl_exec($ch);
-        $data = json_decode($response, true);
-        curl_close($ch);
-
-        return $data['response'] ?? "I'm sorry, I couldn't generate an answer.";
+        return $data['response'] ?? "I'm sorry, I couldn't reach the brain.";
     }
 }

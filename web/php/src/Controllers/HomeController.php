@@ -4,7 +4,6 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 // Location: php/src/Controllers/HomeController.php
-use App\Core\Registry;
 use Exception;
 
 /**
@@ -13,14 +12,6 @@ use Exception;
  */
 class HomeController extends BaseController
 {
-    /**
-     * Constructor: Initializes BaseController (Registry, DB, Loc)
-     */
-    public function __construct()
-    {
-        parent::__construct();
-    }
-
     /**
      * GET /php/home
      * Default entry point for the module.

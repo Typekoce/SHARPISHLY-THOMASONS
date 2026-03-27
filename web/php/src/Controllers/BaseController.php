@@ -13,6 +13,8 @@ use App\Core\Registry;
 use App\Services\Location;
 use App\Services\Smarty;
 use App\Services\Logger;
+use Exception;
+use Throwable;
 
 abstract class BaseController
 {
