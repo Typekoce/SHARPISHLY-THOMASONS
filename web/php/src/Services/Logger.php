@@ -6,25 +6,8 @@ namespace App\Services;
 use App\Core\Registry;
 use RuntimeException;
 
-class Logger
+class Logger extends BaseService
 {
-    private string $logFile;
-    private Location $location;
-
-    public function __construct()
-    {
-        $this->location = Registry::make(Location::class);
-        $this->logFile = $this->location->logs('app.log');
-
-        // Ensure the directory exists
-        $dir = dirname($this->logFile);
-        if (!is_dir($dir)) {
-            if (!mkdir($dir, 0777, true)) {
-                throw new RuntimeException("Logger cannot create directory: $dir");
-            }
-        }
-    }
-
     /**
      * Core logging function
      */

@@ -3,21 +3,13 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Core\Registry;
 use Exception;
 
 /**
  * EmbeddingService - The Neural Bridge
  * Connects PHP to Ollama (Vector Generation) and Java (Vector Storage).
  */
-class EmbeddingService 
-{
-    private Location $location;
-
-    public function __construct()
-    {
-        $this->location = Registry::make(Location::class);
-    }
+class EmbeddingService extends BaseService {
 
     /**
      * Sends a text chunk to Ollama, then saves the resulting vector to Java.

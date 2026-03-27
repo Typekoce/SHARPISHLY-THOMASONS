@@ -8,8 +8,7 @@ namespace App\Controllers;
  * The abstract blueprint for all application controllers.
  * Enforces DRY principles by centralizing service retrieval and response handling.
  */
-
-use App\Core\Registry;
+use App\Services\Db;
 use App\Services\Location;
 use App\Services\Smarty;
 use App\Services\Logger;
@@ -29,16 +28,11 @@ abstract class BaseController
      */
     public function __construct()
     {
-        // Pull shared instances from the Registry (Populated in bootstrap.php)
-        $this->db     = Registry::get('db');
-        $this->loc    = Registry::get(Location::class);
-        $this->smarty = Registry::get(Smarty::class);
-        $this->logger = Registry::get(Logger::class);
-
-        // Standardize Security Headers for Native App & Web compatibility
-        // header('X-Content-Type-Options: nosniff');
-        // header('X-Frame-Options: DENY');
-        // header('Access-Control-Allow-Origin: *'); 
+        // NO Registry::get calls here. Just direct 'new' instances.
+        $this->db     = new \App\Services\Db(); 
+        $this->loc    = new \App\Services\Location();
+        $this->smarty = new \App\Services\Smarty();
+        $this->logger = new \App\Services\Logger();
     }
 
     /**

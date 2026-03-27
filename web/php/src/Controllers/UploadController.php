@@ -3,69 +3,61 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
-/**
- * UPLOAD CONTROLLER
- * Handles multi-selection file uploads for the Neural Pipeline.
- * Inherits $this->db, $this->loc, and $this->logger from BaseController.
- */
+use Throwable;
+use Exception;
+
 class UploadController extends BaseController
 {
+    // NO constructor here unless you call parent::__construct();
+    
     public function index(): void
     {
-        // Log the entry point for debugging/audit
-        $this->logger->info("Neural Pipeline: Incoming POST", [
-            'files' => array_keys($_FILES),
-            'ip'    => $_SERVER['REMOTE_ADDR'] ?? 'unknown'
-        ]);
-
         try {
-            // 1. Identify the file from the SPA 'csv_data' key
+            // 1. We use $this->loc which was already created by BaseController
             $file = $_FILES['csv_data'] ?? null;
 
             if (!$file || $file['error'] !== UPLOAD_ERR_OK) {
-                $this->json([
-                    'status'  => 'error', 
-                    'message' => 'Upload failed or file missing.'
-                ], 400);
+                $this->json(['status' => 'error', 'message' => 'No file uploaded'], 400);
                 return;
             }
 
-            // 2. Resolve target using Location service ($this->loc)
+            // 2. Use the Location service properties directly
             $uploadDir = $this->loc->uploads();
             
             if (!is_dir($uploadDir)) {
                 mkdir($uploadDir, 0775, true);
             }
 
-            $newName = bin2hex(random_bytes(8)) . '_' . basename($file['name']);
-            $target  = $this->loc->uploads($newName);
+            $target = $this->loc->uploads(bin2hex(random_bytes(8)) . '_' . $file['name']);
 
-            // 3. Move and Record
             if (move_uploaded_file($file['tmp_name'], $target)) {
                 
-                // Save job using inherited DB abstraction
+                // 3. Use the Db service (PDO) created by BaseController
                 $jobId = $this->db->save('jobs', [
                     'title'   => 'Neural Ingest: ' . $file['name'],
-                    'payload' => json_encode([
-                        'path' => $target,
-                        'type' => 'csv',
-                        'size' => $file['size']
-                    ]),
+                    'payload' => json_encode(['path' => $target]),
                     'status'  => 'pending'
                 ]);
 
                 $this->json([
-                    'status'  => 'accepted',
-                    'job_id'  => $jobId,
-                    'message' => 'File received and queued.'
+                    'status' => 'accepted',
+                    'job_id' => $jobId
                 ]);
-            } else {
-                throw new Exception("FileSystem error: Could not move file to storage.");
             }
 
         } catch (Throwable $e) {
-            $this->logger->error("Upload Process Error", ['msg' => $e->getMessage()]);
             $this->json(['status' => 'error', 'message' => $e->getMessage()], 500);
         }
+    }
+
+    public function status(string $id): void
+    {
+        // Polling endpoint for the SPA
+        $job = $this->db->find([
+            'tbl'   => 'jobs',
+            'where' => ['id' => $id]
+        ]);
+        
+        $this->json($job[0] ?? ['error' => 'not found']);
     }
 }

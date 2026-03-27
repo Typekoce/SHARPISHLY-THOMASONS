@@ -3,20 +3,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Core\Registry;
-use RuntimeException;
-
-class FileAgent {
-    private string $uploadPath;
-
-    public function __construct() {
-        $location = Registry::get(Location::class);
-        $this->uploadPath = $location->storage('uploads');
-        
-        if (!is_dir($this->uploadPath)) {
-            mkdir($this->uploadPath, 0775, true);
-        }
-    }
+class FileAgent extends BaseService {
 
     public function receive(array $fileData): string {
         if ($fileData['error'] !== UPLOAD_ERR_OK) {

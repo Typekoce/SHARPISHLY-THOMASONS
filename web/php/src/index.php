@@ -4,67 +4,66 @@ declare(strict_types=1);
 require_once __DIR__ . '/bootstrap.php';
 
 use App\Services\Logger;
-use App\Core\Registry;
 
-// 1. Initialize and Register the Logger
+// 1. Setup local logging (No Registry/Statics)
 $logger = new Logger();
-Registry::set(Logger::class, $logger);
 
 /**
- * 1. Define Route Aliases
+ * 2. Define Route Aliases
+ * Maps the URL slug to the [ControllerName, MethodName]
  */
 $aliases = [
-    'upload'     => ['Upload', 'index'], // Changed to UploadController to match your setup
+    'upload'     => ['File', 'upload'],
     'job-status' => ['File', 'status'],
     'search'     => ['Search', 'query'],
     'chat'       => ['Chat', 'ask']
 ];
 
-// 2. Parse the URI path
-$uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-$parts = explode('/', trim($uri, '/')); 
+// 3. Parse the URI
+$uriPath = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+$parts = explode('/', trim($uriPath, '/')); 
 
-// 3. Normalize Prefix
-if (($parts[0] ?? '') === 'php' || ($parts[0] ?? '') === 'api') {
+// 4. Strip prefixes (/php/ or /api/)
+if (isset($parts[0]) && ($parts[0] === 'php' || $parts[0] === 'api')) {
     array_shift($parts);
 }
 
-// 4. Resolve Controller, Method, and Parameters
+// 5. Resolve the Route & Parameters
 $slug = $parts[0] ?? 'home';
+$params = [];
 
 if (isset($aliases[$slug])) {
-    [$controllerName, $methodName] = $aliases[$slug];
+    [$controllerBase, $methodName] = $aliases[$slug];
+    // If URI is /php/job-status/3, '3' becomes the first parameter
     $params = array_slice($parts, 1);
 } else {
-    $controllerName = ucfirst($slug);
+    $controllerBase = ucfirst($slug);
     $methodName     = $parts[1] ?? 'index';
     $params         = array_slice($parts, 2);
 }
 
-$className = "App\\Controllers\\{$controllerName}Controller";
+$className = "App\\Controllers\\{$controllerBase}Controller";
 
-// 5. Execution Block
+// 6. Execution
 if (class_exists($className)) {
-    // Note: Logger is now available via BaseController's Registry::get(Logger::class)
+    // Instantiate the controller
     $controller = new $className();
     
     if (method_exists($controller, $methodName)) {
         
-        // CRITICAL FIX: Log BEFORE execution so we catch data even if it crashes
-        $logger->info("Incoming Route", [
-            'controller' => $controllerName,
+        $logger->info("Routing Request", [
+            'controller' => $className,
             'method'     => $methodName,
-            'params'     => $params,
-            'files'      => array_keys($_FILES), // See which keys are being sent
-            'ip'         => $_SERVER['REMOTE_ADDR'] ?? 'unknown'
+            'params'     => $params
         ]);
 
-        // Execute the controller action
+        // Spread the parameters into the method
+        // e.g., FileController->status('3')
         $controller->{$methodName}(...$params);
 
     } else {
         header("Content-Type: application/json", true, 404);
-        echo json_encode(["error" => "Method '$methodName' not found in $controllerName"]);
+        echo json_encode(["error" => "Method '$methodName' not found in $className"]);
     }
 } else {
     header("Content-Type: application/json", true, 404);

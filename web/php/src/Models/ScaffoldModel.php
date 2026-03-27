@@ -3,8 +3,8 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Registry;
-use App\Db;
+//use App\Registry;
+use App\Services\Db;
 use Exception;
 
 /**
@@ -19,7 +19,7 @@ class ScaffoldModel
     public function __construct()
     {
         // Pull the shared DB instance from the Registry
-        $this->db = Registry::get(Db::class);
+        $this->db = $GLOBALS['db'] ?? new \App\Services\Db();
     }
 
     /**
