@@ -19,22 +19,23 @@ abstract class BaseController
 {
     protected $db;
     protected $loc;
+    protected $location;
     protected $smarty;
     public $logger;
+    protected $model;
 
     /**
-     * Constructor: Bridges the Controller to the Global Registry.
      * Child controllers MUST call parent::__construct() if they define their own constructor.
      */
     public function __construct()
     {
-        // NO Registry::get calls here. Just direct 'new' instances.
         $this->db     = new \App\Services\Db(); 
         $this->loc    = new \App\Services\Location();
+        $this->location = $this->loc;
         $this->smarty = new \App\Services\Smarty();
         $this->logger = new \App\Services\Logger();
     }
-
+    
     /**
      * Standardized JSON Response Handler
      */

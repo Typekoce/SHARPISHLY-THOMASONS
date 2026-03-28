@@ -3,18 +3,8 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Registry;
-use App\Db;
-use Exception;
-
-class HomeModel
+class HomeModel extends BaseModel
 {
-    private Db $db;
-
-    public function __construct()
-    {
-        $this->db = Registry::get(Db::class);
-    }
 
     /**
      * Fetch recent jobs for the dashboard

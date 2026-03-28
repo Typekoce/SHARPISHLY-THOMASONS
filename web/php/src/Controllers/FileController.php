@@ -5,7 +5,6 @@ namespace App\Controllers;
 
 use Exception;
 use App\Services\Location;
-use App\Core\Registry;
 
 class FileController extends BaseController {
     public function upload(): void {
@@ -16,7 +15,7 @@ class FileController extends BaseController {
             $cleanContent = preg_replace('/[\x00-\x1F\x7F]/u', '', file_get_contents($file['tmp_name']));
             
             $filename = bin2hex(random_bytes(8)) . "_" . $file['name'];
-            $targetPath = Registry::get(Location::class)->uploads($filename);
+            $targetPath = $this->location->uploads($filename);
             file_put_contents($targetPath, $cleanContent);
 
             // Set current_step to 'upload' for SPA visual feedback

@@ -1,13 +1,30 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+line'-----------'
+
+# clear terminal
+clear
+
 echo "─── Resetting Thomasons V3 Stack ───"
 
 # 1. Clean shutdown (volumes included for fresh DB state in dev)
 docker compose down -v --remove-orphans --volumes --timeout 8 > /dev/null 2>&1 || true
 
+# 1.1 Make directories and files for logging
+echo $line"Make storage/log/app.log"
+
+sudo mkdir -p storage/log/
+
+sudo  touch storage/log/app.log
+
+sudo chmod 777 -R storage/
+
+
 # 2. Rebuild & start
 docker compose up -d --build --force-recreate
+
+
 
 sleep 4  # give php/db a moment to become responsive
 

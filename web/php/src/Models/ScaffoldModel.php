@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-//use App\Registry;
 use App\Services\Db;
 use Exception;
 
@@ -11,17 +10,8 @@ use Exception;
  * SCAFFOLD MODEL
  * Use this as a blueprint for interacting with the database.
  */
-class ScaffoldModel
+class ScaffoldModel extends BaseModel
 {
-    private Db $db;
-    private string $table = 'scaffold_items'; // Change this to your table name
-
-    public function __construct()
-    {
-        // Pull the shared DB instance from the Registry
-        $this->db = $GLOBALS['db'] ?? new \App\Services\Db();
-    }
-
     /**
      * Retrieve items with structured parameters
      */

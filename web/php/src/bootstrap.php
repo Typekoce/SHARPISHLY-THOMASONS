@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 /**
  * SHARPISHLY BOOTSTRAP
- * Initialises the Autoloader and Database Registry for the Web UI.
+ * Initialises the Autoloader and Database for the Web UI.
  */
 
 // 1. PSR-4ish Autoloader (Manual as we are not using Composer locally)
@@ -35,7 +35,6 @@ set_exception_handler(function ($e) {
     exit;
 });
 
-// 3. Database Initialization (The "Registry" pattern your controllers expect)
 // We pull from the environment variables defined in docker-compose.yml
 try {
     $dbConfig = [

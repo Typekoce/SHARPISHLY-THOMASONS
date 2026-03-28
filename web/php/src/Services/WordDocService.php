@@ -3,19 +3,11 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Core\Registry;
 use ZipArchive;
 use RuntimeException;
 
-class WordDocService
+class WordDocService extends BaseService
 {
-    private Location $location;
-
-    public function __construct()
-    {
-        $this->location = Registry::make(Location::class);
-    }
-
     /**
      * Swaps placeholders in a .docx template and saves a new report.
      * * @param string $templateName e.g., 'cladding_template.docx'

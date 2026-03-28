@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Core\Registry;
 use RuntimeException;
 
 class Logger extends BaseService

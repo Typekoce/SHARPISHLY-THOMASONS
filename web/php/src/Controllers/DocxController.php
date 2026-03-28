@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 // Location: php/src/Controllers/DocxController.php
-use App\Registry;
 use Exception;
 use App\Services\Migrator;
 
@@ -13,16 +12,6 @@ use App\Services\Migrator;
  */
 class DocxController extends BaseController
 {
-    /**
-     * @var mixed The primary model for this controller
-     */
-    private $model;
-
-    public function __construct()
-    {
-        // Initialize specific models or services via Registry here
-        // $this->model = new \App\Models\ExampleModel();
-    }
 
     /**
      * GET /php/Docx

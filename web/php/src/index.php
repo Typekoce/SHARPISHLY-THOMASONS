@@ -5,7 +5,6 @@ require_once __DIR__ . '/bootstrap.php';
 
 use App\Services\Logger;
 
-// 1. Setup local logging (No Registry/Statics)
 $logger = new Logger();
 
 /**
