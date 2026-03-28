@@ -17,6 +17,9 @@ echo $line"Make storage/log/app.log"
 sudo mkdir -p storage/log/
 
 sudo  touch storage/log/app.log
+sudo  touch storage/log/nginx_access.log
+sudo  touch storage/log/nginx_error
+
 
 sudo chmod 777 -R storage/
 
