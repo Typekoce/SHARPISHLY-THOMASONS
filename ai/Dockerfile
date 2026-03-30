@@ -5,7 +5,8 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Install system dependencies for mysql-connector and internal tools
-RUN apt-get update && apt-get install -p -y \
+# Install system dependencies for mysql-connector and internal tools
+RUN apt-get update && apt-get install -y \
     build-essential \
     default-libmysqlclient-dev \
     pkg-config \
