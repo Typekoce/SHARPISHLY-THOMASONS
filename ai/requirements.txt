@@ -7,3 +7,5 @@ langchain-openai==0.0.8
 langchain-community==0.0.28
 neo4j==5.18.0
 python-multipart==0.0.9
+mysql-connector-python==8.3.0
+python-dotenv==1.0.1

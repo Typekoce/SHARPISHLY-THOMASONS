@@ -16,7 +16,7 @@ class Db {
     private PDO $pdo;
 
     public function __construct() {
-        $host = getenv('DB_HOST') ?: 'db';
+        $host = getenv('DB_HOST') ?: 'sharpishly-db';
         $db   = getenv('DB_NAME') ?: 'sharpishly';
         $user = getenv('DB_USER') ?: 'root';
         $pass = getenv('DB_PASS') ?: 'root_password';
@@ -30,10 +30,18 @@ class Db {
             PDO::ATTR_TIMEOUT            => 5,
         ];
 
+        // try {
+        //     $this->pdo = new PDO($dsn, $user, $pass, $options);
+        // } catch (PDOException $e) {
+        //     throw new Exception("MySQL Connection Failed: " . $e->getMessage());
+        // }
+
         try {
             $this->pdo = new PDO($dsn, $user, $pass, $options);
         } catch (PDOException $e) {
-            throw new Exception("MySQL Connection Failed: " . $e->getMessage());
+            // Log it specifically so you see it in 'docker compose logs -f php'
+            error_log("CRITICAL DATABASE ERROR: " . $e->getMessage());
+            throw new Exception("MySQL Connection Failed. Is the 'sharpishly-db' container running?");
         }
     }
 
@@ -85,14 +93,24 @@ class Db {
         return $id ? (int)$id : true;
     }
 
-    /**
+/**
      * Automates 'CREATE TABLE' based on structured definitions.
+     * Smart-handles columns vs constraints (INDEX, FOREIGN KEY).
      */
     public function createTable(string $table, string|array $definition): bool {
         if (is_array($definition)) {
             $parts = [];
             foreach ($definition as $column => $spec) {
-                $parts[] = is_numeric($column) ? $spec : "`$column` $spec";
+                // Normalize key for check
+                $key = strtoupper((string)$column);
+                
+                // If it's a constraint keyword, do NOT use backticks
+                if (in_array($key, ['INDEX', 'FOREIGN KEY', 'PRIMARY KEY', 'UNIQUE'])) {
+                    $parts[] = "$key $spec";
+                } else {
+                    // Standard column: wrap in backticks
+                    $parts[] = "`$column` $spec";
+                }
             }
             $columnSql = implode(",\n            ", $parts);
         } else {
