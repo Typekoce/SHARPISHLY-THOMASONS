@@ -15,7 +15,10 @@ $aliases = [
     'upload'     => ['Upload', 'index'],
     'job-status' => ['Upload', 'status'],
     'search'     => ['Search', 'query'],
-    'chat'       => ['Chat', 'ask']
+    'chat'       => ['Chat', 'ask'],
+    'google-auth'     => ['Google', 'auth'],
+    'google-callback' => ['Google', 'callback'],
+    'chat-stream'=> ['Chat', 'stream'],
 ];
 
 // 3. Parse the URI

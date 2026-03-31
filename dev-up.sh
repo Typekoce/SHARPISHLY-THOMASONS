@@ -36,7 +36,7 @@ if [ -f "migrate.sh" ]; then
 fi
 
 # Set broad permissions for local development shared volumes
-echo "🔐 Setting permissions for shared storage..."
+echo $line"🔐 Setting permissions for shared storage..."
 sudo chmod -R 777 storage/
 sudo chmod -R 777 database/
 
@@ -47,7 +47,11 @@ docker compose up -d --build --force-recreate
 
 # Wait for essential services to settle
 echo "⏳ Waiting for MariaDB and PHP to become responsive..."
-sleep 10 
+sleep 10
+
+# Ollama model set up
+docker compose exec ollama ollama pull nomic-embed-text
+docker compose exec ollama ollama pull llama3.1
 
 # 3. Database Schema Synchronization
 echo "$line"
