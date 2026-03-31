@@ -3,35 +3,33 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Services\VectorDb;
+use App\Services\NeuralService;
 use Exception;
 
 class ChatController extends BaseController
 {
-    /**
-     * POST /php/chat
-     * Inherits $this->db, $this->logger, $this->loc from BaseController.
-     */
     public function ask(): void
     {
-        // Use a helper or native input retrieval
         $input = json_decode(file_get_contents('php://input'), true);
         $userMessage = $input['message'] ?? '';
 
         if (empty($userMessage)) {
             $this->json(['error' => 'Question is required'], 400);
+            return;
         }
 
         try {
-            // 1. RETRIEVAL & AUGMENTATION (Handed off to our Python/Ollama Ecosystem)
-            // Instead of raw Java shell_exec, we hit the internal Ollama API 
-            // and include our vector-search context via the Python-populated DB.
-            
+            // 1. SEMANTIC RETRIEVAL
+            // Use the VectorDb to find meaning-based matches
             $contextRaw = $this->getNeuralContext($userMessage);
 
-            $prompt = "Context: " . ($contextRaw ?: "No internal docs found.") . "\n\n";
+            // 2. AUGMENTED PROMPT
+            $prompt = "Use the following context to answer the question. If the answer isn't in the context, say you don't know.\n\n";
+            $prompt .= "--- CONTEXT ---\n" . ($contextRaw ?: "No relevant documents found.") . "\n---------------\n\n";
             $prompt .= "Question: " . $userMessage;
 
-            // 2. GENERATION (Lean Service Call)
+            // 3. GENERATION
             $response = $this->callNeuralEngine($prompt);
 
             $this->json([
@@ -41,53 +39,57 @@ class ChatController extends BaseController
             ]);
 
         } catch (Exception $e) {
-            $this->logger->error("Chat Error: " . $e->getMessage());
-            $this->json(['error' => 'Neural engine timeout. Try again.'], 500);
+            $this->logger->log("Chat Error: " . $e->getMessage(), 'ERROR');
+            $this->json(['error' => 'Neural engine is currently offline. Please try again later.'], 500);
         }
     }
 
-    /**
-     * Logic: Query the Vector DB (handled by the Python-mirrored tables)
-     */
     private function getNeuralContext(string $query): string
     {
-        // For v1.0, we pull the most recent relevant chunks from our vectors table
-        // that the Python worker just populated.
-        $results = $this->db->select(
-            "SELECT content FROM vectors WHERE content LIKE ? LIMIT 3", 
-            ["%$query%"]
-        );
+        $neural = new NeuralService();
+        $vectorDb = new VectorDb();
 
-        return implode("\n", array_column($results, 'content'));
+        // Convert question to vector first
+        $queryVector = $neural->getEmbedding($query);
+        
+        if (!$queryVector) return "";
+
+        // Find top 3 relevant chunks
+        $matches = $vectorDb->search($queryVector, 3);
+        
+        return implode("\n", array_column($matches, 'content'));
     }
 
-    /**
-     * Logic: Communication with the Ollama Docker Container
-     */
     private function callNeuralEngine(string $prompt): string
     {
-        // Using the internal Docker DNS 'sharpishly-ollama' defined in your compose
+        // Use the model we pulled earlier
+        $model = "llama3.1";
         $url = "http://sharpishly-ollama:11434/api/generate";
         
         $payload = json_encode([
-            "model" => "llama3", 
+            "model" => $model, 
             "prompt" => $prompt,
-            "system" => "You are a helpful Thomasons assistant. Use the provided context.",
+            "system" => "You are a professional Thomasons assistant. Be concise.",
             "stream" => false
         ]);
 
-        // Keep it lean: Use file_get_contents with context for a DRYer alternative to CURL
         $options = [
             'http' => [
                 'header'  => "Content-type: application/json\r\n",
                 'method'  => 'POST',
                 'content' => $payload,
+                'timeout' => 60 // AI can be slow on a VM
             ],
         ];
-        
-        $result = file_get_contents($url, false, stream_context_create($options));
-        $data = json_decode($result, true);
 
-        return $data['response'] ?? "I'm sorry, I couldn't reach the brain.";
+        $context = stream_context_create($options);
+        $result = file_get_contents($url, false, $context);
+        
+        if ($result === false) {
+            throw new Exception("Ollama connection failed.");
+        }
+
+        $data = json_decode($result, true);
+        return $data['response'] ?? 'No response from AI.';
     }
 }
