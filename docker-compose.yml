@@ -1,9 +1,9 @@
 version: '3.8'
 
 services:
-  # --- Database Service (Relational Memory) ---
+  # --- 1. The Foundation (MariaDB) ---
   db:
-    image: mysql:8.0
+    image: mariadb:10.11
     container_name: sharpishly-db
     restart: always
     environment:
@@ -14,114 +14,73 @@ services:
     networks:
       - sharpishly-net
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "--silent"]
-      interval: 10s
-      timeout: 30s
-      retries: 30
-      start_period: 40s
-  
-  # --- Main PHP Application Service ---
-  php:
-    build: .
-    container_name: sharpishly-php
-    env_file:
-      - .env
-    volumes:
-      - .:/var/www/html
-      - ./php/custom.ini:/usr/local/etc/php/conf.d/custom.ini:ro
-      - ./storage:/var/www/html/storage
-    depends_on:
-      db:
-        condition: service_healthy
-    restart: always
-    networks:
-      - sharpishly-net
+      # The "Handshake": PHP and AI won't move until this returns 0
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
-  # --- Background Task Worker (DECOMMISSIONED PHP PROCESSING) ---
-  worker:
-    build: .
-    container_name: sharpishly-worker
-    user: "0:0"
-    env_file:
-      - .env
-    volumes:
-      - .:/var/www/html
-    # STOPPED: No longer running PHP loop. Keeping container alive for logs/debug only.
-    command: tail -f /dev/null 
-    depends_on:
-      db:
-        condition: service_healthy
-    restart: always
-    networks:
-      - sharpishly-net
-
-  # --- Local AI Node (Neural Processor) ---
+  # --- 2. The Neural Models (Ollama) ---
   ollama:
     image: ollama/ollama:latest
     container_name: sharpishly-ollama
     restart: always
-    ports:
-      - "11434:11434"
     volumes:
       - ./storage/ollama:/root/.ollama
     networks:
-    - sharpishly-net
+      - sharpishly-net
+    # LATERAL THINKING: Use the entrypoint to auto-pull models on start
+    entrypoint: [ "/bin/sh", "-c" ]
+    command: 
+      - |
+        ollama serve & 
+        sleep 5;
+        ollama pull nomic-embed-text;
+        ollama pull llama3.1;
+        wait
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 10s
+      retries: 5
 
-  # --- Nginx Web Server ---
-  web:
-    image: nginx:alpine
-    container_name: sharpishly-app
-    ports:
-      - "8080:80"
-    volumes:
-      - .:/var/www/html
-      - ./infra/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+  # --- 3. The Backend (PHP) ---
+  php:
+    build: .
+    container_name: sharpishly-php
     depends_on:
-      - php
-    restart: always
+      db:
+        condition: service_healthy
     networks:
       - sharpishly-net
+    # No .sh needed: The container starts and stays ready for Nginx
+    volumes:
+      - .:/var/www/html
+      - ./storage:/var/www/html/storage
 
-# --- Neural Engine (The Brain) ---
+  # --- 4. The Neural Brain (Python) ---
   ai:
-    build: 
-      context: ./ai
+    build: ./ai
     container_name: sharpishly-ai
     restart: always
-    env_file:
-      - .env
-    volumes:
-      - ./ai:/app
-      - ./storage:/var/www/html/storage  # Critical: Shared access to Word docs
-    working_dir: /app
-    # Run both the API and the Worker
-    command: /bin/bash -c "python main.py & python worker.py"
     depends_on:
       db:
         condition: service_healthy
       ollama:
+        condition: service_healthy
+      php:
         condition: service_started
     networks:
       - sharpishly-net
-
-  # --- Semantic Memory (The Hippocampus) ---
-  neo4j:
-    image: neo4j:latest
-    container_name: sharpishly-graph
-    restart: always
-    ports:
-      - "7474:7474" # Browser
-      - "7687:7687" # Bolt (Used by retriever.py)
-    environment:
-      - NEO4J_AUTH=${NEO4J_USER}/${NEO4J_PASS}
     volumes:
-      - ./database/neo4j/data:/data
-    networks:
-      - sharpishly-net
-
-networks:
-  sharpishly-net:
-    driver: bridge
-
-volumes:
-  mysql_data:
+      - ./ai:/app
+      - ./storage:/var/www/html/storage
+    # THE MASTER STROKE: Wait for Migration, then start.
+    entrypoint: [ "/bin/sh", "-c" ]
+    command:
+      - |
+        echo "⏳ Waiting for PHP Migration..."
+        until curl -s http://web/php/scaffold/migrate | grep -q "success"; do
+          sleep 2
+        done
+        echo "✅ Schema Ready. Launching Worker..."
+        python worker.py
