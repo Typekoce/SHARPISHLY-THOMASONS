@@ -55,7 +55,8 @@ class ScaffoldModel extends BaseModel
                 'job_id'     => 'INT NOT NULL',
                 'content'    => 'TEXT NOT NULL',
                 'embedding'  => 'JSON NOT NULL',
-                'created_at' => 'DATETIME DEFAULT CURRENT_TIMESTAMP'
+                'created_at' => 'DATETIME DEFAULT CURRENT_TIMESTAMP',
+                'INDEX'      => 'idx_job_id (job_id)'
             ],
             'documents' => [
                 'id'         => 'VARCHAR(36) PRIMARY KEY',
