@@ -1,61 +1,58 @@
 import re
 import unicodedata
+import csv
+import io
 
 class TextProcessor:
     """
-    Direct Python port of the PHP TextProcessor logic.
-    Ensures consistent cleaning between the PHP Ingestion and Python Embedding.
+    Enhanced Processor: Handles both flat text and structured CSV data.
+    Ensures context-aware chunking for the Neural Engine.
     """
 
     def clean(self, text: str) -> str:
         """Strip noise, URLs, and non-printable characters."""
-        # 1. Strip HTML/PHP tags (if any)
         text = re.sub(r'<[^>]*?>', '', text)
-
-        # 2. Remove URLs
         url_pattern = r'\b(?:https?://|ftp://|file://|www\.)[-A-Z0-9+&@#/%?=~_|!:,.;]*[-A-Z0-9+&@#/%=~_|]'
         text = re.sub(url_pattern, '', text, flags=re.IGNORECASE)
-
-        # 3. Keep only letters, numbers, and basic punctuation
-        # This matches the PHP [^\p{L}\p{N}\s\-.,!?\'"…] pattern
+        
+        # Normalize to basic printable characters
         text = "".join(ch for ch in text if unicodedata.category(ch)[0] in 'LN' or ch in ' \-.,!?\'"…')
+        return re.sub(r'\s+', ' ', text).strip().lower()
 
-        # 4. Normalize whitespace and lowercase
-        text = re.sub(r'\s+', ' ', text).strip()
-        return text.lower()
+    def process_csv(self, raw_content: str) -> list:
+        """Converts CSV rows into descriptive text strings for embedding."""
+        chunks = []
+        f = io.StringIO(raw_content)
+        reader = csv.DictReader(f)
+        
+        for row in reader:
+            # Flatten row into a sentence: "brand: nike, price: 90, category: shoes"
+            row_text = ", ".join([f"{k}: {v}" for k, v in row.items() if v])
+            chunks.append(self.clean(row_text))
+            
+        return chunks
 
-    def chunk(self, text: str, chunk_size: int = 1000, overlap: int = 100) -> list:
-        """
-        Splits text into overlapping chunks. 
-        Overlap ensures context isn't lost at the boundaries.
-        """
-        if len(text) <= chunk_size:
-            return [text]
-
+    def chunk_text(self, text: str, size: int = 1000, overlap: int = 100) -> list:
+        """Standard overlapping chunks for long-form text documents."""
+        if len(text) <= size: return [text]
+        
         chunks = []
         start = 0
         while start < len(text):
-            end = start + chunk_size
+            end = start + size
             chunks.append(text[start:end])
-            start += chunk_size - overlap
-            
-            # Break if we've reached the end of the string
-            if end >= len(text):
-                break
-                
+            start += size - overlap
+            if end >= len(text): break
         return chunks
 
-    def prepare_for_ollama(self, raw_content: str, metadata: dict = None) -> list:
-        """Combines cleaning, prefixing, and chunking into one call."""
+    def prepare_for_ollama(self, raw_content: str, file_path: str = "") -> list:
+        """
+        Main entry point. Detects file type and prepares embeddings.
+        """
+        # 1. Check if it's a CSV based on file extension or content
+        if file_path.lower().endswith('.csv') or (',' in raw_content[:100] and '\n' in raw_content[:100]):
+            return self.process_csv(raw_content)
+        
+        # 2. Fallback to standard text cleaning and chunking
         clean_text = self.clean(raw_content)
-        
-        # Add context prefix if metadata exists (e.g., 'Source: sales.csv | ...')
-        prefix = ""
-        if metadata:
-            prefix = " | ".join([f"{k.capitalize()}: {v}" for k, v in metadata.items()])
-            prefix = f"{prefix} | "
-
-        final_text = f"{prefix}{clean_text}"
-        
-        # 1000 chars is roughly 200-300 tokens; safe for nomic-embed-text
-        return self.chunk(final_text, chunk_size=1000, overlap=100)
+        return self.chunk_text(clean_text)
