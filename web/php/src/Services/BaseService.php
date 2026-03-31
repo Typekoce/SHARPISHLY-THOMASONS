@@ -8,7 +8,7 @@ use RuntimeException;
 
 /**
  * BASE SERVICE
- * Provides core infrastructure (Logging, Paths, Location) for all PHP Services.
+ * Provides core infrastructure (Logging, Paths, Networking) for all PHP Services.
  */
 abstract class BaseService 
 {
@@ -18,6 +18,9 @@ abstract class BaseService
     /** @var Location Service for path resolution */
     public Location $location;
     
+    /** @var string AI Engine DNS Endpoint */
+    protected string $aiEndpoint;
+    
     /** @var string Primary application log path */
     protected string $logFile = '/var/www/html/storage/log/app.log';
 
@@ -26,47 +29,67 @@ abstract class BaseService
      */
     public function __construct() 
     {
-        // 1. Initialize the Location service
         $this->location = new Location();
-        
-        // 2. Resolve the dynamic storage path for uploads
         $this->uploadPath = $this->location->storage('uploads');
         
-        // 3. Ensure upload directory exists with correct permissions
-        if (!is_dir($this->uploadPath)) {
-            if (!mkdir($this->uploadPath, 0775, true) && !is_dir($this->uploadPath)) {
-                throw new RuntimeException("BaseService: Failed to create upload directory: {$this->uploadPath}");
-            }
-        }
+        // RECALL: Standardized service name 'ai' for Docker DNS
+        $this->aiEndpoint = getenv('AI_ENDPOINT') ?: 'http://ai:8000';
         
-        // 4. Ensure the log directory exists
-        $logDir = dirname($this->logFile);
-        if (!is_dir($logDir)) {
-            if (!mkdir($logDir, 0777, true) && !is_dir($logDir)) {
-                throw new RuntimeException("BaseService: Cannot create log directory: {$logDir}");
+        $this->ensureDirectoryExists($this->uploadPath);
+        $this->ensureDirectoryExists(dirname($this->logFile));
+    }
+
+    /**
+     * Executes a JSON POST request to the AI Engine (The Handshake).
+     */
+    protected function postJson(string $url, array $data): array 
+    {
+        $payload = json_encode($data);
+        $ch = curl_init($url);
+        
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_CUSTOMREQUEST  => "POST",
+            CURLOPT_POSTFIELDS     => $payload,
+            CURLOPT_TIMEOUT        => 30, // Shorter timeout for the initial trigger
+            CURLOPT_HTTPHEADER     => [
+                'Content-Type: application/json',
+                'Content-Length: ' . strlen($payload)
+            ]
+        ]);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error    = curl_error($ch);
+        curl_close($ch);
+
+        if ($error) {
+            $this->log("CURL Error during Handshake: $error", 'ERROR');
+        }
+
+        return [
+            'code' => $httpCode,
+            'body' => $response
+        ];
+    }
+
+    /**
+     * Utility to ensure paths exist.
+     */
+    private function ensureDirectoryExists(string $path): void 
+    {
+        if (!is_dir($path)) {
+            if (!mkdir($path, 0775, true) && !is_dir($path)) {
+                throw new RuntimeException("BaseService: Failed to create directory: $path");
             }
         }
     }
 
-    /**
-     * Standardized Log signature for the entire application.
-     * Must match exactly in App\Services\Logger to avoid Fatal Errors.
-     * * @param string $message The primary log message
-     * @param string $level   Log level (INFO, ERROR, DEBUG, etc.)
-     * @param array  $context Additional metadata to be JSON encoded
-     */
     protected function log(string $message, string $level = 'INFO', array $context = []): void 
     {
         $date = date('Y-m-d H:i:s');
-        
-        // Convert context to JSON if it exists
-        $jsonContext = !empty($context) 
-            ? ' ' . json_encode($context, JSON_UNESCAPED_SLASHES) 
-            : '';
-
+        $jsonContext = !empty($context) ? ' ' . json_encode($context) : '';
         $formatted = "[$date] [$level] $message$jsonContext" . PHP_EOL;
-        
-        // Use FILE_APPEND to prevent overwriting existing logs
         file_put_contents($this->logFile, $formatted, FILE_APPEND);
     }
 }
