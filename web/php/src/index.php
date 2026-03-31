@@ -12,8 +12,8 @@ $logger = new Logger();
  * Maps the URL slug to the [ControllerName, MethodName]
  */
 $aliases = [
-    'upload'     => ['File', 'upload'],
-    'job-status' => ['File', 'status'],
+    'upload'     => ['Upload', 'index'],
+    'job-status' => ['Upload', 'status'],
     'search'     => ['Search', 'query'],
     'chat'       => ['Chat', 'ask']
 ];

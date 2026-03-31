@@ -77,23 +77,31 @@ class UploadController extends BaseController
         }
     }
 
-    /**
-     * GET /php/upload/status?id=...
+/**
+     * GET /php/job-status/{id}
+     * Resolved via router.php as $controller->status($id)
      */
-    public function status(): void
+    public function status(string $id = null): void
     {
-        $id = $_GET['id'] ?? null;
-        if (!$id) {
+        // 1. Prioritize method argument (from Router), fallback to $_GET
+        $jobId = $id ?? $_GET['id'] ?? null;
+
+        if (!$jobId) {
             $this->json(['status' => 'error', 'message' => 'Missing Job ID'], 400);
             return;
         }
 
         $job = $this->db->find([
             'tbl'   => 'jobs',
-            'where' => ['id' => $id],
+            'where' => ['id' => $jobId],
             'limit' => 1
         ]);
         
-        $this->json($job[0] ?? ['status' => 'not_found']);
+        if (empty($job)) {
+            $this->json(['status' => 'not_found', 'job_id' => $jobId], 404);
+            return;
+        }
+
+        $this->json($job[0]);
     }
 }
