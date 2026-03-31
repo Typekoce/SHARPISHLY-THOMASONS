@@ -95,7 +95,7 @@ services:
       - ./storage:/var/www/html/storage  # Critical: Shared access to Word docs
     working_dir: /app
     # Run both the API and the Worker
-    command: /bin/bash -c "python app.py & python worker.py"
+    command: /bin/bash -c "python main.py & python worker.py"
     depends_on:
       db:
         condition: service_healthy
