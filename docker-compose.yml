@@ -1,11 +1,11 @@
 name: sharpishly
 
 services:
-  # --- 1. Database (The Source of Truth: MySQL 8.0) ---
+  # --- 1. Database (MySQL 8.0) ---
   db:
     image: mysql:8.0
     container_name: sharpishly-db
-    restart: unless-stopped
+    restart: always
     environment:
       MYSQL_DATABASE: ${DB_NAME}
       MYSQL_ROOT_PASSWORD: ${DB_PASS}
@@ -13,6 +13,16 @@ services:
       - mysql_data:/var/lib/mysql
     networks:
       - sharpishly-net
+    healthcheck:
+      # Use the shell format to ensure $MYSQL_ROOT_PASSWORD is expanded inside the container
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$${MYSQL_ROOT_PASSWORD} --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+    mem_limit: 1G
+    cpus: "1.0"
+
   # --- 2. Neural Models (Ollama) ---
   ollama:
     image: ollama/ollama:latest
@@ -23,17 +33,14 @@ services:
     networks:
       - sharpishly-net
     ports:
-      - "11434:11434"   # Optional: direct access if needed
+      - "11434:11434"
     entrypoint: ["/bin/sh", "-c"]
     command: >
       ollama serve & 
       sleep 8 && 
-      echo "📥 Checking/pulling models..." && 
       if [ ! -d "/root/.ollama/models/manifests/registry.ollama.ai/library/nomic-embed-text" ]; then
         ollama pull nomic-embed-text && 
         ollama pull llama3.1;
-      else
-        echo "✅ Models already present.";
       fi && 
       wait
     mem_limit: 8G
@@ -50,9 +57,9 @@ services:
     volumes:
       - .:/var/www/html
       - ./storage:/var/www/html/storage:rw
-    depends_on:
-      db:
-        condition: service_healthy
+    # depends_on:
+    #   db:
+    #     condition: service_healthy
 
   # --- 4. The Web Server (Nginx Gateway) ---
   web:
@@ -66,11 +73,11 @@ services:
       - ./infra/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
     networks:
       - sharpishly-net
-    depends_on:
-      php:
-        condition: service_started
-      ai-api:
-        condition: service_healthy
+    # depends_on:
+    #   php:
+    #     condition: service_started
+    #   ai-api:
+    #     condition: service_healthy
 
   # --- 5. Semantic Memory (Neo4j) ---
   neo4j:
@@ -78,8 +85,8 @@ services:
     container_name: sharpishly-graph
     restart: unless-stopped
     ports:
-      - "7474:7474"   # HTTP browser
-      - "7687:7687"   # Bolt protocol
+      - "7474:7474"
+      - "7687:7687"
     environment:
       NEO4J_AUTH: ${NEO4J_USER}/${NEO4J_PASS}
     volumes:
@@ -110,9 +117,9 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
-    depends_on:
-      db:
-        condition: service_healthy
+    # depends_on:
+    #   db:
+    #     condition: service_healthy
 
   # --- 7. AI Worker (The Muscle) ---
   ai-worker:
@@ -126,13 +133,13 @@ services:
     volumes:
       - ./ai:/app
       - ./storage:/var/www/html/storage:rw
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      ai-api:
-        condition: service_healthy
+    # depends_on:
+    #   db:
+    #     condition: service_healthy
+    #   redis:
+    #     condition: service_healthy
+    #   ai-api:
+    #     condition: service_healthy
     mem_limit: 2G
     cpus: "1.0"
 
