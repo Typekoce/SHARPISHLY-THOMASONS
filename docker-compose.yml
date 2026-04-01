@@ -1,7 +1,7 @@
 name: sharpishly
 
 services:
-  # --- 1. Database (The Source of Truth) ---
+  # --- 1. Database (The Source of Truth: MySQL 8.0) ---
   db:
     image: mysql:8.0
     container_name: sharpishly-db
@@ -9,20 +9,10 @@ services:
     environment:
       MYSQL_DATABASE: ${DB_NAME}
       MYSQL_ROOT_PASSWORD: ${DB_PASS}
-      MYSQL_USER: ${DB_USER}
-      MYSQL_PASSWORD: ${DB_PASS}
     volumes:
       - mysql_data:/var/lib/mysql
     networks:
       - sharpishly-net
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASS}", "--silent"]
-      interval: 10s
-      timeout: 5s
-      retries: 8
-      start_period: 40s
-    mem_limit: 1G
-
   # --- 2. Neural Models (Ollama) ---
   ollama:
     image: ollama/ollama:latest
