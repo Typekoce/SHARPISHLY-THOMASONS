@@ -86,17 +86,17 @@ services:
         echo "✅ Connection Established. Launching Neural Engine."
         python worker.py
 
-  # --- 6. The Semantic Memory (Neo4j) ---
+# --- 6. The Semantic Memory (Neo4j) ---
   neo4j:
     image: neo4j:latest
     container_name: sharpishly-graph
     restart: always
     ports:
-      - "7474:7474"
-      - "7687:7687"
+      - "7474:7474" # HTTP
+      - "7687:7687" # Bolt
     environment:
+      # Use the user and pass from your .env to set the mandatory AUTH string
       - NEO4J_AUTH=${NEO4J_USER}/${NEO4J_PASS}
-    env_file: .env
     volumes:
       - ./database/neo4j/data:/data
     networks:
