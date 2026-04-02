@@ -1,11 +1,11 @@
 # ================================================
 # Sharpishly AI Service - Dockerfile
-# Python 3.11 slim + OpenCV + MySQL + Redis + Ollama client
+# Python 3.11 slim + OpenCV + MySQL + Redis + Ollama
 # ================================================
 
 FROM python:3.11-slim
 
-# Prevent .pyc files and enable unbuffered logging (important for Docker logs)
+# Prevent .pyc files and enable unbuffered logging
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONPATH=/app
@@ -14,7 +14,6 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 # --- System Dependencies ---
-# libgl1 + libglib2.0-0 are required for OpenCV (headless)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     default-libmysqlclient-dev \
@@ -25,7 +24,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
-# Upgrade pip and install Python dependencies (better caching)
+# Upgrade pip and install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
@@ -40,9 +39,9 @@ COPY --chown=appuser:appuser . .
 # Switch to non-root user
 USER appuser
 
-# Make sure entrypoint is executable
-RUN chmod +x entrypoint.sh 2>/dev/null || true
+# EXPOSE the PyMVC port
+EXPOSE 8000
 
-# Default command is overridden by docker-compose.yml
-# This acts as a safety fallback
-CMD ["python", "-m", "worker_entry"]
+# Default command points to your MVC server
+# This can be overridden by 'command: tail -f /dev/null' for the worker
+CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000"]
