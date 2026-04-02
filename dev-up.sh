@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Clear terminal
+clear
+
 # Wipe the old unhealthy state
 docker compose down
 

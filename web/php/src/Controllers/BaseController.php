@@ -78,4 +78,10 @@ abstract class BaseController
         $template = file_get_contents($viewPath);
         return $this->smarty->render($template, $data);
     }
+    /**
+     * dBug simulates the App\Services\dBug
+     */
+    public function dBug($debug){
+        echo "<pre>" . print_r($debug) . "</pre>";
+    }
 }
