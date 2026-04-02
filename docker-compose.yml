@@ -2,7 +2,6 @@ name: sharpishly
 
 services:
   # --- 1. The Broker (Redis) ---
-  # Boot this first; it's the "Cervical Spine" of your Fire & Forget system
   redis:
     image: redis:7-alpine
     container_name: sharpishly-redis
@@ -99,15 +98,16 @@ services:
       - ./storage/ollama:/root/.ollama
     networks:
       - sharpishly-net
+    # Use a persistent background serve with a wait-for-health loop
     entrypoint: ["/bin/sh", "-c"]
     command: |
       ollama serve & 
-      until curl -s http://localhost:11434/api/tags > /dev/null; do sleep 3; done
-      for m in nomic-embed-text llama3.1; do
-        if [ ! -d "/root/.ollama/models/manifests/registry.ollama.ai/library/$$m" ]; then
-          ollama pull $$m
-        fi
+      until curl -s http://localhost:11434/api/tags > /dev/null; do 
+        echo "Waiting for Ollama API..."
+        sleep 3
       done
+      ollama pull nomic-embed-text
+      ollama pull llama3.1
       wait
 
   # --- 7. AI API & Worker ---
@@ -130,7 +130,16 @@ services:
     container_name: sharpishly-ai-worker
     restart: unless-stopped
     env_file: .env
-    command: python worker_entry.py
+    # SENIOR FIX: The shell wrapper prevents the Python connection loop crash
+    # Container stays alive waiting for Redis CNS to be fully handshake-ready
+    entrypoint: ["/bin/sh", "-c"]
+    command: |
+      until redis-cli -h redis ping | grep PONG; do
+        echo "Worker waiting for Redis CNS..."
+        sleep 2
+      done
+      echo "Redis Link Established. Booting Neural Worker..."
+      python worker_entry.py
     networks:
       - sharpishly-net
     depends_on:
