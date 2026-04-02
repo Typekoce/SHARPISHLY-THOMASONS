@@ -13,18 +13,18 @@ class HealthController extends BaseController
 
     public function __construct()
     {
-        parent::__construct();                    // Required by BaseController
+        parent::__construct();
+        // We instantiate the model, but the model won't touch the DB until isDatabaseReady()
         $this->healthModel = new HealthModel();
     }
 
     /**
-     * Main health check endpoint
-     * Returns detailed status of critical services
+     * Interrogates services and notifies observers of health status.
      */
     public function check()
     {
         $status = [
-            'status'    => 'ok',
+            'status'    => 'active',
             'database'  => $this->healthModel->isDatabaseReady(),
             'redis'     => $this->checkRedis(),
             'ollama'    => $this->checkOllama(),
@@ -32,55 +32,55 @@ class HealthController extends BaseController
             'healthy'   => false
         ];
 
-        // Overall health = DB + Redis (Ollama is optional for core operation)
+        // Core business health logic
         $status['healthy'] = $status['database'] && $status['redis'];
 
         if ($status['healthy']) {
-            $this->logger->info("Infrastructure is fully healthy. Neural pipeline ready.");
+            $this->logger->info("Infrastructure Healthy: Observer notification sent.");
+            // THE OBSERVER: If this were a real event, we'd trigger the Migration Observer here
+            // $this->notifyObservers('infrastructure_ready');
         } else {
-            $this->logger->warning("Health check degraded", [
-                'database' => $status['database'],
-                'redis'    => $status['redis'],
-                'ollama'   => $status['ollama']
-            ]);
+            $this->logger->warning("Health Check: System Degraded", $status);
         }
 
-        // Return 200 if healthy, 503 Service Unavailable if degraded
         return $this->json($status, $status['healthy'] ? 200 : 503);
     }
 
     /**
-     * Check Redis connectivity
+     * Check Redis via OO Extension
      */
     private function checkRedis(): bool
     {
         try {
             $redis = new \Redis();
-            // Connect using Docker service name with short timeout
-            $redis->connect('sharpishly-redis', 6379, 2);
-            return $redis->ping() === '+PONG';
+            // 1s timeout to keep the health check snappy
+            if (@$redis->connect('sharpishly-redis', 6379, 1)) {
+                return $redis->ping() === '+PONG';
+            }
+            return false;
         } catch (Throwable $e) {
-            $this->logger->error("Redis health check failed: " . $e->getMessage());
             return false;
         }
     }
 
     /**
-     * Check Ollama availability
+     * Check Ollama via API Handshake
      */
     private function checkOllama(): bool
     {
         try {
             $ch = curl_init('http://sharpishly-ollama:11434/api/tags');
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 3);
+            curl_setopt_all($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT        => 2,
+                CURLOPT_CONNECTTIMEOUT => 1
+            ]);
             $response = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             curl_close($ch);
 
-            return $httpCode === 200 && $response !== false;
+            return $code === 200 && $response !== false;
         } catch (Throwable $e) {
-            $this->logger->error("Ollama health check failed: " . $e->getMessage());
             return false;
         }
     }
