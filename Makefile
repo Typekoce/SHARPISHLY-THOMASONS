@@ -6,6 +6,11 @@ AI_CONT = sharpishly-ai-api
 .DEFAULT_GOAL := help
 
 # --- TARGETS ---
+test-infra: ## Run the Infrastructure Handshake audit (Env & DB)
+	@echo "🚀 Stage 1: Auditing Environment Variables..."
+	@docker exec $(PHP_CONT) php /var/www/html/tests/php/src/Services/EnvironmentServiceTest.php
+	@echo "\n🚀 Stage 2: Auditing Service Connectivity..."
+	@docker exec $(PHP_CONT) php /var/www/html/tests/php/src/Services/DbServiceTest.php --audit
 
 .PHONY: help
 help: ## Display this help menu
