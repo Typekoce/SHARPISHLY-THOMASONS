@@ -5,18 +5,50 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Models\HealthModel;
+use App\Services\OllamaService;
 use Throwable;
 
 class HealthController extends BaseController
 {
     private HealthModel $healthModel;
+    public $ollama;
 
     public function __construct()
     {
         parent::__construct();
         // We instantiate the model, but the model won't touch the DB until isDatabaseReady()
         $this->healthModel = new HealthModel();
+        $this->ollama = new OllamaService();
     }
+
+    /**
+     * Comprehensive health check
+     * Refactored for PSR-12 compliance and architectural separation
+     */
+    public function index() {
+        // Define query constraints for the latest job
+        $conditions = [
+            'tbl'   => 'jobs',
+            'order' => ['id' => 'desc'],
+            'limit' => [0, 1]
+        ];
+
+        // Delegate data fetching to the Model
+        $rs = $this->db->find($conditions);
+
+        // Prepare response payload
+        $data = [
+            'status'    => !empty($rs) ? 'healthy' : 'degraded',
+            'database'  => true, // If we got here, Db connection is active
+            'latest_job' => $rs,
+            'redis'     => $this->checkRedis(),
+            'ollama'    => $this->ollama->getStatus(),
+            'timestamp'  => time(),
+        ];
+
+        $this->json($data);
+    }
+
 
     /**
      * Interrogates services and notifies observers of health status.

@@ -27,13 +27,13 @@ const View = {
             <p class="lead text-muted mb-5">High-Performance Neural Document Intelligence</p>
             <div class="row g-4 justify-content-center">
                 <div class="col-md-4">
-                    <div class="card p-5 border-0 shadow-sm dropzone" data-page="llm">
+                    <div class="card p-5 border-0 shadow-sm dropzone" data-page="llm" style="cursor:pointer">
                         <h5 class="fw-bold mb-2">Neural Intake</h5>
                         <p class="text-muted small">Process documents</p>
                     </div>
                 </div>
                 <div class="col-md-4">
-                    <div class="card p-5 border-0 shadow-sm dropzone" data-page="health">
+                    <div class="card p-5 border-0 shadow-sm dropzone" data-page="health" style="cursor:pointer">
                         <h5 class="fw-bold mb-2">System Health</h5>
                         <p class="text-muted small">Infrastructure Monitor</p>
                     </div>
@@ -78,10 +78,17 @@ const View = {
             ? '<span class="badge bg-success">ONLINE</span>' 
             : '<span class="badge bg-danger">OFFLINE</span>';
 
+        // Extracting Ollama status from the new nested object structure
+        const ollamaActive = h && h.ollama ? h.ollama.active : false;
+        const models = h && h.ollama && h.ollama.models ? h.ollama.models : [];
+
         return `
         <div class="max-width-800 mx-auto">
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2 class="fw-bold m-0">Infrastructure Monitor</h2>
+                <div>
+                    <h2 class="fw-bold m-0">Infrastructure Monitor</h2>
+                    ${h?.status === 'degraded' ? '<small class="text-warning fw-bold">⚠️ SYSTEM DEGRADED</small>' : ''}
+                </div>
                 <button class="btn btn-sm btn-outline-secondary" id="toggleRawHealth">
                     ${Model.showRawHealth ? 'Show Dashboard' : 'View Raw JSON'}
                 </button>
@@ -89,7 +96,7 @@ const View = {
 
             ${Model.showRawHealth && h ? `
                 <div class="card border-0 shadow-sm bg-dark text-light p-3">
-                    <pre class="m-0"><code>${JSON.stringify(h, null, 4)}</code></pre>
+                    <pre class="m-0" style="font-size:11px"><code>${JSON.stringify(h, null, 4)}</code></pre>
                 </div>
             ` : `
                 <div class="card border-0 shadow-sm">
@@ -99,17 +106,30 @@ const View = {
                             ${h ? badge(h.database) : '<span class="spinner-border spinner-border-sm"></span>'}
                         </li>
                         <li class="list-group-item d-flex justify-content-between p-4">
-                            <strong>Redis</strong> 
+                            <strong>Redis Queue</strong> 
                             ${h ? badge(h.redis) : '<span class="spinner-border spinner-border-sm"></span>'}
                         </li>
-                        <li class="list-group-item d-flex justify-content-between p-4">
-                            <strong>Ollama LLM</strong> 
-                            ${h ? badge(h.ollama) : '<span class="spinner-border spinner-border-sm"></span>'}
+                        <li class="list-group-item p-4">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <strong>Ollama LLM Engine</strong> 
+                                ${h ? badge(ollamaActive) : '<span class="spinner-border spinner-border-sm"></span>'}
+                            </div>
+                            ${models.length ? `
+                                <div class="mt-3 p-3 bg-light rounded shadow-inner">
+                                    <small class="text-uppercase fw-bold text-muted d-block mb-2" style="font-size:10px">Downloaded Models</small>
+                                    ${models.map(m => `
+                                        <div class="d-flex justify-content-between align-items-center small py-1">
+                                            <span class="font-monospace text-primary">${m.name}</span>
+                                            <span class="badge bg-light text-dark border">${(m.size / 1e6).toFixed(0)}MB</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            ` : ollamaActive ? '<small class="text-muted">No models found.</small>' : ''}
                         </li>
                     </ul>
                 </div>
                 <div class="mt-3 text-center text-muted small">
-                    Last checked: ${h ? new Date(h.timestamp * 1000).toLocaleTimeString() : 'Never'}
+                    Last Handshake: ${h ? new Date(h.timestamp * 1000).toLocaleTimeString() : 'Awaiting signal...'}
                 </div>
             `}
         </div>`;
@@ -135,7 +155,6 @@ const View = {
 const Controller = {
     init() {
         document.addEventListener('click', (e) => {
-            // Toggle raw health view
             if (e.target.id === 'toggleRawHealth') {
                 Model.showRawHealth = !Model.showRawHealth;
                 this.render();
@@ -146,13 +165,6 @@ const Controller = {
             if (link) {
                 e.preventDefault();
                 this.navigate(link.dataset.page);
-
-                // Close mobile navbar if open
-                const navbarCollapse = document.getElementById('navbarNav');
-                if (navbarCollapse && navbarCollapse.classList.contains('show')) {
-                    const bsCollapse = bootstrap.Collapse?.getInstance(navbarCollapse);
-                    bsCollapse ? bsCollapse.hide() : navbarCollapse.classList.remove('show');
-                }
             }
         });
 
@@ -176,7 +188,6 @@ const Controller = {
         const content = View[Model.currentPage] ? View[Model.currentPage]() : View.home();
         document.getElementById('app').innerHTML = View.render(content);
 
-        // Update active nav links
         document.querySelectorAll('.nav-link').forEach(el => {
             el.classList.toggle('active', el.dataset.page === Model.currentPage);
         });
@@ -188,7 +199,6 @@ const Controller = {
         if (!zone || !input) return;
 
         zone.onclick = () => input.click();
-
         zone.ondragover = (e) => { e.preventDefault(); zone.classList.add('drag-over'); };
         zone.ondragleave = () => zone.classList.remove('drag-over');
         zone.ondrop = (e) => {
@@ -196,7 +206,6 @@ const Controller = {
             zone.classList.remove('drag-over');
             this.handleFiles(e.dataTransfer.files);
         };
-
         input.onchange = (e) => this.handleFiles(e.target.files);
     },
 
@@ -266,22 +275,24 @@ const Controller = {
 
     async fetchHealth() {
         try {
-            const res = await fetch('/health/check');
+            const res = await fetch('/php/health');
             if (!res.ok) throw new Error('Health check failed');
             Model.healthStatus = await res.json();
         } catch (e) {
             console.error("Health fetch failed", e);
-            Model.healthStatus = { database: false, redis: false, ollama: false, timestamp: Date.now()/1000 };
+            Model.healthStatus = { 
+                database: false, 
+                redis: false, 
+                ollama: { active: false, models: [] }, 
+                timestamp: Date.now()/1000 
+            };
         }
-        this.render();
+        if (Model.currentPage === 'health') this.render();
     },
 
     pollQueue() {
-        // TODO: Implement real queue polling from backend
-        // For now, just re-render current queue
         if (Model.currentPage === 'llm') this.render();
     }
 };
 
-// Bootstrap the app
 document.addEventListener('DOMContentLoaded', () => Controller.init());
