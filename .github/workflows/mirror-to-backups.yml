@@ -1,0 +1,64 @@
+name: 🔄 Mirror to Backup Repositories
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout from GitHub
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Mirror to Bitbucket
+        uses: pixta-dev/repository-mirroring-action@v1
+        with:
+          target_repo_url: git@bitbucket.org:YOUR_BITBUCKET_WORKSPACE/sharpishly.git
+          target_branch: main
+          ssh_private_key: ${{ secrets.BITBUCKET_SSH_PRIVATE_KEY }}
+
+      - name: Mirror to GitLab.com
+        uses: pixta-dev/repository-mirroring-action@v1
+        with:
+          target_repo_url: git@gitlab.com:YOUR_GITLAB_USERNAME/sharpishly.git
+          target_branch: main
+          ssh_private_key: ${{ secrets.GITLAB_SSH_PRIVATE_KEY }}
+
+      - name: Mirror to Google Cloud Source Repository
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
+
+      - name: Push to Google Source Repo
+        run: |
+          git config user.name "GitHub Mirror Bot"
+          git config user.email "mirror-bot@github.com"
+          
+          git remote add google https://source.developers.google.com/p/YOUR_GOOGLE_PROJECT_ID/r/sharpishly
+          git push --force google main:main || echo "Google mirror failed (non-critical)"
+
+      - name: Mirror to Codeberg (Optional)
+        if: always()
+        uses: pixta-dev/repository-mirroring-action@v1
+        with:
+          target_repo_url: git@codeberg.org:YOUR_CODEBERG_USERNAME/sharpishly.git
+          target_branch: main
+          ssh_private_key: ${{ secrets.CODEBERG_SSH_PRIVATE_KEY }}
+
+      - name: Send Notification
+        if: always()
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_COLOR: ${{ job.status == 'success' && 'good' || 'danger' }}
+          SLACK_TITLE: 'Sharpishly Mirror Status'
+          SLACK_MESSAGE: |
+            Repository mirroring completed.
+            Status: ${{ job.status }}
+            Branch: main

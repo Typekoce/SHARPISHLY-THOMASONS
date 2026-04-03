@@ -1,0 +1,83 @@
+name: 🚀 Deploy Sharpishly to Digital Ocean
+
+on:
+  workflow_dispatch:                    # One-click manual deployment
+    inputs:
+      environment:
+        description: 'Deployment Environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+      skip_build:
+        description: 'Skip docker compose build (use cached images)'
+        required: false
+        default: 'false'
+        type: boolean
+
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Deploy to Digital Ocean Droplet
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT || '22' }}
+          timeout: 15m
+          script: |
+            echo "========================================"
+            echo "🚀 Sharpishly Deployment Started"
+            echo "========================================"
+
+            cd /var/www/sharpishly || { echo "❌ Project directory not found!"; exit 1; }
+
+            echo "📥 Pulling latest code from main branch..."
+            git fetch origin
+            git reset --hard origin/main
+            git clean -fd
+
+            echo "🐳 Pulling latest Docker images..."
+            docker compose pull --quiet
+
+            if [[ "${{ github.event.inputs.skip_build }}" == "true" ]]; then
+              echo "⏭️  Skipping build (using cached images)..."
+            else
+              echo "🏗️  Rebuilding containers..."
+              docker compose build --no-cache
+            fi
+
+            echo "🔄 Restarting all services..."
+            docker compose up -d --remove-orphans
+
+            echo "🧹 Cleaning up unused Docker resources..."
+            docker system prune -f --filter "until=48h"
+
+            echo "✅ Deployment completed successfully at $(date)"
+
+            echo "📊 Current container status:"
+            docker compose ps
+
+            echo "🔍 Running basic health check..."
+            curl -s -o /dev/null -w "%{http_code}" http://localhost/health/check || echo "Health check endpoint not ready yet"
+
+            echo "========================================"
+            echo "🎉 Sharpishly is now live on Digital Ocean!"
+            echo "========================================"

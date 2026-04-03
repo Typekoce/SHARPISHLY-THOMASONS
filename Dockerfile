@@ -1,5 +1,7 @@
 FROM php:8.2-fpm-alpine
 
+# Root Dockerfile
+
 # Install system dependencies
 RUN apk add --no-cache \
     libpng-dev \
