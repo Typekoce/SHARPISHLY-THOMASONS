@@ -34,8 +34,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-      start_period: 40s
-    mem_limit: 1G
+      start_period: 90s
 
   # --- 3. Semantic Memory (Neo4j) ---
   graph:
@@ -51,11 +50,6 @@ services:
       - ./database/neo4j/data:/data
     networks:
       - sharpishly-net
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:7474"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
 
   # --- 4. The Backend (PHP-FPM) ---
   php:
@@ -74,7 +68,7 @@ services:
       db:
         condition: service_healthy
 
-  # --- 5. The Web Server ---
+  # --- 5. The Web Server (Nginx) ---
   web:
     image: nginx:alpine
     container_name: sharpishly-app
@@ -98,53 +92,30 @@ services:
       - ./storage/ollama:/root/.ollama
     networks:
       - sharpishly-net
-    # Use a persistent background serve with a wait-for-health loop
-    entrypoint: ["/bin/sh", "-c"]
-    command: |
-      ollama serve & 
-      until curl -s http://localhost:11434/api/tags > /dev/null; do 
-        echo "Waiting for Ollama API..."
-        sleep 3
-      done
-      ollama pull nomic-embed-text
-      ollama pull llama3.1
-      wait
+    # Passive Serve: Python MVC will handle model pulls via API
+    command: serve
 
-  # --- 7. AI API & Worker ---
+  # --- 7. AI API & Worker Pool ---
   ai:
     build: ./ai
     container_name: sharpishly-ai-api
     restart: unless-stopped
     env_file: .env
+    # The PyMVC Router (FastAPI / Uvicorn)
     command: uvicorn server:app --host 0.0.0.0 --port 8000
     networks:
       - sharpishly-net
-    depends_on:
-      redis:
-        condition: service_healthy
-      llm:
-        condition: service_started
 
   worker:
     build: ./ai
     container_name: sharpishly-ai-worker
     restart: unless-stopped
     env_file: .env
-    # SENIOR FIX: The shell wrapper prevents the Python connection loop crash
-    # Container stays alive waiting for Redis CNS to be fully handshake-ready
-    entrypoint: ["/bin/sh", "-c"]
-    command: |
-      until redis-cli -h redis ping | grep PONG; do
-        echo "Worker waiting for Redis CNS..."
-        sleep 2
-      done
-      echo "Redis Link Established. Booting Neural Worker..."
-      python worker_entry.py
+    # Passive Idle: Container stays open as a worker pool
+    # PHP/Redis will trigger actual work
+    command: tail -f /dev/null
     networks:
       - sharpishly-net
-    depends_on:
-      redis:
-        condition: service_healthy
 
 networks:
   sharpishly-net:

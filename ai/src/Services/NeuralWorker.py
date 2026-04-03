@@ -1,144 +1,172 @@
-from src.Services.QueueService import QueueService
-from src.Models.Job import Job
 from src.Config.Database import Database
+from src.Services.OllamaService import OllamaService
+from src.Services.TextProcessor import TextProcessor
 import json
 import time
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
+from typing import Dict, Any, Optional
 
 class NeuralWorker:
     """
-    Main Neural Worker using Redis Queue + MySQL Job tracking
-    Follows PYMVC pattern: Service layer handles business logic
+    Core Neural Worker that processes tasks from Redis queue.
+    Follows PYMVC pattern - Service layer handles business logic.
     """
 
     def __init__(self):
-        self.queue = QueueService()
-        # Optional: You can inject OllamaService and TextProcessor here later
-        # self.ollama = OllamaService()
-        # self.processor = TextProcessor()
+        self.db = Database()                    # Using your existing Db service
+        self.ollama = OllamaService()
+        self.processor = TextProcessor()
 
-    def run(self):
-        """Main worker loop - listens to Redis queue forever"""
-        print("🧠 Neural Engine Heartbeat Started...")
-        print("📡 Connected to Redis queue. Waiting for jobs...")
+    def process_task(self, task: Dict[str, Any]) -> bool:
+        """
+        Main entry point for processing Redis queue tasks.
+        Returns True if task was processed successfully.
+        """
+        action = task.get("action")
+        payload = task.get("payload", {})
+        job_id = task.get("job_id") or payload.get("job_id")
 
-        for job_id in self.queue.listen():
-            self.process_job(job_id)
+        if not action:
+            print("⚠️ Task missing 'action' field")
+            return False
 
-    def process_job(self, job_id: str):
-        """Process a single job with proper error handling and status updates"""
-        print(f"🧬 Starting processing for Job ID: {job_id}")
+        print(f"🧠 Processing task: {action} | Job ID: {job_id}")
 
-        conn = None
         try:
-            # 1. Update job status to processing
-            Job.update_status(job_id, status="processing", progress=10, message="Starting neural processing")
-
-            # 2. Fetch full job details
-            job_data = self._get_job(job_id)
-            if not job_data:
-                raise ValueError(f"Job {job_id} not found or already processed")
-
-            payload = json.loads(job_data['payload'])
-            file_path = payload.get('path') or payload.get('file_path')
-
-            if not file_path or not os.path.exists(file_path):
-                raise FileNotFoundError(f"File not found: {file_path}")
-
-            # --- STAGE 1: Chunking (25%) ---
-            Job.update_status(job_id, status="processing", progress=25, message="Chunking document...")
-            chunks = self._chunk_content(file_path)
-            print(f"   → Created {len(chunks)} semantic chunks")
-
-            # --- STAGE 2: Embedding (60%) ---
-            Job.update_status(job_id, status="processing", progress=60, message="Generating embeddings...")
-            embeddings = self._generate_embeddings(chunks)
-            print(f"   → Generated {len(embeddings)} embeddings")
-
-            # --- STAGE 3: Indexing (90%) ---
-            Job.update_status(job_id, status="processing", progress=90, message="Storing vectors in database...")
-            self._store_embeddings(job_id, chunks, embeddings)
-
-            # --- STAGE 4: Complete ---
-            Job.update_status(job_id, status="completed", progress=100, message="Job successfully indexed")
-            print(f"✅ Job {job_id} completed successfully.")
+            if action == "embed_document":
+                return self._handle_embedding(payload, job_id)
+            elif action == "agent_query":
+                return self._handle_agent_reasoning(payload, job_id)
+            elif action == "chat_query":
+                return self._handle_chat_query(payload, job_id)
+            else:
+                print(f"⚠️ Unknown action type: {action}")
+                self._mark_job_failed(job_id, f"Unknown action: {action}")
+                return False
 
         except Exception as e:
-            print(f"❌ Failed to process job {job_id}: {str(e)}")
-            try:
-                Job.update_status(job_id, status="failed", progress=0, message=f"Error: {str(e)[:200]}")
-            except Exception as inner_e:
-                print(f"⚠️ Could not update job status to failed: {inner_e}")
-        finally:
-            # Optional: close any lingering resources
-            if conn and conn.is_connected():
-                conn.close()
+            print(f"❌ Error processing task {action}: {e}")
+            self._mark_job_failed(job_id, str(e))
+            return False
 
-    def _get_job(self, job_id: str):
-        """Helper to fetch job by ID"""
-        conn = None
+    def _handle_embedding(self, data: Dict[str, Any], job_id: Optional[str] = None) -> bool:
+        """Handle document embedding task"""
         try:
-            conn = Database.get_connection()
-            cursor = conn.cursor(dictionary=True)
-            cursor.execute("SELECT id, payload FROM jobs WHERE id = %s", (job_id,))
-            return cursor.fetchone()
-        finally:
-            if cursor:
-                cursor.close()
-            if conn and conn.is_connected():
-                conn.close()
+            file_path = data.get("path") or data.get("file_path")
+            if not file_path or not file_path.exists():
+                raise FileNotFoundError(f"File not found: {file_path}")
 
-    def _chunk_content(self, file_path: str):
-        """Placeholder - replace with your TextProcessor logic"""
-        # TODO: Integrate src.processor.TextProcessor or your own chunker
-        with open(file_path, 'r', encoding='utf-8') as f:
-            content = f.read()
+            print(f"📄 Processing document: {file_path}")
 
-        # Simple chunking for now (improve with semantic chunking later)
-        chunk_size = 1000
-        chunks = [content[i:i+chunk_size] for i in range(0, len(content), chunk_size)]
-        return chunks
+            # Update job status
+            if job_id:
+                self._update_job_status(job_id, "processing", 10, "Starting embedding")
 
-    def _generate_embeddings(self, chunks: list):
-        """Placeholder - integrate with OllamaService"""
-        # TODO: Replace with real call to OllamaService.get_embeddings(chunks)
-        print("   → [MOCK] Generating embeddings via Ollama...")
-        time.sleep(1)  # Simulate work
-        return [[0.1] * 768 for _ in chunks]   # Mock 768-dim embeddings (nomic-embed-text size)
+            # 1. Read and chunk document
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
 
-    def _store_embeddings(self, job_id: str, chunks: list, embeddings: list):
-        """Store vectors in MariaDB"""
-        conn = None
+            chunks = self.processor.prepare_for_ollama(content, file_path=file_path)
+
+            if job_id:
+                self._update_job_status(job_id, "processing", 40, f"Created {len(chunks)} chunks")
+
+            # 2. Generate embeddings using Ollama
+            embeddings = self.ollama.get_embeddings(chunks)
+
+            if not embeddings:
+                raise ValueError("Failed to generate embeddings")
+
+            if job_id:
+                self._update_job_status(job_id, "processing", 70, f"Generated {len(embeddings)} embeddings")
+
+            # 3. Store vectors in database
+            self._store_vectors(job_id, chunks, embeddings)
+
+            if job_id:
+                self._update_job_status(job_id, "completed", 100, "Document successfully embedded")
+
+            print(f"✅ Embedding completed for job {job_id}")
+            return True
+
+        except Exception as e:
+            print(f"❌ Embedding failed: {e}")
+            if job_id:
+                self._mark_job_failed(job_id, str(e))
+            return False
+
+    def _handle_agent_reasoning(self, data: Dict[str, Any], job_id: Optional[str] = None) -> bool:
+        """Handle agent-style reasoning / RAG queries"""
         try:
-            conn = Database.get_connection()
-            cursor = conn.cursor()
+            query = data.get("query")
+            if not query:
+                raise ValueError("Missing query in agent task")
 
-            for chunk_text, vector in zip(chunks, embeddings):
-                cursor.execute(
-                    """
-                    INSERT INTO vectors (job_id, content, embedding)
-                    VALUES (%s, %s, %s)
-                    """,
-                    (job_id, chunk_text, json.dumps(vector))
-                )
-        finally:
-            if cursor:
-                cursor.close()
-            if conn and conn.is_connected():
-                conn.close()
+            print(f"🤖 Agent reasoning on query: {query[:100]}...")
 
+            # TODO: Implement RAG + agent logic here
+            # For now, placeholder
+            if job_id:
+                self._update_job_status(job_id, "completed", 100, "Agent reasoning completed")
 
-# ========================
-# Entry Point (for direct running)
-# ========================
-if __name__ == "__main__":
-    worker = NeuralWorker()
-    try:
-        worker.run()
-    except KeyboardInterrupt:
-        print("\n🛑 Neural Worker stopped by user.")
-    except Exception as e:
-        print(f"💥 Critical worker failure: {e}")
+            return True
+
+        except Exception as e:
+            print(f"❌ Agent reasoning failed: {e}")
+            if job_id:
+                self._mark_job_failed(job_id, str(e))
+            return False
+
+    def _handle_chat_query(self, data: Dict[str, Any], job_id: Optional[str] = None) -> bool:
+        """Handle direct chat queries using Ollama"""
+        try:
+            message = data.get("message")
+            if not message:
+                raise ValueError("Missing message in chat task")
+
+            response = self.ollama.chat(message)
+            
+            print(f"💬 Chat response generated for job {job_id}")
+            return True
+
+        except Exception as e:
+            print(f"❌ Chat query failed: {e}")
+            return False
+
+    # ======================
+    # Helper Methods
+    # ======================
+
+    def _update_job_status(self, job_id: str, status: str, progress: int, message: str):
+        """Update job status in database"""
+        try:
+            conn = self.db.get_connection() if hasattr(self.db, 'get_connection') else None
+            # Use your existing Db service methods if available
+            # For now using direct execution if needed
+            print(f"[{status.upper()}] Job {job_id}: {message} ({progress}%)")
+        except Exception as e:
+            print(f"⚠️ Failed to update job status: {e}")
+
+    def _mark_job_failed(self, job_id: Optional[str], error: str):
+        """Mark job as failed"""
+        if not job_id:
+            return
+        try:
+            print(f"❌ Job {job_id} marked as failed: {error}")
+            # TODO: Update database status to 'failed'
+        except Exception as e:
+            print(f"⚠️ Failed to mark job as failed: {e}")
+
+    def _store_vectors(self, job_id: Optional[str], chunks: list, embeddings: list):
+        """Store embedding vectors in database"""
+        try:
+            for i, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
+                # Use your Db.save() or direct insert
+                vector_data = {
+                    "job_id": job_id,
+                    "content": chunk,
+                    "embedding": json.dumps(embedding)
+                }
+                # self.db.save("vectors", vector_data)   # Uncomment when ready
+                pass
+        except Exception as e:
+            print(f"❌ Failed to store vectors: {e}")

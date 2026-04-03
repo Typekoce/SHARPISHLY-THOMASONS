@@ -18,10 +18,10 @@ class Db
 
     public function __construct()
     {
-        $host = getenv('DB_HOST') ?: 'sharpishly-db';
-        $db   = getenv('DB_NAME') ?: 'sharpishly';
-        $user = getenv('DB_USER') ?: 'root';
-        $pass = getenv('DB_PASS') ?: 'root_password';
+        $host = getenv('DB_HOST');
+        $db   = getenv('DB_NAME');
+        $user = getenv('DB_USER');
+        $pass = getenv('DB_PASS');
 
         $dsn = "mysql:host={$host};dbname={$db};charset=utf8mb4";
 

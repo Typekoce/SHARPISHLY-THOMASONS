@@ -54,7 +54,7 @@ class HealthController extends BaseController
         try {
             $redis = new \Redis();
             // 1s timeout to keep the health check snappy
-            if (@$redis->connect('sharpishly-redis', 6379, 1)) {
+            if (@$redis->connect('redis', 6379, 1)) {
                 return $redis->ping() === '+PONG';
             }
             return false;
@@ -69,7 +69,7 @@ class HealthController extends BaseController
     private function checkOllama(): bool
     {
         try {
-            $ch = curl_init('http://sharpishly-ollama:11434/api/tags');
+            $ch = curl_init('http://llm:11434/api/tags');
             curl_setopt_all($ch, [
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_TIMEOUT        => 2,
