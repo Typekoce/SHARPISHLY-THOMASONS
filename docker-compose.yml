@@ -60,6 +60,7 @@ services:
     volumes:
       - .:/var/www/html
       - ./storage:/var/www/html/storage:rw
+      - ./infra/php/www.conf:/usr/local/etc/php-fpm.d/www.conf
     networks:
       - sharpishly-net
     depends_on:

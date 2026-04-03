@@ -23,6 +23,8 @@ class HealthController extends BaseController
      */
     public function check()
     {
+
+    // TODO: Show what percentage models have downloaded
         $status = [
             'status'    => 'active',
             'database'  => $this->healthModel->isDatabaseReady(),
