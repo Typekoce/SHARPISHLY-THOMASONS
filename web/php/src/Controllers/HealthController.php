@@ -6,95 +6,88 @@ namespace App\Controllers;
 
 use App\Models\HealthModel;
 use App\Services\OllamaService;
+use App\Services\RedisService;
 use Throwable;
 
 class HealthController extends BaseController
 {
     private HealthModel $healthModel;
-    public $ollama;
+    public OllamaService $ollama;
+    public RedisService $redis;
 
     public function __construct()
     {
         parent::__construct();
-        // We instantiate the model, but the model won't touch the DB until isDatabaseReady()
+        // Instantiate the model for DB checks
         $this->healthModel = new HealthModel();
         $this->ollama = new OllamaService();
+        // Use the Singleton to ensure we share the same connection resource
+        $this->redis = RedisService::getInstance();
     }
 
     /**
-     * Comprehensive health check
-     * Refactored for PSR-12 compliance and architectural separation
+     * Comprehensive health check for SPA
+     * Returns flattened JSON for the Neural Handshake dashboard
      */
     public function index() {
-        // Define query constraints for the latest job
         $conditions = [
             'tbl'   => 'jobs',
             'order' => ['id' => 'desc'],
             'limit' => [0, 1]
         ];
 
-        // Delegate data fetching to the Model
         $rs = $this->db->find($conditions);
+        
+        // Capture specific service states
+        $redisAlive = $this->redis->isAlive();
+        $ollamaStatus = $this->ollama->getStatus();
 
         // Prepare response payload
         $data = [
-            'status'    => !empty($rs) ? 'healthy' : 'degraded',
-            'database'  => true, // If we got here, Db connection is active
+            'status'     => ($redisAlive && $ollamaStatus['active']) ? 'healthy' : 'degraded',
+            'database'   => true, // DB connection verified by successfully calling $this->db->find
             'latest_job' => $rs,
-            'redis'     => $this->checkRedis(),
-            'ollama'    => $this->ollama->getStatus(),
+            'redis'      => $redisAlive, // Flat boolean for SPA badge
+            'queue_info' => [
+                'count' => $this->redis->getQueueLength(),
+                'keys'  => $this->redis->getKeys() // Live key visibility
+            ],
+            'ollama'     => $ollamaStatus,
             'timestamp'  => time(),
         ];
 
         $this->json($data);
     }
 
-
     /**
      * Interrogates services and notifies observers of health status.
+     * Legacy internal endpoint
      */
     public function check()
     {
+        $dbReady = $this->healthModel->isDatabaseReady();
+        $redisReady = $this->redis->isAlive();
+        $ollamaReady = $this->checkOllama();
 
-    // TODO: Show what percentage models have downloaded
         $status = [
             'status'    => 'active',
-            'database'  => $this->healthModel->isDatabaseReady(),
-            'redis'     => $this->checkRedis(),
-            'ollama'    => $this->checkOllama(),
+            'database'  => $dbReady,
+            'redis'     => $redisReady,
+            'ollama'    => $ollamaReady,
             'timestamp' => time(),
             'healthy'   => false
         ];
 
         // Core business health logic
-        $status['healthy'] = $status['database'] && $status['redis'];
+        $status['healthy'] = $dbReady && $redisReady && $ollamaReady;
 
         if ($status['healthy']) {
             $this->logger->info("Infrastructure Healthy: Observer notification sent.");
-            // THE OBSERVER: If this were a real event, we'd trigger the Migration Observer here
-            // $this->notifyObservers('infrastructure_ready');
         } else {
             $this->logger->warning("Health Check: System Degraded", $status);
         }
 
         return $this->json($status, $status['healthy'] ? 200 : 503);
-    }
-
-    /**
-     * Check Redis via OO Extension
-     */
-    private function checkRedis(): bool
-    {
-        try {
-            $redis = new \Redis();
-            // 1s timeout to keep the health check snappy
-            if (@$redis->connect('redis', 6379, 1)) {
-                return $redis->ping() === '+PONG';
-            }
-            return false;
-        } catch (Throwable $e) {
-            return false;
-        }
     }
 
     /**
@@ -104,7 +97,8 @@ class HealthController extends BaseController
     {
         try {
             $ch = curl_init('http://llm:11434/api/tags');
-            curl_setopt_all($ch, [
+            // Using standard curl_setopts array for cleaner syntax
+            curl_setopt_array($ch, [
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_TIMEOUT        => 2,
                 CURLOPT_CONNECTTIMEOUT => 1

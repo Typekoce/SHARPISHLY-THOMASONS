@@ -78,9 +78,10 @@ const View = {
             ? '<span class="badge bg-success">ONLINE</span>' 
             : '<span class="badge bg-danger">OFFLINE</span>';
 
-        // Extracting Ollama status from the new nested object structure
         const ollamaActive = h && h.ollama ? h.ollama.active : false;
         const models = h && h.ollama && h.ollama.models ? h.ollama.models : [];
+        const redisActive = h ? h.redis : false;
+        const queueInfo = h && h.queue_info ? h.queue_info : { count: 0, keys: [] };
 
         return `
         <div class="max-width-800 mx-auto">
@@ -105,9 +106,24 @@ const View = {
                             <strong>MySQL Database</strong> 
                             ${h ? badge(h.database) : '<span class="spinner-border spinner-border-sm"></span>'}
                         </li>
-                        <li class="list-group-item d-flex justify-content-between p-4">
-                            <strong>Redis Queue</strong> 
-                            ${h ? badge(h.redis) : '<span class="spinner-border spinner-border-sm"></span>'}
+                        <li class="list-group-item p-4">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <strong>Redis Service</strong> 
+                                ${h ? badge(redisActive) : '<span class="spinner-border spinner-border-sm"></span>'}
+                            </div>
+                            ${redisActive ? `
+                                <div class="mt-2 p-2 bg-light rounded border-start border-primary border-4">
+                                    <div class="d-flex justify-content-between small">
+                                        <span>Pending Neural Jobs:</span>
+                                        <span class="fw-bold">${queueInfo.count}</span>
+                                    </div>
+                                    ${queueInfo.keys.length ? `
+                                        <div class="mt-2 pt-2 border-top small text-muted font-monospace" style="font-size: 10px;">
+                                            Keys: ${queueInfo.keys.slice(0, 5).join(', ')}${queueInfo.keys.length > 5 ? '...' : ''}
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            ` : ''}
                         </li>
                         <li class="list-group-item p-4">
                             <div class="d-flex justify-content-between align-items-center mb-2">
