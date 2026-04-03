@@ -19,7 +19,7 @@ const Model = {
 };
 
 const View = {
-    render: (content) => `<div class="fade-in">${content}</div>`,
+    renderWrap: (content) => `<div class="fade-in">${content}</div>`,
 
     home: () => `
         <div class="py-6 text-center">
@@ -82,6 +82,7 @@ const View = {
         const models = h && h.ollama && h.ollama.models ? h.ollama.models : [];
         const redisActive = h ? h.redis : false;
         const queueInfo = h && h.queue_info ? h.queue_info : { count: 0, keys: [] };
+        const jobs = h && h.latest_jobs ? h.latest_jobs : [];
 
         return `
         <div class="max-width-800 mx-auto">
@@ -100,7 +101,7 @@ const View = {
                     <pre class="m-0" style="font-size:11px"><code>${JSON.stringify(h, null, 4)}</code></pre>
                 </div>
             ` : `
-                <div class="card border-0 shadow-sm">
+                <div class="card border-0 shadow-sm mb-4">
                     <ul class="list-group list-group-flush">
                         <li class="list-group-item d-flex justify-content-between p-4">
                             <strong>MySQL Database</strong> 
@@ -119,33 +120,69 @@ const View = {
                                     </div>
                                     ${queueInfo.keys.length ? `
                                         <div class="mt-2 pt-2 border-top small text-muted font-monospace" style="font-size: 10px;">
-                                            Keys: ${queueInfo.keys.slice(0, 5).join(', ')}${queueInfo.keys.length > 5 ? '...' : ''}
+                                            Keys: ${queueInfo.keys.slice(0, 3).join(', ')}${queueInfo.keys.length > 3 ? '...' : ''}
                                         </div>
                                     ` : ''}
                                 </div>
                             ` : ''}
                         </li>
-                        <li class="list-group-item p-4">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <strong>Ollama LLM Engine</strong> 
-                                ${h ? badge(ollamaActive) : '<span class="spinner-border spinner-border-sm"></span>'}
-                            </div>
-                            ${models.length ? `
-                                <div class="mt-3 p-3 bg-light rounded shadow-inner">
-                                    <small class="text-uppercase fw-bold text-muted d-block mb-2" style="font-size:10px">Downloaded Models</small>
-                                    ${models.map(m => `
-                                        <div class="d-flex justify-content-between align-items-center small py-1">
-                                            <span class="font-monospace text-primary">${m.name}</span>
-                                            <span class="badge bg-light text-dark border">${(m.size / 1e6).toFixed(0)}MB</span>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            ` : ollamaActive ? '<small class="text-muted">No models found.</small>' : ''}
-                        </li>
                     </ul>
                 </div>
+
+                <h6 class="fw-bold mb-3 text-uppercase text-muted" style="font-size: 11px; letter-spacing: 1px;">Recent Activity Log</h6>
+                <div class="card border-0 shadow-sm mb-4 overflow-hidden">
+                    <table class="table table-hover align-middle mb-0" style="font-size: 13px;">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="border-0 px-4 py-3">ID</th>
+                                <th class="border-0 py-3">Filename</th>
+                                <th class="border-0 py-3">Status</th>
+                                <th class="border-0 px-4 py-3 text-end">Updated</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${jobs.length ? jobs.map(job => `
+                                <tr>
+                                    <td class="px-4 text-muted font-monospace">#${job.id}</td>
+                                    <td class="fw-bold text-truncate" style="max-width: 200px;">${job.filename || 'Neural_Payload'}</td>
+                                    <td>
+                                        <span class="badge rounded-pill bg-light text-primary border border-primary" style="font-size: 10px;">
+                                            ${job.status.toUpperCase()}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 text-end text-muted small">${job.updated_at || '---'}</td>
+                                </tr>
+                            `).join('') : `
+                                <tr>
+                                    <td colspan="4" class="text-center py-5 text-muted">No recent jobs detected in database.</td>
+                                </tr>
+                            `}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="card border-0 shadow-sm">
+                    <div class="p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <strong>Ollama LLM Engine</strong> 
+                            ${h ? badge(ollamaActive) : '<span class="spinner-border spinner-border-sm"></span>'}
+                        </div>
+                        ${models.length ? `
+                            <div class="mt-3 p-3 bg-light rounded shadow-inner">
+                                <small class="text-uppercase fw-bold text-muted d-block mb-2" style="font-size:10px">Neural Models Available</small>
+                                ${models.map(m => `
+                                    <div class="d-flex justify-content-between align-items-center small py-1">
+                                        <span class="font-monospace text-primary">${m.name}</span>
+                                        <span class="badge bg-white text-dark border">${(m.size / 1e6).toFixed(0)}MB</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+
                 <div class="mt-3 text-center text-muted small">
-                    Last Handshake: ${h ? new Date(h.timestamp * 1000).toLocaleTimeString() : 'Awaiting signal...'}
+                    Last Global Handshake: ${h ? new Date(h.timestamp * 1000).toLocaleTimeString() : 'Awaiting signal...'}
                 </div>
             `}
         </div>`;
@@ -185,6 +222,8 @@ const Controller = {
         });
 
         this.navigate('home');
+        
+        // Polling Strategy: Queue always, Health only on Health page
         setInterval(() => this.pollQueue(), 3000);
         setInterval(() => {
             if (Model.currentPage === 'health') this.fetchHealth();
@@ -194,15 +233,30 @@ const Controller = {
     navigate(page) {
         Model.currentPage = page;
         Model.showRawHealth = false;
-        this.render();
+        this.render(true); // Force render on navigation to ensure UI transition
 
         if (page === 'llm') this.initDropzone();
         if (page === 'health') this.fetchHealth();
     },
 
-    render() {
-        const content = View[Model.currentPage] ? View[Model.currentPage]() : View.home();
-        document.getElementById('app').innerHTML = View.render(content);
+    /**
+     * Optimized Render: Prevents DOM flicker and race conditions
+     * @param {boolean} force - Bypasses the dirty check
+     */
+    render(force = false) {
+        const appContainer = document.getElementById('app');
+        if (!appContainer) return;
+
+        const rawContent = View[Model.currentPage] ? View[Model.currentPage]() : View.home();
+        const wrappedContent = View.renderWrap(rawContent);
+
+        // DIRTY CHECK: Only touch the DOM if content has changed or force is true
+        if (force || appContainer.innerHTML !== wrappedContent) {
+            appContainer.innerHTML = wrappedContent;
+            
+            // Re-initialize dynamic components
+            if (Model.currentPage === 'llm') this.initDropzone();
+        }
 
         document.querySelectorAll('.nav-link').forEach(el => {
             el.classList.toggle('active', el.dataset.page === Model.currentPage);
@@ -235,7 +289,7 @@ const Controller = {
                 jobId: null
             });
         });
-        this.render();
+        this.render(true);
         this.processUploads();
     },
 
@@ -246,7 +300,7 @@ const Controller = {
 
         Model.isUploading = true;
         item.status = 'uploading';
-        this.render();
+        this.render(true);
 
         const formData = new FormData();
         formData.append('file', item.file);
@@ -257,7 +311,7 @@ const Controller = {
         xhr.upload.onprogress = (e) => {
             if (e.lengthComputable) {
                 Model.uploadProgress = Math.round((e.loaded / e.total) * 100);
-                this.render();
+                this.render(true);
             }
         };
 
@@ -276,14 +330,14 @@ const Controller = {
 
             Model.isUploading = false;
             Model.uploadProgress = 0;
-            this.render();
+            this.render(true);
             this.processUploads();
         };
 
         xhr.onerror = () => {
             item.status = 'failed';
             Model.isUploading = false;
-            this.render();
+            this.render(true);
         };
 
         xhr.send(formData);
@@ -292,18 +346,17 @@ const Controller = {
     async fetchHealth() {
         try {
             const res = await fetch('/php/health');
-            if (!res.ok) throw new Error('Health check failed');
+            if (!res.ok) throw new Error('Health probe failed');
             Model.healthStatus = await res.json();
+            
+            if (Model.currentPage === 'health') {
+                this.render(); // Relies on dirty-check to avoid flicker
+            }
         } catch (e) {
             console.error("Health fetch failed", e);
-            Model.healthStatus = { 
-                database: false, 
-                redis: false, 
-                ollama: { active: false, models: [] }, 
-                timestamp: Date.now()/1000 
-            };
+            Model.healthStatus = { database: false, redis: false, ollama: { active: false, models: [] }, timestamp: Date.now()/1000 };
+            if (Model.currentPage === 'health') this.render();
         }
-        if (Model.currentPage === 'health') this.render();
     },
 
     pollQueue() {
