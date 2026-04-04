@@ -2,6 +2,86 @@
 // SHARPISHLY-THOMASONS SPA – Neural Pipeline v3.5
 // ================================================
 
+// ================================================
+// App - Template Rendering & Partial System
+// ================================================
+
+const App = {
+    /**
+     * Loads and renders a template with simple {{ key }} interpolation
+     * @param {string} url - Path to the template file
+     * @param {Object} data - Data object for template interpolation
+     * @returns {Promise<string>}
+     */
+    async loadTemplate(url, data = {}) {
+        try {
+            const res = await fetch(url);
+            
+            if (!res.ok) {
+                throw new Error(`Failed to load template: ${url} (Status: ${res.status})`);
+            }
+
+            let template = await res.text();
+
+            // Simple {{ key }} or {{ key.subkey }} replacement
+            template = template.replace(/{{\s*([\w.]+)\s*}}/g, (_, path) => {
+                return path.split('.').reduce((obj, key) => obj?.[key], data) ?? '';
+            });
+
+            return template;
+
+        } catch (error) {
+            console.error(`❌ Template load error (${url}):`, error.message);
+            throw error;
+        }
+    },
+
+    /**
+     * Renders a template into the #app container
+     * @param {string} url - Template URL
+     * @param {Object} data - Data to inject
+     */
+    async render(url,id, data = {}) {
+        console.log(id);
+        try {
+            const html = await this.loadTemplate(url, data);
+            const appContainer = document.getElementById(id);
+            
+            if (!appContainer) {
+                throw new Error("Container #app not found in DOM");
+            }
+
+            appContainer.innerHTML = html;
+        } catch (error) {
+            console.error("Render failed:", error);
+            // Optional: Show user-friendly error in UI
+            document.getElementById('app').innerHTML = `
+                <div class="alert alert-danger">
+                    Failed to load content. Please try again later.
+                </div>`;
+        }
+    },
+
+    /**
+     * Header / Home page example
+     */
+    async header() {
+        await this.render('views/layouts/header.html','header', {
+            h1: 'Home',
+            message: 'Rendered from a template file',
+            timestamp: new Date().toLocaleString()
+        });
+    }
+};
+
+// Make it globally available (if needed)
+// window.App = App;
+
+// App.render('views/llm/index.html','header', {
+//     title: 'Neural Intake',
+//     files: ['document1.pdf', 'notes.txt']
+// });
+
 const Model = {
     queue: [],
     chatHistory: [],
@@ -207,6 +287,7 @@ const View = {
 
 const Controller = {
     init() {
+
         document.addEventListener('click', (e) => {
             if (e.target.id === 'toggleRawHealth') {
                 Model.showRawHealth = !Model.showRawHealth;
@@ -220,6 +301,8 @@ const Controller = {
                 this.navigate(link.dataset.page);
             }
         });
+
+        App.header();
 
         this.navigate('home');
         
