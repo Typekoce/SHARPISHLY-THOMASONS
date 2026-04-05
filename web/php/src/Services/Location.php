@@ -1,84 +1,64 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Services;
 
 /**
- * THOMASONS V3 – Location Service
- * Centralized path management for the application.
- * Ensures all file operations target the /storage root outside the public web folder.
+ * THOMASONS V3 – Location Service (SSOT Edition)
+ * Centralized path management for Infrastructure & Storage.
  */
 class Location {
-    /**
-     * The absolute path to the storage directory.
-     * In your Docker environment, this is /var/www/html/storage/
-     */
-    private string $base;
+    private string $storageBase;
+    private string $projectRoot;
 
     public function __construct() {
-        // We prioritize the absolute Docker path to ensure Web and Worker are synced.
-        // Fallback to APP_ROOT only if we are running in a different environment.
+        // 1. Establish Storage Base (Docker-first priority)
         if (is_dir('/var/www/html/storage')) {
-            $this->base = '/var/www/html/storage/';
+            $this->storageBase = '/var/www/html/storage/';
         } else {
-            $this->base = defined('APP_ROOT') ? APP_ROOT . 'storage/' : dirname(__DIR__, 4) . '/storage/';
+            // Fallback for local dev environments
+            $this->storageBase = defined('APP_ROOT') 
+                ? APP_ROOT . 'storage/' 
+                : dirname(__DIR__, 4) . '/storage/';
         }
+
+        // 2. Establish Project Root (The folder containing Makefile/docker-compose)
+        // Based on tree: web/php/src/Services/Location.php
+        $this->projectRoot = realpath(dirname(__DIR__, 4)) ?: '';
     }
 
     /**
-     * Standard project root
-     */
-    public function baseDir(): string {
-        return dirname($this->base) . '/';
-    }
-
-    /**
-     * General storage path helper
+     * STORAGE ENGINE: Handles dynamic pathing for data.
      */
     public function storage(string $path = ''): string {
-        $fullPath = $this->base . ltrim($path, '/');
-        
-        // Check if the path ends in a filename or is a directory
+        $fullPath = $this->storageBase . ltrim($path, '/');
         $extension = pathinfo($fullPath, PATHINFO_EXTENSION);
         
+        // If it's a directory (no extension), ensure trailing slash
         if ($extension === '' && !empty($path)) {
             return rtrim($fullPath, '/') . '/';
         }
-        
         return $fullPath;
     }
 
-    public function uploads(string $file = ''): string {
-        return $this->storage('uploads/' . ltrim($file, '/'));
-    }
+    public function uploads(string $file = ''): string { return $this->storage('uploads/' . ltrim($file, '/')); }
+    public function queue(string $file = ''): string   { return $this->storage('queue/' . ltrim($file, '/')); }
+    public function logs(string $file = ''): string    { return $this->storage('log/' . ltrim($file, '/')); }
+    public function reports(string $file = ''): string { return $this->storage('reports/' . ltrim($file, '/')); }
+    public function db(string $file = ''): string      { return $this->storage('database/' . ltrim($file, '/')); }
 
-    public function queue(string $file = ''): string {
-        return $this->storage('queue/' . ltrim($file, '/'));
-    }
-
-    public function logs(string $file = ''): string {
-        return $this->storage('logs/' . ltrim($file, '/'));
-    }
-    
-    public function reports(string $file = ''): string {
-        return $this->storage('reports/' . ltrim($file, '/'));
-    }
-
-    public function templates(string $file = ''): string {
-        return $this->storage('templates/' . ltrim($file, '/'));
-    }
-
-    /**
-     * Helper for the Mock DB path
-     */
-    public function db(string $file = 'db.json'): string {
-        return $this->storage('database/' . ltrim($file, '/'));
-    }
-
-    /**
-     * Strips the base storage path to return a relative link
-     */
     public function relative(string $absolutePath): string {
-        return str_replace($this->base, '', $absolutePath);
+        return str_replace($this->storageBase, '', $absolutePath);
     }
+
+    /**
+     * INFRASTRUCTURE ENGINE: Returns paths to core configuration files.
+     */
+    public function makefile(): string       { return $this->projectRoot . '/Makefile'; }
+    public function dockerCompose(): string  { return $this->projectRoot . '/docker-compose.yml'; }
+    public function dockerfile(): string     { return $this->projectRoot . '/Dockerfile'; }
+    public function env(): string            { return $this->projectRoot . '/.env'; }
+    public function nginxConfig(): string    { return $this->projectRoot . '/infra/nginx/default.conf'; }
+    public function aiRequirements(): string { return $this->projectRoot . '/ai/requirements.txt'; }
 }

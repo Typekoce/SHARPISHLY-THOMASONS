@@ -25,6 +25,8 @@ services:
     environment:
       MYSQL_DATABASE: ${DB_NAME}
       MYSQL_ROOT_PASSWORD: ${DB_PASS}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASS}
     volumes:
       - mysql_data:/var/lib/mysql
     networks:
@@ -34,7 +36,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-      start_period: 120s
+      start_period: 120s # Critical: EnvironmentService parses this for timeouts
 
   # --- 3. Semantic Memory (Neo4j) ---
   graph:
@@ -46,21 +48,28 @@ services:
       - "7687:7687"
     environment:
       NEO4J_AUTH: ${NEO4J_USER}/${NEO4J_PASS}
+      NEO4J_PLUGINS: '["apoc"]'
     volumes:
       - ./database/neo4j/data:/data
+      - ./database/neo4j/logs:/logs
     networks:
       - sharpishly-net
 
   # --- 4. The Backend (PHP-FPM) ---
   php:
-    build: .
+    build: 
+      context: .
+      dockerfile: Dockerfile
     container_name: sharpishly-php
     restart: unless-stopped
     env_file: .env
+    environment:
+      APP_ENV: ${APP_ENV}
+      APP_DEV: ${APP_DEV}
     volumes:
-      - .:/var/www/html
+      - .:/var/www/html:rw
       - ./storage:/var/www/html/storage:rw
-      - ./infra/php/www.conf:/usr/local/etc/php-fpm.d/www.conf
+      - ./infra/php/www.conf:/usr/local/etc/php-fpm.d/www.conf:ro
     networks:
       - sharpishly-net
     depends_on:
@@ -77,8 +86,9 @@ services:
     ports:
       - "8080:80"
     volumes:
-      - .:/var/www/html
+      - .:/var/www/html:ro
       - ./infra/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./storage/log:/var/log/nginx # Direct log access for SSOT
     networks:
       - sharpishly-net
     depends_on:
@@ -101,12 +111,17 @@ services:
     container_name: sharpishly-ai-api
     restart: unless-stopped
     env_file: .env
-    # Orchestration: Wait for Nginx, ping migrate, then start Uvicorn
+    environment:
+      OLLAMA_HOST: http://sharpishly-ollama:11434
+      REDIS_HOST: sharpishly-redis
+    volumes:
+      - ./storage:/app/storage:ro
+    # Orchestration: Active Pull handshakes with PHP Scaffold
     command: >
       sh -c "echo 'Waiting for web server...';
              while ! nc -z sharpishly-app 80; do sleep 1; done;
-             echo 'Triggering PHP Migration...';
-             curl -s http://sharpishly-app/php/scaffold/migrate;
+             echo 'Triggering PHP Migration (Active Pull)...';
+             curl -s 'http://sharpishly-app/index.php?c=Scaffold&a=migrate';
              echo 'Starting AI API...';
              uvicorn server:app --host 0.0.0.0 --port 8000"
     networks:
@@ -119,9 +134,19 @@ services:
     container_name: sharpishly-ai-worker
     restart: unless-stopped
     env_file: .env
-    command: tail -f /dev/null
+    environment:
+      PYTHONPATH: /app
+    volumes:
+      - ./storage:/app/storage:rw
+    # Start the actual consumer script
+    command: python3 organism.py
     networks:
       - sharpishly-net
+    depends_on:
+      redis:
+        condition: service_healthy
+      ai:
+        condition: service_started
 
 networks:
   sharpishly-net:
