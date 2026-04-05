@@ -34,7 +34,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-      start_period: 90s
+      start_period: 120s
 
   # --- 3. Semantic Memory (Neo4j) ---
   graph:
@@ -93,7 +93,6 @@ services:
       - ./storage/ollama:/root/.ollama
     networks:
       - sharpishly-net
-    # Passive Serve: Python MVC will handle model pulls via API
     command: serve
 
   # --- 7. AI API & Worker Pool ---
@@ -102,18 +101,24 @@ services:
     container_name: sharpishly-ai-api
     restart: unless-stopped
     env_file: .env
-    # The PyMVC Router (FastAPI / Uvicorn)
-    command: uvicorn server:app --host 0.0.0.0 --port 8000
+    # Orchestration: Wait for Nginx, ping migrate, then start Uvicorn
+    command: >
+      sh -c "echo 'Waiting for web server...';
+             while ! nc -z sharpishly-app 80; do sleep 1; done;
+             echo 'Triggering PHP Migration...';
+             curl -s http://sharpishly-app/php/scaffold/migrate;
+             echo 'Starting AI API...';
+             uvicorn server:app --host 0.0.0.0 --port 8000"
     networks:
       - sharpishly-net
+    depends_on:
+      - web
 
   worker:
     build: ./ai
     container_name: sharpishly-ai-worker
     restart: unless-stopped
     env_file: .env
-    # Passive Idle: Container stays open as a worker pool
-    # PHP/Redis will trigger actual work
     command: tail -f /dev/null
     networks:
       - sharpishly-net

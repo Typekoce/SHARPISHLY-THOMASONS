@@ -1,16 +1,19 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Models;
 
 /**
  * SCAFFOLD MODEL
- * Owns the Schema Blueprint and execution logic.
+ * The absolute source of truth for the Database Schema.
+ * Centralizes the Master Blueprint for the Sharpishly ecosystem.
  */
 class ScaffoldModel extends BaseModel
 {
     /**
-     * Executes the creation of all tables in the blueprint.
+     * Executes the creation/verification of all tables in the blueprint.
+     * @return array List of verified tables.
      */
     public function syncSchema(): array
     {
@@ -18,7 +21,7 @@ class ScaffoldModel extends BaseModel
         $definitions = $this->getTableDefinitions();
 
         foreach ($definitions as $name => $schema) {
-            // We call the createTable method on our DB service
+            // Internal DB service handles the 'CREATE TABLE IF NOT EXISTS' logic
             $this->db->createTable($name, $schema);
             $applied[] = "Table verified: $name";
         }
@@ -28,35 +31,41 @@ class ScaffoldModel extends BaseModel
 
     /**
      * The Master Blueprint (Normalized Schema)
-     * Centralized here so Models can eventually validate themselves against it.
+     * Centralized here so all modules validate against the same structure.
      */
     public function getTableDefinitions(): array
     {
         return [
+            'migrations' => [
+                'id'             => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'migration_name' => 'VARCHAR(255) UNIQUE NOT NULL',
+                'executed_at'    => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+                'batch'          => 'INT DEFAULT 1'
+            ],
             'users' => [
                 'id'         => 'INT AUTO_INCREMENT PRIMARY KEY',
                 'username'   => 'VARCHAR(100) NOT NULL UNIQUE',
                 'password'   => 'VARCHAR(255) NOT NULL',
-                'created_at' => 'DATETIME DEFAULT CURRENT_TIMESTAMP'
+                'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
             ],
             'jobs' => [
                 'id'           => 'INT AUTO_INCREMENT PRIMARY KEY',
-                'title'        => 'VARCHAR(255) NOT NULL',
-                'type'         => 'VARCHAR(50) DEFAULT "neural_ingest"',
-                'payload'      => 'TEXT',
-                'status'       => 'VARCHAR(50) DEFAULT "pending"',
+                'payload'      => 'JSON NOT NULL',
+                'status'       => "ENUM('pending', 'processing', 'completed', 'failed') DEFAULT 'pending'",
                 'current_step' => 'VARCHAR(255) DEFAULT NULL',
                 'progress'     => 'INT DEFAULT 0',
-                'finished_at'  => 'DATETIME DEFAULT NULL',
-                'created_at'   => 'DATETIME DEFAULT CURRENT_TIMESTAMP'
+                'created_at'   => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+                'finished_at'  => 'TIMESTAMP NULL DEFAULT NULL',
+                'INDEX idx_status' => '(status)'
             ],
             'vectors' => [
-                'id'         => 'INT AUTO_INCREMENT PRIMARY KEY',
-                'job_id'     => 'INT NOT NULL',
-                'content'    => 'TEXT NOT NULL',
-                'embedding'  => 'JSON NOT NULL',
-                'created_at' => 'DATETIME DEFAULT CURRENT_TIMESTAMP',
-                'INDEX'      => 'idx_job_id (job_id)'
+                'id'          => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'job_id'      => 'INT NOT NULL',
+                'content'     => 'TEXT NOT NULL',
+                'embedding'   => 'JSON NOT NULL',
+                'created_at'  => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+                'FOREIGN KEY' => '(job_id) REFERENCES jobs(id) ON DELETE CASCADE',
+                'INDEX idx_job_id' => '(job_id)'
             ],
             'documents' => [
                 'id'         => 'VARCHAR(36) PRIMARY KEY',
@@ -73,14 +82,14 @@ class ScaffoldModel extends BaseModel
                 'valid_until'     => 'TIMESTAMP NULL DEFAULT NULL',
                 'version_id'      => 'VARCHAR(50)',
                 'FOREIGN KEY'     => '(document_id) REFERENCES documents(id) ON DELETE CASCADE',
-                'INDEX'           => 'idx_temporal_validity (valid_from, valid_until)'
+                'INDEX idx_temporal' => '(valid_from, valid_until)'
             ],
             'logs' => [
                 'id'         => 'INT AUTO_INCREMENT PRIMARY KEY',
                 'level'      => 'VARCHAR(20)',
                 'message'    => 'TEXT',
                 'context'    => 'JSON',
-                'created_at' => 'DATETIME DEFAULT CURRENT_TIMESTAMP'
+                'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
             ]
         ];
     }
