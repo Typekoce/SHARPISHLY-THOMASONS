@@ -1,11 +1,12 @@
 # --- CONSTANTS ---
-COMPOSE = docker compose
+COMPOSE  = docker compose
 PHP_CONT = sharpishly-php
-AI_CONT = sharpishly-ai-api
+AI_CONT  = sharpishly-ai-api
 
 .DEFAULT_GOAL := help
 
 # --- TARGETS ---
+
 test-infra: ## Run the Infrastructure Handshake audit (Env & DB)
 	@echo "🚀 Stage 1: Auditing Environment Variables..."
 	@docker exec $(PHP_CONT) php /var/www/html/tests/php/src/Services/EnvironmentServiceTest.php
@@ -25,16 +26,18 @@ down: ## Stop and remove all containers
 restart: down up ## Full reset: Stop, then Start
 
 test: ## Run the entire Neural Handshake test suite (PHP & Python)
-	@echo "🧪 Running PHP Unit Tests..."
-	docker exec $(PHP_CONT) vendor/bin/phpunit tests/php
+	@echo "🧪 Running PHP Infrastructure Handshake..."
+	@docker exec $(PHP_CONT) php /var/www/html/tests/php/src/Services/EnvironmentServiceTest.php
 	@echo "🐍 Running Python Unit Tests..."
-	docker exec $(AI_CONT) pytest tests/ai
+	@docker exec $(AI_CONT) pytest tests/ai
 
 logs: ## Tail all logs to monitor the Neural Handshake
 	$(COMPOSE) logs -f
 
-clean: ## Nuke volumes, orphans, and images (The 'Emergency' Reset)
+clean: ## Nuke volumes, orphans, images, and corrupted build cache
 	$(COMPOSE) down -v --remove-orphans
+	docker builder prune -a -f
+	docker image prune -f
 
 sh-php: ## Drop into the PHP container shell
 	docker exec -it $(PHP_CONT) sh

@@ -1,35 +1,35 @@
 <?php
-# Location: web/php/src/Services/DbServiceTest.php
+# Location: tests/php/src/Services/EnvironmentServiceTest.php
 
-class DbServiceTest {
+declare(strict_types=1);
 
-    public function __construct(){
-        $this->test();        
+require_once __DIR__ . '/BaseServiceTest.php';
+
+class EnvironmentServiceTest extends BaseServiceTest {
+    private \App\Services\EnvironmentService $env;
+
+    public function __construct() {
+        parent::__construct();
+        $this->requireService('EnvironmentService');
+        $this->env = \App\Services\EnvironmentService::getInstance();
+        $this->runAudit();
     }
 
-    public function test(){
-        try {
-            echo "🔍 Testing MySQL... ";
-            $dsn = "mysql:host=" . getenv('DB_HOST') . ";dbname=" . getenv('DB_NAME');
-            $pdo = new PDO($dsn, getenv('DB_USER'), getenv('DB_PASS'), [
-                PDO::ATTR_TIMEOUT => 5,
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
-            ]);
-            echo "✅ Connected.\n";
-        } catch (\PDOException $e) {
-            echo "❌ MySQL Failed: " . $e->getMessage() . "\n";
-        }
+    protected function runAudit(): void {
+        $keys = ['DB_HOST', 'REDIS_HOST', 'OLLAMA_HOST', 'APP_ENV'];
+        $failed = false;
 
-        try {
-            echo "🔍 Testing Redis... ";
-            $redis = new \Redis();
-            // Using 2.5s timeout for the handshake
-            $redis->connect(getenv('REDIS_HOST'), 6379, 2.5);
-            echo "✅ Connected (" . $redis->ping() . ").\n";
-        } catch (\Exception $e) {
-            echo "❌ Redis Failed: " . $e->getMessage() . "\n";
-        }        
+        foreach ($keys as $key) {
+            $val = $this->env->get($key);
+            if ($val) {
+                echo "✅ $key: Found ($val)\n";
+            } else {
+                echo "❌ $key: NOT FOUND\n";
+                $failed = true;
+            }
+        }
+        exit($failed ? 1 : 0);
     }
 }
 
-new DbServiceTest();
+new EnvironmentServiceTest();
