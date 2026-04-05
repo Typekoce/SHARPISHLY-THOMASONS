@@ -44,3 +44,6 @@ sh-php: ## Drop into the PHP container shell
 
 sh-ai: ## Drop into the AI container shell
 	docker exec -it $(AI_CONT) sh
+
+logs-storage: ## Nginx, PHP & MySQL logs
+	@tail -f storage/log/*.log

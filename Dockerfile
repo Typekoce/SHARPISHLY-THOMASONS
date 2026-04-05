@@ -1,8 +1,6 @@
 FROM php:8.2-fpm-alpine
 
-# Root Dockerfile
-
-# Install system dependencies
+# 1. Install System Dependencies & Build Tools
 RUN apk add --no-cache \
     libpng-dev \
     libjpeg-turbo-dev \
@@ -12,24 +10,40 @@ RUN apk add --no-cache \
     unzip \
     oniguruma-dev \
     icu-dev \
-    mysql-client
+    mariadb-client \
+    netcat-openbsd
 
-# Install PHP extensions
+# 2. Configure & Install PHP Extensions
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install gd pdo pdo_mysql mbstring zip intl bcmath
+    && docker-php-ext-install -j$(nproc) \
+        gd \
+        pdo \
+        pdo_mysql \
+        mbstring \
+        zip \
+        intl \
+        bcmath
 
-# Install Redis extension for CNS Orchestration
+# 3. Install Redis (PECL) - Critical for QueueService
 RUN apk add --no-cache --virtual .build-deps $PHPIZE_DEPS \
     && pecl install redis \
     && docker-php-ext-enable redis \
     && apk del .build-deps
 
-# Set working directory
+# 4. Set Environment & Workspace
 WORKDIR /var/www/html
 
-# Copy source code
+# 5. Copy Source & Setup Permissions
 COPY . .
 
-# Set permissions
-RUN chown -R www-data:www-data /var/www/html/storage
+# Ensure the Thomasons V3 storage structure is pre-initialized
+RUN mkdir -p /var/www/html/storage/uploads \
+             /var/www/html/storage/log \
+             /var/www/html/storage/database \
+             /var/www/html/storage/queue \
+    && chown -R www-data:www-data /var/www/html
 
+# 6. Expose FPM port
+EXPOSE 9000
+
+CMD ["php-fpm"]
