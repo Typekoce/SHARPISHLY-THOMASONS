@@ -5,33 +5,33 @@ declare(strict_types=1);
 namespace App\Models;
 
 /**
- * SCAFFOLD MODEL
- * The absolute source of truth for the Database Schema.
- * Centralizes the Master Blueprint for the Sharpishly ecosystem.
+ * ScaffoldModel - The Single Source of Truth for the Sharpishly Database Schema
+ * Optimized for initial development by removing complex constraints.
  */
 class ScaffoldModel extends BaseModel
 {
     /**
-     * Executes the creation/verification of all tables in the blueprint.
-     * @return array List of verified tables.
+     * Synchronizes all tables defined in the blueprint.
+     * @return array List of tables that were verified/created
      */
     public function syncSchema(): array
     {
         $applied = [];
         $definitions = $this->getTableDefinitions();
 
-        foreach ($definitions as $name => $schema) {
-            // Internal DB service handles the 'CREATE TABLE IF NOT EXISTS' logic
-            $this->db->createTable($name, $schema);
-            $applied[] = "Table verified: $name";
+        foreach ($definitions as $tableName => $schema) {
+            $success = $this->db->createTable($tableName, $schema);
+            $applied[] = $success 
+                ? "✓ Table verified/created: $tableName" 
+                : "✗ Failed to create table: $tableName";
         }
 
         return $applied;
     }
 
     /**
-     * The Master Blueprint (Normalized Schema)
-     * Centralized here so all modules validate against the same structure.
+     * Master Blueprint - Bare Essentials
+     * Removed INDEX and CONSTRAINT declarations to ensure a clean cold-start.
      */
     public function getTableDefinitions(): array
     {
@@ -42,18 +42,21 @@ class ScaffoldModel extends BaseModel
                 'executed_at'    => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
                 'batch'          => 'INT DEFAULT 1'
             ],
+
             'users' => [
                 'id'         => 'INT AUTO_INCREMENT PRIMARY KEY',
                 'username'   => 'VARCHAR(100) NOT NULL UNIQUE',
                 'password'   => 'VARCHAR(255) NOT NULL',
                 'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
             ],
+
             'documents' => [
                 'id'         => 'VARCHAR(36) PRIMARY KEY',
                 'filename'   => 'VARCHAR(255) NOT NULL',
                 'status'     => "ENUM('pending', 'processing', 'active', 'archived') DEFAULT 'pending'",
                 'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
             ],
+
             'jobs' => [
                 'id'           => 'INT AUTO_INCREMENT PRIMARY KEY',
                 'payload'      => 'JSON NOT NULL',
@@ -61,32 +64,27 @@ class ScaffoldModel extends BaseModel
                 'current_step' => 'VARCHAR(255) DEFAULT NULL',
                 'progress'     => 'INT DEFAULT 0',
                 'created_at'   => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
-                'finished_at'  => 'TIMESTAMP NULL DEFAULT NULL',
-                // FIX: Remove the key 'INDEX idx_status' and just make it a string entry
-                'INDEX (status)' 
+                'finished_at'  => 'TIMESTAMP NULL DEFAULT NULL'
             ],
+
             'vectors' => [
                 'id'          => 'INT AUTO_INCREMENT PRIMARY KEY',
                 'job_id'      => 'INT NOT NULL',
                 'content'     => 'TEXT NOT NULL',
                 'embedding'   => 'JSON NOT NULL',
-                'created_at'  => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
-                // FIX: Standardize constraint syntax
-                'INDEX (job_id)',
-                'CONSTRAINT fk_job FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE'
+                'created_at'  => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
             ],
+
             'knowledge_chunks' => [
                 'id'              => 'VARCHAR(36) PRIMARY KEY',
-                'document_id'     => 'VARCHAR(36)',
-                'chunk_index'     => 'INT',
+                'document_id'     => 'VARCHAR(36) NOT NULL',
+                'chunk_index'     => 'INT NOT NULL',
                 'content_preview' => 'TEXT',
                 'valid_from'      => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
                 'valid_until'     => 'TIMESTAMP NULL DEFAULT NULL',
-                'version_id'      => 'VARCHAR(50)',
-                // FIX: Standardize index and FK
-                'INDEX (valid_from, valid_until)',
-                'CONSTRAINT fk_doc FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE CASCADE'
+                'version_id'      => 'VARCHAR(50)'
             ],
+
             'logs' => [
                 'id'         => 'INT AUTO_INCREMENT PRIMARY KEY',
                 'level'      => 'VARCHAR(20)',
