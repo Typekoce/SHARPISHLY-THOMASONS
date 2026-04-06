@@ -76,4 +76,24 @@ class ScaffoldController extends BaseController
             ], 500);
         }
     }
+    /**
+     * Redis test submission
+     * @param
+     */
+    public function redis(){
+    // Simple Redis Task Pusher
+    $redis = new Redis();
+    $redis->connect('sharpishly-redis', 6379);
+
+    $task = [
+        'action' => 'process_upload',
+        'file'   => $this->location->uploads('test.csv'),
+        'ts'     => time()
+    ];
+    // $this->dBug($task);die();
+    // LPUSH: Add to the start of the list
+    $redis->lPush('task_queue', json_encode($task));
+
+    echo "Task dispatched to Neural Pipeline.";
+    }
 }
