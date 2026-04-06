@@ -9,30 +9,37 @@ use Exception;
 /**
  * OLLAMA SERVICE
  * High-level interface for the LLM. 
- * Uses EnvironmentService (SSOT) to discover its own infrastructure.
  */
-class OllamaService extends BaseService {
+class OllamaService extends BaseService 
+{
     private string $host;
     private int $timeout;
     private EnvironmentService $env;
-    private Location $location;
 
-    public function __construct() {
-        $this->env = EnvironmentService::getInstance();
-        $this->location = new Location();
+    /**
+     * The Constructor now correctly bootstraps via BaseService
+     */
+    public function __construct() 
+    {
+        // 1. Initialize Parent (Paths, Logging, Location)
+        parent::__construct(); 
         
-        // Host Discovery: Pull from .env or Docker service 'llm'
+        $this->env = EnvironmentService::getInstance();
+        
+        // 2. Discover LLM Infrastructure
         $this->host = $this->env->get('OLLAMA_HOST', 'http://llm:11434');
 
-        // Dynamic Timeout: Parse '120s' from Docker Compose start_period
+        // 3. Dynamic Timeout logic remains intact
         $rawPeriod = $this->env->get('DB_START_PERIOD', '5s');
         $this->timeout = (int) filter_var($rawPeriod, FILTER_SANITIZE_NUMBER_INT);
     }
 
     /**
-     * Checks if the LLM container is responsive and lists models.
+     * Checks if the LLM container is responsive.
+     * Logic preserved from previous version.
      */
-    public function getStatus(): array {
+    public function getStatus(): array 
+    {
         $endpoint = rtrim($this->host, '/') . '/api/tags';
         
         $ctx = stream_context_create([
@@ -49,7 +56,6 @@ class OllamaService extends BaseService {
             return [
                 'active'  => false,
                 'host'    => $this->host,
-                'timeout' => $this->timeout,
                 'error'   => "Unable to reach LLM at {$endpoint}"
             ];
         }
@@ -59,15 +65,16 @@ class OllamaService extends BaseService {
         return [
             'active' => true,
             'models' => $data['models'] ?? [],
-            'system_version' => $this->env->get('SYS_VERSION', '1.0.0') // From Makefile
+            'system_version' => $this->env->get('SYS_VERSION', '1.0.0')
         ];
     }
 
     /**
-     * Generates embeddings for a given string.
-     * This is used for the RAG 'Healing Factor' later.
+     * Generates embeddings for the RAG 'Healing Factor'.
+     * Logic preserved from previous version.
      */
-    public function getEmbedding(string $text, string $model = 'nomic-embed-text'): array {
+    public function getEmbedding(string $text, string $model = 'nomic-embed-text'): array 
+    {
         $endpoint = rtrim($this->host, '/') . '/api/embeddings';
         
         $payload = json_encode([
@@ -80,7 +87,7 @@ class OllamaService extends BaseService {
                 'method'  => 'POST',
                 'header'  => "Content-type: application/json\r\n",
                 'content' => $payload,
-                'timeout' => 30 // Embeddings take longer than a simple status ping
+                'timeout' => 30 
             ]
         ];
 
