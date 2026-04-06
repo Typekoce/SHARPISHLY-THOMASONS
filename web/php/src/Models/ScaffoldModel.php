@@ -48,6 +48,12 @@ class ScaffoldModel extends BaseModel
                 'password'   => 'VARCHAR(255) NOT NULL',
                 'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
             ],
+            'documents' => [
+                'id'         => 'VARCHAR(36) PRIMARY KEY',
+                'filename'   => 'VARCHAR(255) NOT NULL',
+                'status'     => "ENUM('pending', 'processing', 'active', 'archived') DEFAULT 'pending'",
+                'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
+            ],
             'jobs' => [
                 'id'           => 'INT AUTO_INCREMENT PRIMARY KEY',
                 'payload'      => 'JSON NOT NULL',
@@ -56,7 +62,8 @@ class ScaffoldModel extends BaseModel
                 'progress'     => 'INT DEFAULT 0',
                 'created_at'   => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
                 'finished_at'  => 'TIMESTAMP NULL DEFAULT NULL',
-                'INDEX idx_status' => '(status)'
+                // FIX: Remove the key 'INDEX idx_status' and just make it a string entry
+                'INDEX (status)' 
             ],
             'vectors' => [
                 'id'          => 'INT AUTO_INCREMENT PRIMARY KEY',
@@ -64,14 +71,9 @@ class ScaffoldModel extends BaseModel
                 'content'     => 'TEXT NOT NULL',
                 'embedding'   => 'JSON NOT NULL',
                 'created_at'  => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
-                'FOREIGN KEY' => '(job_id) REFERENCES jobs(id) ON DELETE CASCADE',
-                'INDEX idx_job_id' => '(job_id)'
-            ],
-            'documents' => [
-                'id'         => 'VARCHAR(36) PRIMARY KEY',
-                'filename'   => 'VARCHAR(255) NOT NULL',
-                'status'     => "ENUM('pending', 'processing', 'active', 'archived') DEFAULT 'pending'",
-                'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
+                // FIX: Standardize constraint syntax
+                'INDEX (job_id)',
+                'CONSTRAINT fk_job FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE'
             ],
             'knowledge_chunks' => [
                 'id'              => 'VARCHAR(36) PRIMARY KEY',
@@ -81,8 +83,9 @@ class ScaffoldModel extends BaseModel
                 'valid_from'      => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
                 'valid_until'     => 'TIMESTAMP NULL DEFAULT NULL',
                 'version_id'      => 'VARCHAR(50)',
-                'FOREIGN KEY'     => '(document_id) REFERENCES documents(id) ON DELETE CASCADE',
-                'INDEX idx_temporal' => '(valid_from, valid_until)'
+                // FIX: Standardize index and FK
+                'INDEX (valid_from, valid_until)',
+                'CONSTRAINT fk_doc FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE CASCADE'
             ],
             'logs' => [
                 'id'         => 'INT AUTO_INCREMENT PRIMARY KEY',

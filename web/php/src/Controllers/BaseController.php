@@ -12,6 +12,7 @@ use App\Services\Db;
 use App\Services\Location;
 use App\Services\Smarty;
 use App\Services\Logger;
+use App\Services\Session;
 use Exception;
 use Throwable;
 
@@ -23,6 +24,7 @@ abstract class BaseController
     protected $smarty;
     public $logger;
     protected $model;
+    public $session;
 
     /**
      * Child controllers MUST call parent::__construct() if they define their own constructor.
@@ -34,6 +36,7 @@ abstract class BaseController
         $this->location = $this->loc;
         $this->smarty = new \App\Services\Smarty();
         $this->logger = new \App\Services\Logger();
+        $this->session  = \App\Services\Session::getInstance();;
     }
     
     /**

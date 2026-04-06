@@ -78,7 +78,7 @@ services:
     ports:
       - "8080:80"
     volumes:
-      - .:/var/www/html:ro
+      - .:/var/www/html:rw
       - ./infra/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
     networks:
       - sharpishly-net
