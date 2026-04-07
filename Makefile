@@ -1,11 +1,22 @@
 # --- CONSTANTS ---
-COMPOSE  = docker compose
-PHP_CONT = sharpishly-php
-AI_CONT  = sharpishly-ai-api
+COMPOSE   = docker compose
+PHP_CONT  = sharpishly-php
+AI_CONT   = sharpishly-ai-api
+LLM_CONT  = sharpishly-ollama
 
 .DEFAULT_GOAL := help
 
 # --- TARGETS ---
+
+pull-lean: ## Pull the Micro-Neural stack (phi3 & all-minilm) optimized for 1GB RAM
+	@echo "🧠 Pulling Lean LLM: phi3:mini (~2.3GB)..."
+	docker exec -it $(LLM_CONT) ollama pull phi3:mini
+	@echo "🧠 Pulling Lean Embedder: all-minilm (~45MB)..."
+	docker exec -it $(LLM_CONT) ollama pull all-minilm
+	@echo "✅ Lean Stack Pulled. Run 'make ps-ai' to monitor status."
+
+ps-ai: ## Monitor Ollama's active models and memory footprint
+	docker exec -it $(LLM_CONT) ollama ps
 
 test-infra: ## Run the Infrastructure Handshake audit (Env & DB)
 	@echo "🚀 Stage 1: Auditing Environment Variables..."
@@ -44,6 +55,9 @@ sh-php: ## Drop into the PHP container shell
 
 sh-ai: ## Drop into the AI container shell
 	docker exec -it $(AI_CONT) sh
+
+sh-llm: ## Drop into the Ollama container shell
+	docker exec -it $(LLM_CONT) sh
 
 logs-storage: ## Nginx, PHP & MySQL logs
 	@tail -f storage/log/*.log

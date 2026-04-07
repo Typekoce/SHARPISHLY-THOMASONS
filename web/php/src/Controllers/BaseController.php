@@ -24,13 +24,15 @@ abstract class BaseController
     protected $model;
     public $session;
 
-    /**
-     * Default Neural Stack for Thomasons V3.
-     * Can be overridden in child controllers.
+/**
+     * THOMASONS V3 – LEAN NEURAL STACK
+     * Optimized for 1GB VPS (LON1 Droplet)
+     * phi3:mini (~2.2GB - fits in RAM/ZRAM)
+     * all-minilm (~45MB - ultra-light embedder)
      */
     protected const REQUIRED_MODELS = [
-        'llama3.1:latest',
-        'nomic-embed-text:latest'
+        'phi3:latest',
+        'all-minilm:latest'
     ];
 
     public function __construct()
