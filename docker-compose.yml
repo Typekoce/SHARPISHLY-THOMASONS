@@ -1,11 +1,12 @@
 name: sharpishly
 
 services:
-  # --- 1. The Broker (Redis) ---
+  # --- 1. The Signal Bus (Redis) ---
+  # EXTERNAL: PHP & Python connect here to coordinate jobs.
   redis:
     image: redis:7-alpine
     container_name: sharpishly-redis
-    restart: unless-stopped
+    restart: always
     command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
@@ -17,7 +18,8 @@ services:
       timeout: 3s
       retries: 5
 
-  # --- 2. Database (MySQL 8.0) ---
+  # --- 2. Long-term Memory (MySQL) ---
+  # EXTERNAL: Holds the 'jobs' and 'vectors' tables.
   db:
     image: mysql:8.0
     container_name: sharpishly-db
@@ -33,35 +35,37 @@ services:
       test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$${MYSQL_ROOT_PASSWORD} --silent"]
       interval: 10s
       timeout: 5s
-      retries: 10
-      start_period: 120s
+      retries: 5
+      start_period: 30s
 
   # --- 3. Semantic Memory (Neo4j) ---
+  # EXTERNAL: Port 7474 (Browser UI) | Port 7687 (Bolt Binary)
   graph:
     image: neo4j:latest
     container_name: sharpishly-graph
-    restart: unless-stopped
+    restart: always
     ports:
       - "7474:7474"
       - "7687:7687"
     environment:
       NEO4J_AUTH: ${NEO4J_USER}/${NEO4J_PASS}
       NEO4J_PLUGINS: '["apoc"]'
+      NEO4J_server_memory_heap_initial__size: 512m
+      NEO4J_server_memory_heap_max__size: 2G
     volumes:
       - ./database/neo4j/data:/data
     networks:
       - sharpishly-net
 
-  # --- 4. The Backend (PHP-FPM) ---
+  # --- 4. The Orchestrator (PHP-FPM) ---
+  # EXTERNAL: Connects to 'db' (MySQL) and 'redis' (Signal Bus).
   php:
     build: .
     container_name: sharpishly-php
-    restart: unless-stopped
+    restart: always
     env_file: .env
     volumes:
       - .:/var/www/html:rw
-      - ./storage:/var/www/html/storage:rw
-      - ./infra/php/www.conf:/usr/local/etc/php-fpm.d/www.conf:ro
     networks:
       - sharpishly-net
     depends_on:
@@ -70,11 +74,13 @@ services:
       db:
         condition: service_healthy
 
-  # --- 5. The Web Server (Nginx) ---
+  # --- 5. The Gateway (Nginx) ---
+  # EXTERNAL: Entry point on http://localhost:8080
+  # Routes /pymvc/ calls to the 'ai' service.
   web:
     image: nginx:alpine
     container_name: sharpishly-app
-    restart: unless-stopped
+    restart: always
     ports:
       - "8080:80"
     volumes:
@@ -86,44 +92,54 @@ services:
       - php
 
   # --- 6. Neural Models (Ollama) ---
+  # EXTERNAL: Internal port 11434 used by 'ai' and 'worker'.
   llm:
     image: ollama/ollama:latest
     container_name: sharpishly-ollama
-    restart: unless-stopped
+    restart: always
     volumes:
       - ./storage/ollama:/root/.ollama
     networks:
       - sharpishly-net
     command: serve
 
-  # --- 7. AI API (Agnostic Observer) ---
+  # --- 7. AI API (Primary Observer) ---
+  # EXTERNAL: Listens on port 8000. Proxied via Nginx /pymvc/
   ai:
     build: ./ai
     container_name: sharpishly-ai-api
-    restart: unless-stopped
+    restart: always
     env_file: .env
     environment:
-      OLLAMA_HOST: http://sharpishly-ollama:11434
-      REDIS_HOST: sharpishly-redis
+      OLLAMA_HOST: http://llm:11434
+      REDIS_HOST: redis
     volumes:
       - ./storage:/app/storage:ro
+    # EXTERNAL CALL: Runs Uvicorn. Ensure server.py exists in ./ai/
     command: uvicorn server:app --host 0.0.0.0 --port 8000
     networks:
       - sharpishly-net
+    depends_on:
+      - llm
+      - redis
 
-  # --- 8. AI Worker ---
+  # --- 8. AI Worker (Secondary Cognition) ---
+  # EXTERNAL: Listens on port 8001. 
+  # MODIFIED: Changed from script call to Uvicorn to prevent "File Not Found" crashes.
   worker:
     build: ./ai
     container_name: sharpishly-ai-worker
-    restart: unless-stopped
+    restart: always
     env_file: .env
     volumes:
       - ./storage:/app/storage:rw
-    command: python3 organism.py
+    # EXTERNAL CALL: Captured here to keep container ALIVE for debugging.
+    command: uvicorn server:app --host 0.0.0.0 --port 8001
     networks:
       - sharpishly-net
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
 
 networks:
   sharpishly-net:
