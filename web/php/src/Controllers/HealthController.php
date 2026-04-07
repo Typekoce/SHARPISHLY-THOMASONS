@@ -12,47 +12,45 @@ use Throwable;
 class HealthController extends BaseController
 {
     private HealthModel $healthModel;
-    public OllamaService $ollama;
     public RedisService $redis;
 
     public function __construct()
     {
         parent::__construct();
-        // Instantiate the model for DB checks
         $this->healthModel = new HealthModel();
-        $this->ollama = new OllamaService();
-        // Use the Singleton to ensure we share the same connection resource
         $this->redis = RedisService::getInstance();
     }
 
     /**
      * Comprehensive health check for SPA
-     * Returns flattened JSON for the Neural Handshake dashboard
+     * Uses inherited getNeuralStatus() for model auditing.
      */
-    public function index() {
+    public function index() 
+    {
         $conditions = [
             'tbl'   => 'jobs',
             'order' => ['id' => 'desc'],
             'limit' => [0, 5]
         ];
 
+        // DB check
         $rs = $this->db->find($conditions);
         
-        // Capture specific service states
         $redisAlive = $this->redis->isAlive();
-        $ollamaStatus = $this->ollama->getStatus();
+        
+        // 🚀 Inherited from BaseController
+        $neuralData = $this->getNeuralStatus();
 
-        // Prepare response payload
         $data = [
-            'status'     => ($redisAlive && $ollamaStatus['active']) ? 'healthy' : 'degraded',
-            'database'   => true, // DB connection verified by successfully calling $this->db->find
+            'status'     => ($redisAlive && $neuralData['synced']) ? 'healthy' : 'degraded',
+            'database'   => true, 
             'latest_job' => $rs,
-            'redis'      => $redisAlive, // Flat boolean for SPA badge
+            'redis'      => $redisAlive, 
             'queue_info' => [
                 'count' => $this->redis->getQueueLength(),
-                'keys'  => $this->redis->getKeys() // Live key visibility
+                'keys'  => $this->redis->getKeys() 
             ],
-            'ollama'     => $ollamaStatus,
+            'ollama'     => $neuralData,
             'timestamp'  => time(),
         ];
 
@@ -60,56 +58,23 @@ class HealthController extends BaseController
     }
 
     /**
-     * Interrogates services and notifies observers of health status.
-     * Legacy internal endpoint
+     * Legacy internal endpoint for automated monitoring.
      */
     public function check()
     {
-        $dbReady = $this->healthModel->isDatabaseReady();
+        $dbReady    = $this->healthModel->isDatabaseReady();
         $redisReady = $this->redis->isAlive();
-        $ollamaReady = $this->checkOllama();
+        $neural     = $this->getNeuralStatus();
 
         $status = [
             'status'    => 'active',
             'database'  => $dbReady,
             'redis'     => $redisReady,
-            'ollama'    => $ollamaReady,
-            'timestamp' => time(),
-            'healthy'   => false
+            'ollama'    => $neural['active'],
+            'synced'    => $neural['synced'],
+            'healthy'   => $dbReady && $redisReady && $neural['synced']
         ];
 
-        // Core business health logic
-        $status['healthy'] = $dbReady && $redisReady && $ollamaReady;
-
-        if ($status['healthy']) {
-            $this->logger->info("Infrastructure Healthy: Observer notification sent.");
-        } else {
-            $this->logger->warning("Health Check: System Degraded", $status);
-        }
-
         return $this->json($status, $status['healthy'] ? 200 : 503);
-    }
-
-    /**
-     * Check Ollama via API Handshake
-     */
-    private function checkOllama(): bool
-    {
-        try {
-            $ch = curl_init('http://llm:11434/api/tags');
-            // Using standard curl_setopts array for cleaner syntax
-            curl_setopt_array($ch, [
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_TIMEOUT        => 2,
-                CURLOPT_CONNECTTIMEOUT => 1
-            ]);
-            $response = curl_exec($ch);
-            $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
-
-            return $code === 200 && $response !== false;
-        } catch (Throwable $e) {
-            return false;
-        }
     }
 }
