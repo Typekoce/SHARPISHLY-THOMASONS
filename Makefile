@@ -8,12 +8,30 @@ LLM_CONT  = sharpishly-ollama
 
 # --- TARGETS ---
 
-pull-lean: ## Pull the Micro-Neural stack (phi3 & all-minilm) optimized for 1GB RAM
+show-key: ## Find and display the local public SSH key for Digital Ocean / GitHub
+	@PUB_KEY=$$(ls ~/.ssh/*.pub 2>/dev/null | head -n 1); \
+	if [ -z "$$PUB_KEY" ]; then \
+		echo "❌ No public SSH keys found in ~/.ssh/"; \
+	else \
+		echo "🔑 Found Key: $$PUB_KEY"; \
+		echo "---------------------------------------------------"; \
+		cat "$$PUB_KEY"; \
+		echo -e "\n---------------------------------------------------"; \
+	fi
+
+pull-heavy: ## VM DEVELOPMENT: Pull Llama 3.1 & Nomic Embed (Heavy)
+	@echo "🚀 Pulling Heavy LLM: llama3.1 (~4.7GB)..."
+	docker exec -it $(LLM_CONT) ollama pull llama3.1
+	@echo "🚀 Pulling Heavy Embedder: nomic-embed-text (~274MB)..."
+	docker exec -it $(LLM_CONT) ollama pull nomic-embed-text
+	@echo "✅ Heavy Stack Pulled."
+
+pull-lean: ## HOST PRODUCTION: Pull Phi3 & all-minilm (Lean) optimized for 1GB RAM
 	@echo "🧠 Pulling Lean LLM: phi3:mini (~2.3GB)..."
 	docker exec -it $(LLM_CONT) ollama pull phi3:mini
 	@echo "🧠 Pulling Lean Embedder: all-minilm (~45MB)..."
 	docker exec -it $(LLM_CONT) ollama pull all-minilm
-	@echo "✅ Lean Stack Pulled. Run 'make ps-ai' to monitor status."
+	@echo "✅ Lean Stack Pulled."
 
 ps-ai: ## Monitor Ollama's active models and memory footprint
 	docker exec -it $(LLM_CONT) ollama ps
