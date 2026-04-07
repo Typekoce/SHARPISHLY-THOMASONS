@@ -1,143 +1,262 @@
-# Sharpishly V3 – Master Project TODO
+This is a **solid production-grade TODO**, but for a **1GB RAM / 1vCPU droplet** we need to **re-order priorities** or the system will never stabilize. Right now you're mixing:
 
-**🚨 CRITICAL DEADLINE: Friday, March 13, 2026**
+* infra survival tasks
+* UI work
+* CRM features
+* AI pipeline
+* deployment
 
-## Infrastructure & Reliability 🏗️
+On **micro hardware**, the **boot order matters** or you'll chase phantom bugs.
 
-- [x] Dockerize Worker: Map `worker.php` as background service in `docker-compose.yml`
-- [x] Neural Model Fix: Added `llm` service with persistent volume mapping
-- [ ] `ai/organism.py` Implementation: Map to `src/Controllers/OrganismController.py` (index/heartbeat method)
-- [ ] Ollama Timeout Workaround: Mock responses or async handling for VM timeouts
-- [ ] Log Aggregation: Centralize logs, uploads, and storage structure
-- [ ] Storage Consolidation: Map all data-heavy directories
-- [ ] Dockerize `worker.php` as background service (docker-compose.yml)
+Here's the **correct execution order** for Sharpishly V3 Micro-Neural. 🧠⚙️
 
-## Frontend & UI Consolidation 🎨
+---
 
-- [x] Handshake Dashboard: Neural Pipeline v3.5 monitor in `script.js`
-- [ ] Menu Refactor: Limit to exactly 5 main links with submenus
-- [ ] Navigation: Add breadcrumb components to all pages
-- [ ] Core Completion: Finalize API, Messages, Server, Client functionality
-- [ ] Handle URL Parameters: `/profile/123` → pass IDs to Controllers
-- [ ] Form Submissions: Send data back to PHP via POST requests
+# 🥇 Phase 1 — Host Survival (DO THIS FIRST)
 
-## Landlord CRM Module 🏠
+Nothing else matters until this is stable.
 
-- [ ] Implementation: Build Landlord CRM logic
-- [ ] Database Integrity: Wrap `HomeModel` migrate/alter in try/catch
-- [ ] Add Index: `idx_job_id` on `csv_records`
-- [ ] Add Foreign Key: `fk_job_id` on `csv_records` → `jobs(id)`
+Priority:
 
-## Decommissioning 🧹
+```
+[ ] Create 4GB swap
+[ ] Install ZRAM
+[ ] Limit Ollama concurrency
+[ ] Set docker mem limits
+```
 
-- [ ] Logic Migration: PHP → Python (`TextProcessor`/`NeuralWorker`)
-- [ ] Decommission `ChunkingService.php`
-- [ ] Decommission `EmbeddingService.php`
-- [ ] Decommission `VectorDb.php`
-- [ ] Decommission `WordDocService.php`
-- [ ] Scaffold Removal: Decommission `scaffold/migrate` (now in `HomeController`)
+This prevents:
 
-## Testing & Quality 🚀
+* OOM killer
+* container restart loops
+* corrupted MySQL
+* Neo4j crashes
 
-- [ ] Upload Testing: Verify 100% document ingestion progress
-- [ ] RAG Verification: Test Neural Chat + vector retrieval
-- [ ] Git Metadata: Extract commit hash, branch, dirty flag (Location/Environment)
+Your swap setup is correct:
 
-## Documentation 📚
-
-- [ ] README: Add architecture diagrams + API details
-
-## GitHub Actions Deployment (Option B) 🚀
-
-1. **Create**: `.github/workflows/deploy-to-digitalocean.yml`
-2. **Secrets**:
-   - `SSH_HOST`: Droplet IP
-   - `SSH_USERNAME`: `root`
-   - `SSH_PRIVATE_KEY`: Private SSH key
-   - `SSH_PORT`: `22`
-3. **Features**:
-   - Manual/Push triggers
-   - `git reset --hard` clean state
-   - Docker build/pull orchestration
-   - `docker system prune` cleanup
-   - Local health check verification
-
-## Optimization Roadmap ⚡
-
-### Infrastructure (Nginx & System)
-- Nginx Worker Tuning: `worker_processes` + `worker_connections`
-- Gzip/Brotli Compression: Static SPA assets
-- PHP-FPM Pool Tuning: `pm.max_children` + `pm.start_servers`
-
-### Application Logic
-- Script Consolidation: Minify `script.js`, remove dead code
-- PHP OpCache: Enable/tune in Docker PHP image
-- Database Indexing: Audit MySQL `csv_records` lookups
-
-### Resource Services
-- Ollama: Use Q4_K_M quantization for VPS RAM
-- Async Workers: CSV stream processing (avoid full file loads)
-
-### Deployment (Digital Ocean)
-- Docker Resource Limits: RAM/CPU in `docker-compose.yml`
-- CI/CD: GitHub Actions pipeline
-- Monitoring: Log rotation to prevent disk saturation
-
-***
-
-**Next Immediate Action**: Create `src/Controllers/OrganismController.py` for heartbeat mapping.
-
-That 1GB/1CPU Droplet is a classic "lean" environment. It’s perfect for a highly optimized PHP/Nginx stack, but Ollama is going to be the hungriest guest at this table. With only 1GB of RAM and 25GB of disk, we need to be surgical. llama3.1 (8B) usually wants ~4.7GB of RAM, and nomic-embed-text wants ~270MB. On a 1GB machine, the OS and Docker already take a chunk, so we are going to rely heavily on SWAP and Quantization.
-
-🛠️ Critical VPS Tuning for the Neural Pipeline
-1. The Swap Space (Safety Net)
-Without a Swap file, Ollama will likely trigger the Linux OOM (Out of Memory) killer and crash your whole Docker stack the moment it tries to load a model.
-Action: Create a 4GB Swap file immediately on the host:
-
-Bash
+```bash
 sudo fallocate -l 4G /swapfile
 sudo chmod 600 /swapfile
 sudo mkswap /swapfile
 sudo swapon /swapfile
 echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
-2. Model Quantization (The "Q4_K_M" Plan)
-Standard models are too heavy. From your TODO under Optimization Roadmap, ensure you are pulling the quantized versions. They use significantly less RAM with almost no noticeable loss in "Neural" quality for document processing.
+```
 
-Instead of llama3.1:latest, try pulling llama3.1:8b-instruct-q4_K_M if memory pressure gets too high.
+Then **add swappiness** (VERY important):
 
-3. Storage Management
-You have 25GB of disk.
+```bash
+echo vm.swappiness=10 | sudo tee -a /etc/sysctl.conf
+sudo sysctl -p
+```
 
-Llama 3.1: ~5GB
+This stops swap thrashing.
 
-Nomic Embed: ~0.5GB
+---
 
-OS + Docker Images: ~5-8GB
+# 🥈 Phase 2 — Ollama Micro-Neural Lockdown
 
-Remaining: ~10-12GB for your MySQL data and uploads.
+docker-compose MUST include:
 
-Tip: Regularly run docker system prune -f (already in your GitHub Actions plan) to keep that 25GB from hitting 100%.
+```yaml
+environment:
+  - OLLAMA_NUM_PARALLEL=1
+  - OLLAMA_MAX_LOADED_MODELS=1
+  - OLLAMA_KEEP_ALIVE=5m
+mem_limit: 800m
+```
 
-🧬 Updated Neural Pipeline Strategy
-Since your Droplet is tight on resources, the ai/organism.py (The Heartbeat) becomes even more important. It shouldn't just listen; it should throttle.
+This is the **difference between stable vs constant crashes**.
 
-Updated src/Controllers/OrganismController.py thought process:
-We should add a "Memory Guard" to the heartbeat. If free RAM is < 100MB, the Organism should report status: "throttled" to the PHP side so the UI can tell the user "System busy, please wait."
+---
 
-📝 TODO Update (Infrastructure)
-[ ] Host Setup: Create 4GB Swap file on LON1 Droplet.
+# 🥉 Phase 3 — Organism Heartbeat (Critical)
 
-[ ] Ollama Config: Set OLLAMA_NUM_PARALLEL=1 in docker-compose.yml to prevent it from trying to process multiple requests and exploding the RAM.
+This becomes your **system governor**.
 
-[ ] Memory Monitoring: Add memory_usage to the OrganismController heartbeat.
+It should return:
 
-🚀 Commit Message for Infrastructure Prep
-If you've applied these host-level changes:
+```json
+{
+  "status": "ok|throttled|busy",
+  "memory_free_mb": 120,
+  "cpu": 0.92,
+  "queue_depth": 3
+}
+```
 
-Plaintext
-ops: optimize LON1 droplet for neural workload
+Throttle rule:
 
-- Configure 4GB swapfile to handle LLM memory spikes
-- Update TODO with RAM-sensitive orchestration requirements
-- Prepare for Q4_K_M model quantization to fit 1GB RAM footprint
-How is the download progressing on that 1GB node? If it feels like the terminal is hanging, it’s likely the CPU maxing out while it decompresses the model layers. Just give it air—it’ll get there!
+```
+if MemAvailable < 120MB
+    status = "throttled"
+```
+
+PHP then:
+
+```
+if throttled → queue job
+if ok → process now
+```
+
+This prevents **AI self-DDOS**.
+
+---
+
+# 🏗️ Phase 4 — AI Pipeline Migration
+
+Only after memory stability:
+
+```
+[ ] Logic Migration PHP → Python
+[ ] Decommission ChunkingService
+[ ] Decommission EmbeddingService
+[ ] Decommission VectorDb
+```
+
+This reduces:
+
+* PHP memory
+* duplication
+* container overhead
+
+Huge win on 1GB.
+
+---
+
+# 🧠 Phase 5 — Model Quantization (Final AI step)
+
+Switch to:
+
+```
+phi3:mini-q4_K_M
+all-minilm
+```
+
+Do NOT use:
+
+```
+llama3
+mistral
+nomic-embed-text
+```
+
+They will crash 1GB nodes.
+
+---
+
+# 🚨 Important — Neo4j is Dangerous on 1GB
+
+Right now you have:
+
+```
+Neo4j heap max: 2G
+```
+
+That alone will kill the droplet.
+
+Change to:
+
+```yaml
+NEO4J_server_memory_heap_initial__size: 128m
+NEO4J_server_memory_heap_max__size: 256m
+NEO4J_server_memory_pagecache_size: 128m
+```
+
+Otherwise Neo4j alone consumes entire RAM.
+
+This is **critical**.
+
+---
+
+# Correct Priority TODO (Reordered)
+
+## Phase 1 — Survival
+
+```
+[x] Dockerize Worker
+[x] Neural Model Fix
+[ ] Create 4GB Swap
+[ ] Install ZRAM
+[ ] Set OLLAMA_NUM_PARALLEL=1
+[ ] Set docker mem limits
+[ ] Reduce Neo4j heap to 256m
+```
+
+## Phase 2 — Stability
+
+```
+[ ] ai/organism.py heartbeat
+[ ] Memory guard
+[ ] Redis serialization
+```
+
+## Phase 3 — AI Pipeline
+
+```
+[ ] PHP → Python migration
+[ ] Decommission PHP AI services
+```
+
+## Phase 4 — Deployment
+
+```
+[ ] GitHub actions
+[ ] docker prune automation
+```
+
+## Phase 5 — UI + CRM
+
+```
+[ ] Menu refactor
+[ ] Landlord CRM
+[ ] breadcrumbs
+```
+
+UI should be **last** on micro hardware.
+
+---
+
+# Your Architecture (Now Correct)
+
+```
+PHP (light)
+   ↓
+Redis queue
+   ↓
+Organism controller (governor)
+   ↓
+Ollama (quantized)
+   ↓
+Neo4j (256MB heap)
+```
+
+This fits in **~900MB total**.
+
+---
+
+# Final Recommendation
+
+Yes — proceed with:
+
+```
+[ ] ai/organism.py
+```
+
+But **BEFORE THAT** fix:
+
+1. swap
+2. Neo4j memory
+3. Ollama limits
+
+Otherwise organism will be trying to control a **crashing system**.
+
+---
+
+If you'd like, I can now generate:
+
+* `OrganismController.py`
+* memory guard
+* Redis queue reader
+* heartbeat endpoint
+
+All optimized for **1GB RAM**.
