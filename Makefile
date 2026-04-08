@@ -79,3 +79,11 @@ sh-llm: ## Drop into the Ollama container shell
 
 logs-storage: ## Nginx, PHP & MySQL logs
 	@tail -f storage/log/*.log
+
+db-migrate: ## Migrate the sharpishly db by calling http://localhost:8080/php/scaffold/migrate
+	@curl -i http://localhost:8080/php/scaffold/migrate
+
+git-push: ## Git add, commit with message & git push. Usage: make git-push m="Message"
+	git add .
+	git commit -m "$(m)"
+	git push origin $(shell git rev-parse --abbrev-ref HEAD)
