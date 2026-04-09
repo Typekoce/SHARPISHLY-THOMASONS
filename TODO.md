@@ -1,22 +1,27 @@
-# SHARPISHLY-THOMASONS V3: PROJECT CONTEXT
-**Target Release:** March 13, 2026
+I have integrated the **Remote Host (DigitalOcean)** requirements into your `TODO.md`. This update reflects the shift from a purely local development environment to a **Target Deployment** strategy, ensuring we don't repeat the "collision zone" mistakes found in your terminal history.
 
-## 🎯 MISSION
-A self-hosted, privacy-first Neural Pipeline. High-performance local inference with a "lean" VPS footprint (1GB RAM). 
+---
 
-## 🏗️ ARCHITECTURE & CONSTRAINTS
-- **Zero External Dependencies:** No Composer (local), no NPM. Vanilla JS and Native PHP only.
-- **Service-Oriented:** - `PHP (The Brain)`: MVC, Registry Pattern, Job Dispatching.
-    - `Python (Cognition)`: FastAPI "Organism," LangChain, Ollama.
-- **Storage:** Absolute root `/var/www/html/storage/` (mapped 1:1 to host `./storage`).
-- **Data Integrity:** No Raw SQL. Use `App\Models` with PDO Prepared Statements.
-- **Permissions:** All processes must run as `www-data` (UID 33).
+### 📝 UPDATED TODO.md
 
-## 🚦 ROUTING & REGISTRY
-- **Registry:** Strictly `App\Core\Registry`. Centralized singleton management.
-- **Routing:** 3-Tier (Subdomain -> Special Paths -> Slug-based Auto-mapping).
-- **Logging:** Standard Output (`stderr`) for Docker centralization.
+## 🟩 PHASE 1: INFRASTRUCTURE & DX (COMPLETED)
+- [x] **Registry Fix:** Namespace aligned to `App\Core\Registry`.
+- [x] **Makefile DX:** Added `pull-lean`, `test-infra`, and `git-push`.
+- [x] **Remote Access:** SSH Keys linked and Droplet connectivity verified.
 
-## 🧠 NEURAL STACK (The Elastic Brain)
-- **Local:** Llama 3.1 8B + Nomic-Embed.
-- **VPS (1GB):** Phi-3 Mini (Q4) + all-MiniLM + 4GB Swap/ZRAM.
+## 🟨 PHASE 2: THE NEURAL PIPELINE (CURRENT SPRINT)
+- [ ] **The PHP Handshake:** Update `UploadController` to trigger `ai:8000/process` via `Registry`.
+- [ ] **Python Logic:** Finalize the FastAPI endpoint to receive file paths and initiate `all-MiniLM` embedding.
+- [ ] **Qdrant Ingestion:** Implement the "Upsert" logic to store vectors with document metadata.
+- [ ] **Error Tracking:** Use the "Three Terminal" method (PHP, AI, Qdrant) to debug the end-to-end flow.
+
+## 🟧 PHASE 3: DIGITALOCEAN DEPLOYMENT (NEW)
+- [ ] **Server Sanitization:** Remove legacy artifacts (`/var/www/node`, `/var/www/python_mvc`) to prevent port 80/443 collisions.
+- [ ] **Production Env:** Create `.env.prod` with `phi3:mini` and `all-minilm` configurations.
+- [ ] **SSL Restoration:** Re-provision Let's Encrypt certificates for `sharpishly.com` using Certbot inside the Nginx container.
+- [ ] **Swap Configuration:** Verify 4GB ZRAM/Swap partition is active to prevent Ollama from crashing the 1GB RAM Droplet.
+
+## 🟦 PHASE 4: UI & RETRIEVAL (UPCOMING)
+- [ ] **SPA Query Interface:** Build the "Ask a Question" input in Vanilla JS.
+- [ ] **RAG Response:** Connect the Python service to Ollama for context-aware answers based on uploaded docs.
+

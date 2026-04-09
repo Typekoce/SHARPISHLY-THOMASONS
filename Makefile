@@ -65,8 +65,10 @@ logs: ## Tail all logs to monitor the Neural Handshake
 
 clean: ## Nuke volumes, orphans, images, and corrupted build cache
 	$(COMPOSE) down -v --remove-orphans
+	docker system prune -a --volumes -f
 	docker builder prune -a -f
 	docker image prune -f
+	@echo "Environment sanitized. Storage rmains (mapped to host-side)"
 
 sh-php: ## Drop into the PHP container shell
 	docker exec -it $(PHP_CONT) sh
