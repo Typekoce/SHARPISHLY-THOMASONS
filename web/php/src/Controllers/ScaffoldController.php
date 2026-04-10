@@ -78,4 +78,33 @@ class ScaffoldController extends BaseController
 
     echo "Task dispatched to Neural Pipeline.";
     }
+
+/**
+ * Mock method to trigger the Neural Pipeline
+ */
+public function postTestJob() {
+    $db = new \App\Models\Db(); // Utilizing your existing DB logic
+    
+    $payload = json_encode([
+        'path' => '/var/www/html/storage/uploads/test.csv',
+        'type' => 'csv',
+        'created_by' => 'system_mock'
+    ]);
+
+    $data = [
+        'payload' => $payload,
+        'status'  => 'pending',
+        'file_name' => 'test.csv' 
+    ];
+
+    // Using your standard insert logic
+    $result = $db->insert('jobs', $data);
+
+    return $this->json([
+        'status' => 'success', 
+        'message' => 'Job posted to the DMZ.',
+        'job_id' => $result
+    ]);
+}
+
 }
