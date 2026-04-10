@@ -39,23 +39,19 @@ services:
       start_period: 30s
 
   # --- 3. Semantic Memory (Neo4j) ---
-  # EXTERNAL: Port 7474 (Browser UI) | Port 7687 (Bolt Binary)
-  graph:
-    image: neo4j:latest
-    container_name: sharpishly-graph
-    restart: always
+  # EXTERNAL: 6333
+  vectordb:
+    image: qdrant/qdrant:latest
+    container_name: sharpishly-vector-db
     ports:
-      - "7474:7474"
-      - "7687:7687"
-    environment:
-      NEO4J_AUTH: ${NEO4J_USER}/${NEO4J_PASS}
-      NEO4J_PLUGINS: '["apoc"]'
-      NEO4J_server_memory_heap_initial__size: 512m
-      NEO4J_server_memory_heap_max__size: 2G
+      - "6333:6333"
     volumes:
-      - ./database/neo4j/data:/data
-    networks:
-      - sharpishly-net
+      - ./storage/qdrant:/qdrant/storage
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   # --- 4. The Orchestrator (PHP-FPM) ---
   # EXTERNAL: Connects to 'db' (MySQL) and 'redis' (Signal Bus).
