@@ -1,7 +1,10 @@
+cat <<EOF > .gitignore
 # --- System / IDE ---
 .DS_Store
 .vscode/
 .idea/
+*.swp
+*.bak
 
 # --- Environment & Secrets ---
 .env
@@ -9,36 +12,32 @@
 .env.*.local
 
 # --- Centralized Storage ---
-# We keep the folders but ignore the contents
-storage/uploads/*
-storage/exports/*
-storage/backups/*
-storage/temp/*
+storage/**/*
 !storage/**/.gitkeep
-storage/
-./storage
-# --- LLM / AI Infrastructure ---
-# Ignore massive model weights and vector indexes
-llm/ollama/*
-llm/vectordb/*
-ai/venv/
+storage/ollama/
+storage/qdrant/
+mysql_data/
+
+# --- Python / AI Infrastructure ---
 __pycache__/
 *.pyc
-!llm/**/.gitkeep
+ai/venv/
+.pytest_cache/
 
-# --- Web Application ---
+# --- Web & PHP ---
 web/php/logs/*.log
-web/php/vendor/
-node_modules/
 
-# --- NEO4J ----
-# Database Data (Heavy Assets)
-database/neo4j/data/
-mysql_data/
-storage/ollama/
+# --- Automation & Redundancy ---
+shells/
+create_neural_pipeline.sh
 
-# Transaction Logs
+# --- Legacy / Database Artifacts ---
+database/neo4j/
+bin/
+*.class
 *.transaction.db.*
+
+# --- Logs ---
 *.log
-database/neo4j/data/
-*.transaction.db.*
+storage/log/*.log
+EOF
