@@ -48,6 +48,7 @@ help: ## Display this help menu
 
 up: ## Build and start all containers in the background
 	$(COMPOSE) up -d --build
+	@sudo chmod -R 777 storage/
 
 down: ## Stop and remove all containers
 	$(COMPOSE) down
