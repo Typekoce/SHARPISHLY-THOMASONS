@@ -8,6 +8,37 @@ LLM_CONT  = sharpishly-ollama
 
 # --- TARGETS ---
 
+# --- Docker Environment Setup ---
+
+docker-setup: ## Configure docker permissions and initialize storage for a new machine
+	@echo "🔧 Starting environment setup..."
+	@# Add user to docker group if not already there
+	@if ! groups | grep -q "\bdocker\b"; then \
+		echo "👥 Adding $(USER) to docker group..."; \
+		sudo usermod -aG docker $(USER); \
+		echo "⚠️  Please log out and log back in (or run 'newgrp docker') to apply group changes."; \
+	else \
+		echo "✅ User already in docker group."; \
+	fi
+	@# Initialize storage and logs to prevent Nginx/PHP crashes
+	@echo "📂 Initializing storage directories..."
+	mkdir -p storage/log storage/uploads storage/framework/views
+	touch storage/log/nginx_access.log storage/log/nginx_error.log
+	@# Set permissions so Docker containers can write to these volumes
+	chmod -R 777 storage
+	@echo "🚀 Setup complete. Try running 'make up' next."
+
+# --- Existing Commands ---
+
+up:
+	docker compose up -d --build
+
+down:
+	docker compose down
+
+logs-storage:
+	tail -f storage/log/*.log
+
 show-key: ## Find and display the local public SSH key for Digital Ocean / GitHub
 	@PUB_KEY=$$(ls ~/.ssh/*.pub 2>/dev/null | head -n 1); \
 	if [ -z "$$PUB_KEY" ]; then \
