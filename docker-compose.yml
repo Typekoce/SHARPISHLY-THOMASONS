@@ -130,12 +130,10 @@ services:
     volumes:
       - ./storage:/app/storage:rw
     # EXTERNAL CALL: Captured here to keep container ALIVE for debugging.
-    command: uvicorn server:app --host 0.0.0.0 --port 8001
+    command: python worker.py
     networks:
       - sharpishly-net
-    # depends_on:
-      # redis:
-      #   condition: service_healthy
+
 
 networks:
   sharpishly-net:
