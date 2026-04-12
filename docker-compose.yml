@@ -122,18 +122,32 @@ services:
   # --- 8. AI Worker (Secondary Cognition) ---
   # EXTERNAL: Listens on port 8001. 
   # MODIFIED: Changed from script call to Uvicorn to prevent "File Not Found" crashes.
+  # worker:
+  #   build: ./ai
+  #   container_name: sharpishly-ai-worker
+  #   restart: always
+  #   env_file: .env
+  #   volumes:
+  #     - ./storage:/app/storage:rw
+  #   # EXTERNAL CALL: Captured here to keep container ALIVE for debugging.
+  #   command: python worker.py
+  #   networks:
+  #     - sharpishly-net
+
   worker:
     build: ./ai
     container_name: sharpishly-ai-worker
-    restart: always
+    restart: unless-stopped
     env_file: .env
     volumes:
+      - ./ai:/app
       - ./storage:/app/storage:rw
-    # EXTERNAL CALL: Captured here to keep container ALIVE for debugging.
-    command: python worker.py
+    command: python3 worker.py
     networks:
       - sharpishly-net
-
+    depends_on:
+      php:
+        condition: service_started
 
 networks:
   sharpishly-net:

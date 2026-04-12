@@ -48,25 +48,30 @@ class JobController extends BaseController {
         ]);
     }
 
-public function update($id) {
-    // Get the JSON body from the Python request
-    $json = file_get_contents('php://input');
-    $data = json_decode($json, true);
+    public function update($id)
+    {
+        $json = file_get_contents('php://input');
+        $data = json_decode($json, true);
 
-    if (!$id || !isset($data['status'])) {
-        return $this->json(['status' => 'error', 'message' => 'Invalid update data'], 400);
+        if (!$id || !is_numeric($id)) {
+            return $this->json(['status' => 'error', 'message' => 'Invalid ID'], 400);
+        }
+
+        // Whitelist check
+        $allowed = ['pending', 'processing', 'completed', 'failed'];
+        if (!isset($data['status']) || !in_array($data['status'], $allowed, true)) {
+            return $this->json(['status' => 'error', 'message' => 'Invalid status'], 400);
+        }
+
+        $result = $this->db->save('jobs', [
+            'id'     => (int)$id,
+            'status' => $data['status']
+            // Only add 'error_message' if the column exists in your DB!
+        ]);
+
+        return $result 
+            ? $this->json(['status' => 'success', 'message' => "Job $id updated"])
+            : $this->json(['status' => 'error', 'message' => 'Update failed'], 500);
     }
-
-    // Update the record in the DMZ
-    $this->db->save('jobs', [
-        'id' => $id,
-        'status' => $data['status']
-    ]);
-
-    return $this->json([
-        'status' => 'success',
-        'message' => "Job $id updated to " . $data['status']
-    ]);
-}
 
 }
