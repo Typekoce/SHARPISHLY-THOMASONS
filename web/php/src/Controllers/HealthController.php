@@ -5,21 +5,12 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Models\HealthModel;
-use App\Services\OllamaService;
-use App\Services\RedisService;
 use Throwable;
 
 class HealthController extends BaseController
 {
-    private HealthModel $healthModel;
-    public RedisService $redis;
 
-    public function __construct()
-    {
-        parent::__construct();
-        $this->healthModel = new HealthModel();
-        $this->redis = RedisService::getInstance();
-    }
+    public $healthModel;
 
     /**
      * Comprehensive health check for SPA
@@ -35,9 +26,7 @@ class HealthController extends BaseController
 
         // DB check
         $rs = $this->db->find($conditions);
-        
-        $redisAlive = $this->redis->isAlive();
-        
+                
         // 🚀 Inherited from BaseController
         $neuralData = $this->getNeuralStatus();
 
@@ -45,10 +34,7 @@ class HealthController extends BaseController
             'status'     => ($redisAlive && $neuralData['synced']) ? 'healthy' : 'degraded',
             'database'   => true, 
             'latest_job' => $rs,
-            'redis'      => $redisAlive, 
             'queue_info' => [
-                'count' => $this->redis->getQueueLength(),
-                'keys'  => $this->redis->getKeys() 
             ],
             'ollama'     => $neuralData,
             'timestamp'  => time(),
@@ -62,17 +48,17 @@ class HealthController extends BaseController
      */
     public function check()
     {
+        $this->healthModel = new HealthModel();
+
         $dbReady    = $this->healthModel->isDatabaseReady();
-        $redisReady = $this->redis->isAlive();
         $neural     = $this->getNeuralStatus();
 
         $status = [
             'status'    => 'active',
             'database'  => $dbReady,
-            'redis'     => $redisReady,
             'ollama'    => $neural['active'],
             'synced'    => $neural['synced'],
-            'healthy'   => $dbReady && $redisReady && $neural['synced']
+            'healthy'   => $dbReady && $neural['synced']
         ];
 
         return $this->json($status, $status['healthy'] ? 200 : 503);
