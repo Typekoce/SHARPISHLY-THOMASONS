@@ -37,12 +37,13 @@ abstract class BaseController
 
     public function __construct()
     {
-        $this->db       = new \App\Services\Db(); 
         $this->loc      = new \App\Services\Location();
         $this->location = $this->loc;
         $this->smarty   = new \App\Services\Smarty();
         $this->logger   = new \App\Services\Logger();
         $this->session  = \App\Services\Session::getInstance();
+        $this->db       = new \App\Services\Db($this->logger); 
+
     }
     
     /**

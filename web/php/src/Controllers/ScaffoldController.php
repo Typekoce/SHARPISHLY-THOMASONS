@@ -79,4 +79,27 @@ class ScaffoldController extends BaseController
     echo "Task dispatched to Neural Pipeline.";
     }
 
+    /**
+     * Final Sunday Schema Fix
+     */
+    public function alter()
+    {
+        $this->db->alter([
+            'jobs' => [
+                'MODIFY' => [
+                    'payload' => 'TEXT NULL DEFAULT NULL', // THE CRITICAL FIX
+                    // 'status'  => "ENUM('pending','processing','completed','failed','archived') DEFAULT 'pending'"
+                ],
+                'ADD' => [
+                    // 'embedding_version' => 'VARCHAR(50) DEFAULT NULL',
+                    // 'processed_at'      => 'TIMESTAMP NULL DEFAULT NULL',
+                    // 'error_message'     => 'TEXT NULL',
+                    // 'finished_at'       => 'DATETIME NULL'
+                ]
+            ]
+        ]);
+        
+        return $this->json(['status' => 'success', 'message' => 'Payload is now nullable. Job #1 should clear.']);
+    }
+
 }

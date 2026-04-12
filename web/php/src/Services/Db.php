@@ -15,9 +15,11 @@ use Throwable;
 class Db
 {
     private PDO $pdo;
+    public $logger;
 
-    public function __construct()
+    public function __construct($logger = null)
     {
+        $this->logger = $logger;
         $host = getenv('DB_HOST');
         $db   = getenv('DB_NAME');
         $user = getenv('DB_USER');
@@ -169,4 +171,78 @@ class Db
     {
         return $this->pdo->lastInsertId();
     }
+
+/**
+ * Executes ALTER TABLE commands based on a structured array.
+ * Supports ADD, MODIFY, and DROP operations safely.
+ *
+ * Example usage:
+ * $this->db->alter([
+ *     'jobs' => [
+ *         'ADD' => [
+ *             'processed_at' => 'TIMESTAMP NULL DEFAULT NULL',
+ *             'embedding_model' => 'VARCHAR(100) DEFAULT NULL'
+ *         ],
+ *         'MODIFY' => [
+ *             'status' => "ENUM('pending','processing','completed','failed','archived') DEFAULT 'pending'"
+ *         ],
+ *         'DROP' => ['old_column']
+ *     ]
+ * ]);
+ */
+public function alter(array $definitions): void
+{
+    foreach ($definitions as $table => $actions) {
+        if (empty($actions) || !is_array($actions)) {
+            continue;
+        }
+
+        $statements = [];
+
+        foreach ($actions as $actionType => $columns) {
+            $actionType = strtoupper(trim((string)$actionType));
+
+            if (!in_array($actionType, ['ADD', 'MODIFY', 'DROP'], true)) {
+                $this->logger->warning("Unknown ALTER action type: $actionType for table $table");
+                continue;
+            }
+
+            if (!is_array($columns)) {
+                continue;
+            }
+
+            foreach ($columns as $column => $spec) {
+                if ($actionType === 'DROP') {
+                    // For DROP, $column is actually the column name (key may be numeric)
+                    $colName = is_string($column) ? $column : $spec;
+                    $statements[] = "DROP COLUMN `$colName`";
+                } 
+                elseif ($actionType === 'MODIFY') {
+                    $statements[] = "MODIFY COLUMN `$column` $spec";
+                } 
+                elseif ($actionType === 'ADD') {
+                    $statements[] = "ADD COLUMN `$column` $spec";
+                }
+            }
+        }
+
+        if (!empty($statements)) {
+            $sql = "ALTER TABLE `$table` " . implode(', ', $statements) . ";";
+
+            try {
+                $this->execute($sql);
+                $this->logger->info("Database altered successfully", [
+                    'table' => $table,
+                    'statements' => $statements
+                ]);
+            } catch (\Throwable $e) {
+                $this->logger->error("ALTER TABLE failed for $table", [
+                    'sql' => $sql,
+                    'error' => $e->getMessage()
+                ]);
+                throw $e;   // Re-throw so migration can fail visibly
+            }
+        }
+    }
+}
 }
