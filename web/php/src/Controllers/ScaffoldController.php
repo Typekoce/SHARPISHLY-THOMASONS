@@ -84,17 +84,20 @@ class ScaffoldController extends BaseController
      */
     public function alter()
     {
+        /**
+         * Sample alter configuration to be used in production
+         */
         $this->db->alter([
-            'jobs' => [
+            'sample' => [
                 'MODIFY' => [
-                    'payload' => 'TEXT NULL DEFAULT NULL', // THE CRITICAL FIX
-                    // 'status'  => "ENUM('pending','processing','completed','failed','archived') DEFAULT 'pending'"
+                    'payload' => 'TEXT NULL DEFAULT NULL', 
+                    'status'  => "ENUM('pending','processing','completed','failed','archived') DEFAULT 'pending'"
                 ],
                 'ADD' => [
-                    // 'embedding_version' => 'VARCHAR(50) DEFAULT NULL',
-                    // 'processed_at'      => 'TIMESTAMP NULL DEFAULT NULL',
-                    // 'error_message'     => 'TEXT NULL',
-                    // 'finished_at'       => 'DATETIME NULL'
+                    'embedding_version' => 'VARCHAR(50) DEFAULT NULL',
+                    'processed_at'      => 'TIMESTAMP NULL DEFAULT NULL',
+                    'error_message'     => 'TEXT NULL',
+                    'finished_at'       => 'DATETIME NULL'
                 ]
             ]
         ]);

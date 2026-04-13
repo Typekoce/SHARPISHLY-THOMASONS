@@ -130,4 +130,41 @@ class JobController extends BaseController
             ], 500);
         }
     }
+
+    /**
+     * Processes the raw file, cleans it, and prepares the job for the AI worker.
+     */
+    public function prepareJob(int $jobId)
+    {
+        $job = $this->db->find(['tbl' => 'jobs', 'where' => ['id' => $jobId]])[0] ?? null;
+
+        if (!$job || empty($job['file_name'])) {
+            return false;
+        }
+
+        $filePath = $this->location->uploads($job['file_name']);
+
+        if (file_exists($filePath)) {
+            $rawContent = file_get_contents($filePath);
+            
+            // --- The PHP Cleaning Logic ---
+            // 1. Strip tags if it's HTML/XML
+            // 2. Normalize whitespace (replaces newlines/tabs with single space)
+            // 3. Trim edges
+            $cleanContent = preg_replace('/\s+/', ' ', strip_tags($rawContent));
+            $cleanContent = trim($cleanContent);
+
+            // Update the job with the actual text data
+            $this->db->save('jobs', [
+                'id'      => $jobId,
+                'payload' => $cleanContent, // Now 'payload' is the text, not the filename
+                'status'  => 'pending'
+            ]);
+
+            return true;
+        }
+
+        return false;
+    }
+
 }
