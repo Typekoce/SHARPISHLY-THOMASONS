@@ -31,7 +31,21 @@ docker-setup: ## Configure docker permissions and initialize storage for a new m
 # --- Existing Commands ---
 
 up:
+	@echo "💽 External Drive detected: Initiating Slow-Boot sequence..."
+	# Prep storage with a small delay to allow disk spin-up
+	mkdir -p storage/log storage/uploads
+	chmod -R 777 storage
+	
+	# Start DB alone first
+	docker compose up -d sharpishly-db
+	@echo "⏳ Giving MySQL 30s to initialize on external storage..."
+	sleep 30
+	
+	# Start the rest once the heavy lifting (DB init) is settled
 	docker compose up -d --build
+	@echo "🚀 Stack is up. Checking filesystem sync..."
+	sleep 5
+	chmod -R 777 storage
 
 down:
 	docker compose down
