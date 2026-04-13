@@ -23,6 +23,7 @@ abstract class BaseController
     public $logger;
     protected $model;
     public $session;
+    public $redis;
 
     /**
      * Default Neural Stack for Thomasons V3.
@@ -42,7 +43,8 @@ abstract class BaseController
         $this->smarty   = new \App\Services\Smarty();
         $this->logger   = new \App\Services\Logger();
         $this->session  = \App\Services\Session::getInstance();
-        $this->db       = new \App\Services\Db($this->logger); 
+        $this->db       = new \App\Services\Db($this->logger);
+        $this->redis    = new \App\Services\RedisService($this->logger); 
 
     }
     

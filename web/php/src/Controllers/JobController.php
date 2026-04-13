@@ -167,4 +167,64 @@ class JobController extends BaseController
         return false;
     }
 
+    /**
+     * POST /php/job/finalize/{id}
+     * Called by Python worker after pushing vectors to Redis.
+     */
+    public function finalize($id)
+    {
+        $json = file_get_contents('php://input');
+        $data = json_decode($json, true);
+
+        if (!$id || !is_numeric($id)) {
+            return $this->json(['status' => 'error', 'message' => 'Invalid job ID'], 400);
+        }
+
+        try {
+            $redisKey = "np:job:{$id}:chunks";
+            $redis = new \Redis();
+            $redis->connect('sharpishly-redis', 6379);
+
+            $batch = [];
+            while ($item = $redis->lPop($redisKey)) {
+                $vectorData = json_decode($item, true);
+                if ($vectorData) {
+                    $batch[] = [
+                        'job_id'    => $id,
+                        'content'   => $vectorData['content'],
+                        'embedding' => json_encode($vectorData['embedding'])
+                    ];
+                }
+            }
+
+            if (!empty($batch)) {
+                // Assuming you have a batch insert method or use a loop with save()
+                foreach ($batch as $row) {
+                    $this->db->save('vectors', $row);
+                }
+            }
+
+            // Mark job as completed
+            $this->db->save('jobs', [
+                'id'         => (int)$id,
+                'status'     => 'completed',
+                'finished_at'=> date('Y-m-d H:i:s')
+            ]);
+
+            $this->logger->info("Job {$id} finalized from Redis buffer", ['vectors_count' => count($batch)]);
+
+            return $this->json([
+                'status'  => 'success',
+                'message' => "Job {$id} vectors ingested from Redis"
+            ]);
+
+        } catch (\Exception $e) {
+            $this->logger->error("Finalize failed for job {$id}: " . $e->getMessage());
+            return $this->json([
+                'status'  => 'error',
+                'message' => 'Failed to ingest vectors from Redis'
+            ], 500);
+        }
+    }
+
 }
