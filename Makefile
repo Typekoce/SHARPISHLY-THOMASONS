@@ -97,12 +97,13 @@ job-create: ## Create a test job by triggering Path B (Cleaning)
 
 job-pending: ## Fetch the next pending job (Verify what the AI Worker sees)
 	@curl -s http://localhost:8080/php/job/index | jq . || curl -i http://localhost:8080/php/job/index
-	
+
 show-key: ## Display local public SSH key
 	@PUB_KEY=$$(ls ~/.ssh/*.pub 2>/dev/null | head -n 1); \
 	if [ -z "$$PUB_KEY" ]; then echo "❌ No keys found"; else cat "$$PUB_KEY"; fi
 
 git-push: ## Git add, commit & push. Usage: make git-push m="Message"
+	clear
 	git add .
 	git commit -m "$(m)"
 	git push origin $(shell git rev-parse --abbrev-ref HEAD)
