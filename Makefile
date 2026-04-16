@@ -1,114 +1,79 @@
-# --- CONSTANTS ---
-COMPOSE   = docker compose
-PHP_CONT  = sharpishly-php
-AI_CONT   = sharpishly-ai-worker
-LLM_CONT  = sharpishly-ollama
-DB_CONT   = sharpishly-db
+# SHARPISHLY-THOMASONS: Native Provisioning
+# Target: Debian 12 (Fresh ISO)
 
-# Set STABILIZE=true to enable slow-boot for external drives/weak I/O
-STABILIZE ?= false
+.PHONY: help purge-docker install setup-samba setup-db setup-web setup-python create-env all
 
-.DEFAULT_GOAL := help
+# Load variables from .env if it exists
+ifneq (,$(wildcard ./.env))
+    include .env
+    export $(shell sed 's/=.*//' .env)
+endif
 
-# --- Docker Environment Setup ---
+help: ## Show this help message
+	@echo "SHARPISHLY-THOMASONS Management Commands:"
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
-docker-setup: ## Configure permissions and initialize storage
-	@echo "🔧 Starting environment setup..."
-	@if ! groups | grep -q "\bdocker\b"; then \
-		echo "👥 Adding $(USER) to docker group..."; \
-		sudo usermod -aG docker $(USER); \
+purge-docker: ## [0/5] Remove Docker and all its traces
+	@echo "--- Purging Docker ---"
+	@if command -v docker > /dev/null; then \
+		sudo apt-get purge -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin || true; \
+		sudo rm -rf /var/lib/docker /var/lib/containerd; \
+	else \
+		echo "Docker not found. Skipping."; \
 	fi
-	@echo "📂 Initializing storage directories..."
-	mkdir -p storage/log storage/uploads storage/framework/views
-	touch storage/log/nginx_access.log storage/log/nginx_error.log
-	chmod -R 777 storage
-	@echo "🚀 Setup complete."
 
-# --- Core Infrastructure ---
-
-up: ## Build and start all containers. Use STABILIZE=true for slow I/O.
-	@mkdir -p storage/log storage/uploads
-	@chmod -R 777 storage
-	@if [ "$(STABILIZE)" = "true" ]; then \
-		echo "⏳ Stabilizing I/O: Starting Database first..."; \
-		$(COMPOSE) up -d $(DB_CONT); \
-		sleep 30; \
+install: ## [1/5] Install LEMP stack, Python, and SSH
+	@echo "--- Installing Dependencies ---"
+	@sudo apt-get update -y
+	@sudo apt-get install -y -o Dpkg::Progress-Fancy="1" \
+		git nginx mariadb-server php-fpm php-mysql \
+		python3 python3-venv python3-pip curl openssh-server samba
+	@echo "127.0.0.1 sharpishly.dev" | sudo tee -a /etc/hosts
+	@if [ ! -f ~/.ssh/id_ed25519 ]; then \
+		ssh-keygen -t ed25519 -C "vboxuser@Debian12-TARDIS" -f ~/.ssh/id_ed25519 -N ""; \
 	fi
-	$(COMPOSE) up -d --build
-	@chmod -R 777 storage
-	@echo "✅ Stack is up."
+	@echo "--- SSH KEY FOR GITHUB ---"
+	@cat ~/.ssh/id_ed25519.pub
+	@echo "--------------------------"
+	@read -p "Add key to GitHub, then press Enter to clone..." confirm
+	@mkdir -p ~/Documents
+	@if [ ! -d ~/Documents/SHARPISHLY-THOMASONS ]; then \
+		git clone git@github.com:Typekoce/SHARPISHLY-THOMASONS.git ~/Documents/SHARPISHLY-THOMASONS; \
+	fi
 
-down: ## Stop and remove all containers
-	$(COMPOSE) down
+setup-samba: ## Configure Samba for host-to-guest file sharing
+	@echo "--- Configuring Samba ---"
+	@if ! grep -q "\[SHARPISHLY\]" /etc/samba/smb.conf; then \
+		printf "\n[SHARPISHLY]\n   path = /home/vboxuser/Documents/SHARPISHLY-THOMASONS\n   browseable = yes\n   read only = no\n   guest ok = no\n   valid users = vboxuser\n   force user = vboxuser\n   create mask = 0775\n   directory mask = 0775\n" | sudo tee -a /etc/samba/smb.conf; \
+		sudo smbpasswd -a vboxuser; \
+		sudo systemctl restart smbd; \
+	fi
 
-restart: down up ## Full reset: Stop, then Start
+create-env: ## Create a local .env file from template
+	@if [ ! -f .env ]; then \
+		echo "DB_NAME=sharpishly_db\nDB_USER=vboxuser\nDB_PASS=your_password" > .env; \
+		echo ".env created. Please edit before running setup-db."; \
+	else \
+		echo ".env exists."; \
+	fi
 
-clean: ## Nuke volumes, orphans, and build cache
-	$(COMPOSE) down -v --remove-orphans
-	docker system prune -f
-	@echo "✨ Environment sanitized."
+setup-db: create-env ## [2/5] Initialize MariaDB database and user
+	@sudo systemctl start mariadb
+	@sudo mysql -e "CREATE DATABASE IF NOT EXISTS $(DB_NAME);"
+	@sudo mysql -e "CREATE USER IF NOT EXISTS '$(DB_USER)'@'localhost' IDENTIFIED BY '$(DB_PASS)';"
+	@sudo mysql -e "GRANT ALL PRIVILEGES ON $(DB_NAME).* TO '$(DB_USER)'@'localhost';"
+	@sudo mysql -e "FLUSH PRIVILEGES;"
 
-# --- Development & Debugging ---
+setup-web: ## [3/5] Link Nginx config and restart PHP-FPM
+	@sudo cp ~/Documents/SHARPISHLY-THOMASONS/infra/nginx-native.conf /etc/nginx/sites-available/sharpishly || echo "Config missing!"
+	@sudo ln -sf /etc/nginx/sites-available/sharpishly /etc/nginx/sites-enabled/
+	@sudo rm -f /etc/nginx/sites-enabled/default
+	@sudo systemctl restart nginx
+	@sudo systemctl restart php8.2-fpm
 
-logs: ## Tail all container logs
-	$(COMPOSE) logs -f
+setup-python: ## [4/5] Setup Python VirtualEnv and install requirements
+	@cd ~/Documents/SHARPISHLY-THOMASONS && python3 -m venv venv
+	@~/Documents/SHARPISHLY-THOMASONS/venv/bin/pip install --upgrade pip
+	@~/Documents/SHARPISHLY-THOMASONS/venv/bin/pip install --progress-bar pretty -r ~/Documents/SHARPISHLY-THOMASONS/requirements.txt
 
-logs-storage: ## Tail local file logs (Nginx, PHP, App)
-	@tail -f storage/log/*.log
-
-sh-php: ## Shell into PHP container
-	docker exec -it $(PHP_CONT) sh
-
-sh-ai: ## Shell into AI Worker container
-	docker exec -it $(AI_CONT) sh
-
-sh-llm: ## Shell into Ollama container
-	docker exec -it $(LLM_CONT) sh
-
-dBug: ## Quick check of the vectors table
-	docker exec -it $(DB_CONT) mysql -u root -p -e "USE sharpishly; SELECT * FROM vectors LIMIT 5;"
-
-# --- Neural Handshake & LLM ---
-
-pull-heavy: ## VM: Pull Llama 3.1 & Nomic Embed
-	docker exec -it $(LLM_CONT) ollama pull llama3.1
-	docker exec -it $(LLM_CONT) ollama pull nomic-embed-text
-
-pull-lean: ## PROD: Pull Phi3 & all-minilm
-	docker exec -it $(LLM_CONT) ollama pull phi3:mini
-	docker exec -it $(LLM_CONT) ollama pull all-minilm
-
-ps-ai: ## Monitor Ollama's active models
-	docker exec -it $(LLM_CONT) ollama ps
-
-test: ## Run the entire Neural Handshake test suite
-	@echo "🧪 Running PHP Infrastructure Handshake..."
-	@docker exec $(PHP_CONT) php /var/www/html/tests/php/src/Services/EnvironmentServiceTest.php
-	@echo "🐍 Running Python Unit Tests..."
-	@docker exec $(AI_CONT) pytest tests/ai
-
-# --- Utilities ---
-
-db-migrate: ## Trigger database migrations via web endpoint
-	@curl -i http://localhost:8080/php/scaffold/migrate
-
-job-create: ## Create a test job by triggering Path B (Cleaning)
-	@curl -s http://localhost:8080/php/job/create | jq . || curl -i http://localhost:8080/php/job/create
-
-job-pending: ## Fetch the next pending job (Verify what the AI Worker sees)
-	@curl -s http://localhost:8080/php/job/index | jq . || curl -i http://localhost:8080/php/job/index
-
-show-key: ## Display local public SSH key
-	@PUB_KEY=$$(ls ~/.ssh/*.pub 2>/dev/null | head -n 1); \
-	if [ -z "$$PUB_KEY" ]; then echo "❌ No keys found"; else cat "$$PUB_KEY"; fi
-
-git-push: ## Git add, commit & push. Usage: make git-push m="Message"
-	clear
-	git add .
-	git commit -m "$(m)"
-	git push origin $(shell git rev-parse --abbrev-ref HEAD)
-
-help: ## Display this help menu
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}'
-
-.PHONY: help up down restart clean logs logs-storage sh-php sh-ai sh-llm pull-heavy pull-lean ps-ai test db-migrate show-key git-push
+all: purge-docker install setup-samba setup-db setup-python setup-web ## Execute the entire provisioning flow
