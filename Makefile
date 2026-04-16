@@ -57,13 +57,22 @@ create-env: ## Create a local .env file from template
 		echo ".env exists."; \
 	fi
 
-setup-db: create-env ## [2/5] Initialize MariaDB database and user
+setup-db: ## [2/5] Initialize MariaDB database and user
+	@echo "🚀 Starting MariaDB Initialization..."
+	@printf "   [▓▓░░░░░░░░] 20%% Starting Service..."
 	@sudo systemctl start mariadb
+	@printf "\r   [▓▓▓▓░░░░░░] 40%% Creating Database ($(DB_NAME))..."
 	@sudo mysql -e "CREATE DATABASE IF NOT EXISTS $(DB_NAME);"
+	@printf "\r   [▓▓▓▓▓▓░░░░] 60%% Creating User ($(DB_USER))..."
 	@sudo mysql -e "CREATE USER IF NOT EXISTS '$(DB_USER)'@'localhost' IDENTIFIED BY '$(DB_PASS)';"
+	@printf "\r   [▓▓▓▓▓▓▓▓░░] 80%% Granting Privileges..."
 	@sudo mysql -e "GRANT ALL PRIVILEGES ON $(DB_NAME).* TO '$(DB_USER)'@'localhost';"
 	@sudo mysql -e "FLUSH PRIVILEGES;"
-
+	@printf "\r   [▓▓▓▓▓▓▓▓▓▓] 100%% Handshake Complete!               \n"
+	@echo "-------------------------------------------------------"
+	@echo "✅ SUCCESS: Database '$(DB_NAME)' is live."
+	@echo "🔑 ACCESS: User '$(DB_USER)' authenticated with password."
+	@echo "-------------------------------------------------------"
 setup-web: ## [3/5] Link Nginx config and restart PHP-FPM
 	@sudo cp ~/Documents/SHARPISHLY-THOMASONS/infra/nginx-native.conf /etc/nginx/sites-available/sharpishly || echo "Config missing!"
 	@sudo ln -sf /etc/nginx/sites-available/sharpishly /etc/nginx/sites-enabled/
@@ -77,3 +86,4 @@ setup-python: ## [4/5] Setup Python VirtualEnv and install requirements
 	@~/Documents/SHARPISHLY-THOMASONS/venv/bin/pip install --progress-bar pretty -r ~/Documents/SHARPISHLY-THOMASONS/requirements.txt
 
 all: purge-docker install setup-samba setup-db setup-python setup-web ## Execute the entire provisioning flow
+
