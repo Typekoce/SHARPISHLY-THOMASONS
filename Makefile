@@ -11,7 +11,7 @@ endif
 
 help: ## Show this help message
 	@echo "SHARPISHLY-THOMASONS Management Commands:"
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' Makefile | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
 purge-docker: ## [0/5] Remove Docker and all its traces
 	@echo "--- Purging Docker ---"
