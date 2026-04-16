@@ -73,12 +73,29 @@ setup-db: ## [2/5] Initialize MariaDB database and user
 	@echo "✅ SUCCESS: Database '$(DB_NAME)' is live."
 	@echo "🔑 ACCESS: User '$(DB_USER)' authenticated with password."
 	@echo "-------------------------------------------------------"
+
 setup-web: ## [3/5] Link Nginx config and restart PHP-FPM
-	@sudo cp ~/Documents/SHARPISHLY-THOMASONS/infra/nginx-native.conf /etc/nginx/sites-available/sharpishly || echo "Config missing!"
+	@echo "🌐 Provisioning Native Nginx..."
+	@printf "   [▓▓░░░░░░░░] 20%% Setting directory traversal permissions..."
+	@sudo chmod +x /home/vboxuser
+	@sudo chmod +x /home/vboxuser/Documents
+	@sudo chmod +x /home/vboxuser/Documents/SHARPISHLY-THOMASONS
+	@sudo chmod -R +r /home/vboxuser/Documents/SHARPISHLY-THOMASONS/web
+	@printf "\r   [▓▓▓▓░░░░░░] 40%% Linking Nginx configuration..."
+	@sudo cp ./infra/nginx/default.conf /etc/nginx/sites-available/sharpishly
 	@sudo ln -sf /etc/nginx/sites-available/sharpishly /etc/nginx/sites-enabled/
 	@sudo rm -f /etc/nginx/sites-enabled/default
+	@printf "\r   [▓▓▓▓▓▓░░░░] 60%% Testing Nginx syntax..."
+	@sudo nginx -t > /dev/null 2>&1
+	@printf "\r   [▓▓▓▓▓▓▓▓░░] 80%% Restarting Nginx & PHP-FPM..."
 	@sudo systemctl restart nginx
 	@sudo systemctl restart php8.2-fpm
+	@printf "\r   [▓▓▓▓▓▓▓▓▓▓] 100%% Web Server Ready!               \n"
+	@echo "-------------------------------------------------------"
+	@echo "✅ SUCCESS: SPA live at http://localhost/"
+	@echo "🔗 API: http://localhost/api/health"
+	@echo "📂 ROOT: /home/vboxuser/Documents/SHARPISHLY-THOMASONS"
+	@echo "-------------------------------------------------------"
 
 setup-python: ## [4/5] Setup Python VirtualEnv and install requirements
 	@cd ~/Documents/SHARPISHLY-THOMASONS && python3 -m venv venv
