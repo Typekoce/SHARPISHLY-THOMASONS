@@ -7,6 +7,8 @@ routes = {
     "/": HomeController.index,
     "/home": HomeController.index,
     "/agent": AgentController.index,
+    "/agent/ceo": AgentController.ceo,
+    "/agent/hr": AgentController.hr,
     "/users": UserController.index,
     "/users/create": UserController.create,
     "/worker/process":WorkerController.process_task
