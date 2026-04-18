@@ -63,7 +63,7 @@ purge-docker: ## [0/5] Remove Docker and all its traces
 		echo "Docker not found. Skipping."; \
 	fi
 
-install: ## [1/5] Install LEMP stack, Python, and SSH
+install-lemp: ## [1/5] Install LEMP stack, Python, and SSH
 	@echo "--- Installing Dependencies ---"
 	@sudo apt-get update -y
 	@sudo apt-get install -y -o Dpkg::Progress-Fancy="1" \
