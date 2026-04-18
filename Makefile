@@ -26,30 +26,47 @@ show-key: ## Find and display the first local public SSH key
 		echo -e "\n---------------------------------------------------"; \
 	fi
 
+# --- Ollama Installation & Service ---
+install-ollama: ## [Step 0] Install Ollama natively on Debian
+	@echo "📥 Downloading and installing Ollama..."
+	@curl -fsSL https://ollama.com/install.sh | sh
+	@echo "✅ Ollama installed."
+	@echo "🔄 Starting Ollama service..."
+	@sudo systemctl enable --now ollama
+	@echo "🟢 Ollama is now running as a system service."
+
 # --- Model Pulling Targets ---
 llm-heavy: ## VM DEVELOPMENT: Pull heavy models (Llama 3.1 + Nomic Embed)
 	@echo "🚀 Initializing Heavy Stack (Dev Mode)..."
+	@# Verify ollama is installed before pulling
+	@command -v ollama >/dev/null 2>&1 || { echo "❌ Ollama not found. Run 'make install-ollama' first."; exit 1; }
 	ollama pull llama3.1
 	ollama pull nomic-embed-text
 	@echo "✅ Heavy models ready."
 
-llm-lean: ## HOST PRODUCTION: Pull lean models (Phi-3 mini + all-MiniLM)
+# --- Model Management (Native) ---
+
+llm-lean: ## HOST PRODUCTION: Pull lean models (Phi-3 mini + all-minilm)
 	@echo "🧠 Initializing Lean Stack (Production Mode)..."
+	@command -v ollama >/dev/null 2>&1 || { echo "❌ Ollama not found. Run 'make install-ollama' first."; exit 1; }
 	ollama pull phi3:mini
 	ollama pull all-minilm
 	@echo "✅ Lean models ready."
 
 llm-status: ## Show currently downloaded local models
 	@echo "📊 Local Ollama Model Library:"
+	@command -v ollama >/dev/null 2>&1 || { echo "❌ Ollama not found."; exit 1; }
 	@ollama list
 
 clean-models: ## Remove all local Ollama models (BE CAREFUL)
 	@echo "⚠️  WARNING: This will delete your local Ollama library."
-	@read -p "Are you sure? [y/N] " ans && [ $${ans:-N} = y ] || (echo "Aborted."; exit 1)
+	@read -p "Are you sure you want to delete all models? [y/N] " ans && [ "$$ans" = "y" ] || (echo "Aborted."; exit 1)
 	@ollama list | tail -n +2 | awk '{print $$1}' | xargs -I {} ollama rm {}
 	@echo "✅ Ollama library wiped."
 
 llm-info: ## Show Ollama version and system info
+	@echo "🔍 Ollama System Information:"
+	@command -v ollama >/dev/null 2>&1 || { echo "❌ Ollama not found."; exit 1; }
 	@ollama --version
 	@echo ""
 	@ollama list
