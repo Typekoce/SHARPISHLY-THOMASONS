@@ -13,6 +13,47 @@ help: ## Show this help message
 	@echo "SHARPISHLY-THOMASONS Management Commands:"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' Makefile | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
+# --- SSH Key Management ---
+show-key: ## Find and display the first local public SSH key
+	@PUB_KEY=$$(ls ~/.ssh/*.pub 2>/dev/null | head -n 1); \
+	if [ -z "$$PUB_KEY" ]; then \
+		echo "❌ No public SSH keys found in ~/.ssh/"; \
+		exit 1; \
+	else \
+		echo "🔑 Found public key: $$PUB_KEY"; \
+		echo "---------------------------------------------------"; \
+		cat "$$PUB_KEY"; \
+		echo -e "\n---------------------------------------------------"; \
+	fi
+
+# --- Model Pulling Targets ---
+llm-heavy: ## VM DEVELOPMENT: Pull heavy models (Llama 3.1 + Nomic Embed)
+	@echo "🚀 Initializing Heavy Stack (Dev Mode)..."
+	ollama pull llama3.1
+	ollama pull nomic-embed-text
+	@echo "✅ Heavy models ready."
+
+llm-lean: ## HOST PRODUCTION: Pull lean models (Phi-3 mini + all-MiniLM)
+	@echo "🧠 Initializing Lean Stack (Production Mode)..."
+	ollama pull phi3:mini
+	ollama pull all-minilm
+	@echo "✅ Lean models ready."
+
+llm-status: ## Show currently downloaded local models
+	@echo "📊 Local Ollama Model Library:"
+	@ollama list
+
+clean-models: ## Remove all local Ollama models (BE CAREFUL)
+	@echo "⚠️  WARNING: This will delete your local Ollama library."
+	@read -p "Are you sure? [y/N] " ans && [ $${ans:-N} = y ] || (echo "Aborted."; exit 1)
+	@ollama list | tail -n +2 | awk '{print $$1}' | xargs -I {} ollama rm {}
+	@echo "✅ Ollama library wiped."
+
+llm-info: ## Show Ollama version and system info
+	@ollama --version
+	@echo ""
+	@ollama list
+
 purge-docker: ## [0/5] Remove Docker and all its traces
 	@echo "--- Purging Docker ---"
 	@if command -v docker > /dev/null; then \
