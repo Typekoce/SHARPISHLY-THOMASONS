@@ -26,51 +26,6 @@ show-key: ## Find and display the first local public SSH key
 		echo -e "\n---------------------------------------------------"; \
 	fi
 
-# --- Ollama Installation & Service ---
-install-ollama: ## [Step 0] Install Ollama natively on Debian
-	@echo "📥 Downloading and installing Ollama..."
-	@curl -fsSL https://ollama.com/install.sh | sh
-	@echo "✅ Ollama installed."
-	@echo "🔄 Starting Ollama service..."
-	@sudo systemctl enable --now ollama
-	@echo "🟢 Ollama is now running as a system service."
-
-# --- Model Pulling Targets ---
-llm-heavy: ## VM DEVELOPMENT: Pull heavy models (Llama 3.1 + Nomic Embed)
-	@echo "🚀 Initializing Heavy Stack (Dev Mode)..."
-	@# Verify ollama is installed before pulling
-	@command -v ollama >/dev/null 2>&1 || { echo "❌ Ollama not found. Run 'make install-ollama' first."; exit 1; }
-	ollama pull llama3.1
-	ollama pull nomic-embed-text
-	@echo "✅ Heavy models ready."
-
-# --- Model Management (Native) ---
-
-llm-lean: ## HOST PRODUCTION: Pull lean models (Phi-3 mini + all-minilm)
-	@echo "🧠 Initializing Lean Stack (Production Mode)..."
-	@command -v ollama >/dev/null 2>&1 || { echo "❌ Ollama not found. Run 'make install-ollama' first."; exit 1; }
-	ollama pull phi3:mini
-	ollama pull all-minilm
-	@echo "✅ Lean models ready."
-
-llm-status: ## Show currently downloaded local models
-	@echo "📊 Local Ollama Model Library:"
-	@command -v ollama >/dev/null 2>&1 || { echo "❌ Ollama not found."; exit 1; }
-	@ollama list
-
-clean-models: ## Remove all local Ollama models (BE CAREFUL)
-	@echo "⚠️  WARNING: This will delete your local Ollama library."
-	@read -p "Are you sure you want to delete all models? [y/N] " ans && [ "$$ans" = "y" ] || (echo "Aborted."; exit 1)
-	@ollama list | tail -n +2 | awk '{print $$1}' | xargs -I {} ollama rm {}
-	@echo "✅ Ollama library wiped."
-
-llm-info: ## Show Ollama version and system info
-	@echo "🔍 Ollama System Information:"
-	@command -v ollama >/dev/null 2>&1 || { echo "❌ Ollama not found."; exit 1; }
-	@ollama --version
-	@echo ""
-	@ollama list
-
 purge-docker: ## [0/5] Remove Docker and all its traces
 	@echo "--- Purging Docker ---"
 	@if command -v docker > /dev/null; then \
@@ -97,52 +52,6 @@ install-lemp: ## [1/5] Install LEMP stack, Python, and SSH
 	@mkdir -p ~/Documents
 	@if [ ! -d ~/Documents/SHARPISHLY-THOMASONS ]; then \
 		git clone git@github.com:Typekoce/SHARPISHLY-THOMASONS.git ~/Documents/SHARPISHLY-THOMASONS; \
-	fi
-
-setup-nats: ## [Optional] Install and configure NATS JetStream message queue
-	@echo "🚀 Setting up NATS JetStream..."
-	
-	# Install NATS server
-	@if ! command -v nats-server >/dev/null 2>&1; then \
-		echo "Installing NATS server..."; \
-		sudo apt-get update -y; \
-		sudo apt-get install -y nats-server || { \
-			echo "❌ Failed to install nats-server via apt. Installing from official binary..."; \
-			curl -L https://github.com/nats-io/nats-server/releases/download/v2.10.5/nats-server-v2.10.5-linux-amd64.tar.gz | tar -xz; \
-			sudo mv nats-server-v2.10.5-linux-amd64/nats-server /usr/local/bin/; \
-			rm -rf nats-server-v2.10.5-linux-amd64*; \
-		}; \
-	else \
-		echo "✅ NATS server already installed."; \
-	fi
-
-	# Create storage directory
-	@mkdir -p storage/nats
-	@sudo chown -R $(USER):$(USER) storage/nats
-	@echo "✅ NATS storage directory created at ./storage/nats"
-
-	# Create basic NATS config via printf
-	@mkdir -p config
-	@printf "listen: 0.0.0.0:4222\n\njetstream {\n    store_dir: \"./storage/nats\"\n    max_mem: 1GB\n    max_file: 10GB\n}\n\nwebsocket {\n    port: 8081\n    no_tls: true\n}\n\nlogtime: true\ndebug: false\ntrace: false\n" > config/nats.conf
-	@echo "✅ NATS configuration created at config/nats.conf"
-
-	# Create systemd service via printf
-	@printf "[Unit]\nDescription=NATS Server for Sharpishly\nAfter=network.target\n\n[Service]\nType=simple\nUser=$(USER)\nExecStart=/usr/local/bin/nats-server -c $(shell pwd)/config/nats.conf\nRestart=always\nRestartSec=3\nWorkingDirectory=$(shell pwd)\nLimitNOFILE=100000\n\n[Install]\nWantedBy=multi-user.target\n" | sudo tee /etc/systemd/system/nats.service > /dev/null
-	@echo "✅ NATS systemd service created"
-
-	@sudo systemctl daemon-reload
-	@sudo systemctl enable --now nats.service
-
-	@echo "✅ NATS service installed and started"
-	@echo "   → Listening on port 4222"
-	@echo "   → Status: sudo systemctl status nats"
-
-setup-samba: ## Configure Samba for host-to-guest file sharing
-	@echo "--- Configuring Samba ---"
-	@if ! grep -q "\[SHARPISHLY\]" /etc/samba/smb.conf; then \
-		printf "\n[SHARPISHLY]\n   path = /home/vboxuser/Documents/SHARPISHLY-THOMASONS\n   browseable = yes\n   read only = no\n   guest ok = no\n   valid users = vboxuser\n   force user = vboxuser\n   create mask = 0775\n   directory mask = 0775\n" | sudo tee -a /etc/samba/smb.conf; \
-		sudo smbpasswd -a vboxuser; \
-		sudo systemctl restart smbd; \
 	fi
 
 create-env: ## Create a local .env file from template
@@ -200,3 +109,94 @@ setup-python: ## [4/5] Setup Python VirtualEnv and install requirements
 
 all: purge-docker install setup-samba setup-db setup-python setup-web ## Execute the entire provisioning flow
 
+
+setup-nats: ## [Optional] Install and configure NATS JetStream message queue
+	@echo "🚀 Setting up NATS JetStream..."
+	
+	# Install NATS server
+	@if ! command -v nats-server >/dev/null 2>&1; then \
+		echo "Installing NATS server..."; \
+		sudo apt-get update -y; \
+		sudo apt-get install -y nats-server || { \
+			echo "❌ Failed to install nats-server via apt. Installing from official binary..."; \
+			curl -L https://github.com/nats-io/nats-server/releases/download/v2.10.5/nats-server-v2.10.5-linux-amd64.tar.gz | tar -xz; \
+			sudo mv nats-server-v2.10.5-linux-amd64/nats-server /usr/local/bin/; \
+			rm -rf nats-server-v2.10.5-linux-amd64*; \
+		}; \
+	else \
+		echo "✅ NATS server already installed."; \
+	fi
+
+	# Create storage directory
+	@mkdir -p storage/nats
+	@sudo chown -R $(USER):$(USER) storage/nats
+	@echo "✅ NATS storage directory created at ./storage/nats"
+
+	# Create basic NATS config via printf
+	@mkdir -p config
+	@printf "listen: 0.0.0.0:4222\n\njetstream {\n    store_dir: \"./storage/nats\"\n    max_mem: 1GB\n    max_file: 10GB\n}\n\nwebsocket {\n    port: 8081\n    no_tls: true\n}\n\nlogtime: true\ndebug: false\ntrace: false\n" > config/nats.conf
+	@echo "✅ NATS configuration created at config/nats.conf"
+
+	# Create systemd service via printf
+	@printf "[Unit]\nDescription=NATS Server for Sharpishly\nAfter=network.target\n\n[Service]\nType=simple\nUser=$(USER)\nExecStart=/usr/local/bin/nats-server -c $(shell pwd)/config/nats.conf\nRestart=always\nRestartSec=3\nWorkingDirectory=$(shell pwd)\nLimitNOFILE=100000\n\n[Install]\nWantedBy=multi-user.target\n" | sudo tee /etc/systemd/system/nats.service > /dev/null
+	@echo "✅ NATS systemd service created"
+
+	@sudo systemctl daemon-reload
+	@sudo systemctl enable --now nats.service
+
+	@echo "✅ NATS service installed and started"
+	@echo "   → Listening on port 4222"
+	@echo "   → Status: sudo systemctl status nats"
+
+setup-samba: ## Configure Samba for host-to-guest file sharing
+	@echo "--- Configuring Samba ---"
+	@if ! grep -q "\[SHARPISHLY\]" /etc/samba/smb.conf; then \
+		printf "\n[SHARPISHLY]\n   path = /home/vboxuser/Documents/SHARPISHLY-THOMASONS\n   browseable = yes\n   read only = no\n   guest ok = no\n   valid users = vboxuser\n   force user = vboxuser\n   create mask = 0775\n   directory mask = 0775\n" | sudo tee -a /etc/samba/smb.conf; \
+		sudo smbpasswd -a vboxuser; \
+		sudo systemctl restart smbd; \
+	fi
+
+# --- Ollama Installation & Service ---
+install-ollama: ## [Step 0] Install Ollama natively on Debian
+	@echo "📥 Downloading and installing Ollama..."
+	@curl -fsSL https://ollama.com/install.sh | sh
+	@echo "✅ Ollama installed."
+	@echo "🔄 Starting Ollama service..."
+	@sudo systemctl enable --now ollama
+	@echo "🟢 Ollama is now running as a system service."
+
+# --- Model Pulling Targets ---
+llm-heavy: ## VM DEVELOPMENT: Pull heavy models (Llama 3.1 + Nomic Embed)
+	@echo "🚀 Initializing Heavy Stack (Dev Mode)..."
+	@# Verify ollama is installed before pulling
+	@command -v ollama >/dev/null 2>&1 || { echo "❌ Ollama not found. Run 'make install-ollama' first."; exit 1; }
+	ollama pull llama3.1
+	ollama pull nomic-embed-text
+	@echo "✅ Heavy models ready."
+
+# --- Model Management (Native) ---
+
+llm-lean: ## HOST PRODUCTION: Pull lean models (Phi-3 mini + all-minilm)
+	@echo "🧠 Initializing Lean Stack (Production Mode)..."
+	@command -v ollama >/dev/null 2>&1 || { echo "❌ Ollama not found. Run 'make install-ollama' first."; exit 1; }
+	ollama pull phi3:mini
+	ollama pull all-minilm
+	@echo "✅ Lean models ready."
+
+llm-status: ## Show currently downloaded local models
+	@echo "📊 Local Ollama Model Library:"
+	@command -v ollama >/dev/null 2>&1 || { echo "❌ Ollama not found."; exit 1; }
+	@ollama list
+
+clean-models: ## Remove all local Ollama models (BE CAREFUL)
+	@echo "⚠️  WARNING: This will delete your local Ollama library."
+	@read -p "Are you sure you want to delete all models? [y/N] " ans && [ "$$ans" = "y" ] || (echo "Aborted."; exit 1)
+	@ollama list | tail -n +2 | awk '{print $$1}' | xargs -I {} ollama rm {}
+	@echo "✅ Ollama library wiped."
+
+llm-info: ## Show Ollama version and system info
+	@echo "🔍 Ollama System Information:"
+	@command -v ollama >/dev/null 2>&1 || { echo "❌ Ollama not found."; exit 1; }
+	@ollama --version
+	@echo ""
+	@ollama list
