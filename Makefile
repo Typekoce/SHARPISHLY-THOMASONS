@@ -206,22 +206,63 @@ llm-info: ## Show Ollama version and system info
 
 # --- RAG (Retrieval-Augmented Generation) Section ---
 
-rag-install: ## Install Python dependencies into the VirtualEnv
+rag-install: ## [Step 4/5] Create Venv and install RAG dependencies
+	@if [ ! -d "$(VENV)" ]; then \
+		echo "🌱 Creating virtual environment..."; \
+		python3 -m venv $(VENV); \
+	fi
 	@echo "📦 Installing RAG dependencies into Venv..."
 	@$(PIP) install --upgrade pip
 	@$(PIP) install langchain langchain-ollama langchain-chroma langchain-community pypdf chromadb
 	@echo "✅ RAG dependencies installed."
 
-rag-index-heavy: ## Index documents using the Venv Python
-	@mkdir -p ./docs
+rag-index-heavy: ## Index documents in ./docs/ using Heavy stack
+	@mkdir -p ./docs scripts
 	@echo "📚 Generating Heavy Indexer Script..."
-	@printf '...' > scripts/index_heavy.py
+	@printf 'from langchain_community.document_loaders import DirectoryLoader, PyPDFLoader\n\
+from langchain_text_splitters import RecursiveCharacterTextSplitter\n\
+from langchain_ollama import OllamaEmbeddings\n\
+from langchain_chroma import Chroma\n\
+import os\n\n\
+loader = DirectoryLoader("./docs", glob="**/*.pdf", loader_cls=PyPDFLoader)\n\
+docs = loader.load()\n\
+if not docs: print("❌ No PDFs found in ./docs"); exit()\n\n\
+text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)\n\
+splits = text_splitter.split_documents(docs)\n\
+embeddings = OllamaEmbeddings(model="nomic-embed-text")\n\
+vectorstore = Chroma.from_documents(\n\
+    documents=splits,\n\
+    embedding=embeddings,\n\
+    persist_directory="./chroma_db_heavy"\n\
+)\n\
+print("✅ Heavy RAG index created/updated in ./chroma_db_heavy")\n' > scripts/index_heavy.py
 	@$(PYTHON) scripts/index_heavy.py
 	@echo "Heavy RAG indexing complete."
 
-rag-chat: ## Start RAG chat using the Venv Python
+rag-chat: ## Start interactive RAG chat (Heavy config)
+	@mkdir -p scripts
 	@echo "💬 Generating RAG Chat Script..."
-	@printf '...' > scripts/chat_heavy.py
+	@printf 'import sys\n\
+from langchain_ollama import ChatOllama, OllamaEmbeddings\n\
+from langchain_chroma import Chroma\n\
+from langchain_core.prompts import ChatPromptTemplate\n\
+from langchain_core.runnables import RunnablePassthrough\n\
+from langchain_core.output_parsers import StrOutputParser\n\n\
+embeddings = OllamaEmbeddings(model="nomic-embed-text")\n\
+vectorstore = Chroma(persist_directory="./chroma_db_heavy", embedding_function=embeddings)\n\
+retriever = vectorstore.as_retriever(search_kwargs={"k": 4})\n\
+llm = ChatOllama(model="llama3.1", temperature=0.3)\n\
+template = """Answer the question based only on the following context:\\n{context}\\nQuestion: {question}"""\n\
+prompt = ChatPromptTemplate.from_template(template)\n\
+chain = ({"context": retriever, "question": RunnablePassthrough()} | prompt | llm | StrOutputParser())\n\n\
+print("RAG Chat ready! (type exit to quit)\\n")\n\
+while True:\n\
+    try:\n\
+        q = input("You: ")\n\
+        if q.lower() in ["exit", "quit"]: break\n\
+        print("Assistant:", chain.invoke(q))\n\
+        print("-" * 60)\n\
+    except KeyboardInterrupt: break\n' > scripts/chat_heavy.py
 	@$(PYTHON) scripts/chat_heavy.py
 
 all: purge-docker install setup-samba setup-db setup-python setup-web ## Execute the entire provisioning flow
