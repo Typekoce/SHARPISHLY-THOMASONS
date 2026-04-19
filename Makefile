@@ -107,7 +107,6 @@ setup-python: ## [4/5] Setup Python VirtualEnv and install requirements
 	@~/Documents/SHARPISHLY-THOMASONS/venv/bin/pip install --upgrade pip
 	@~/Documents/SHARPISHLY-THOMASONS/venv/bin/pip install --progress-bar pretty -r ~/Documents/SHARPISHLY-THOMASONS/requirements.txt
 
-all: purge-docker install setup-samba setup-db setup-python setup-web ## Execute the entire provisioning flow
 
 
 setup-nats: ## [Optional] Install and configure NATS JetStream message queue
@@ -200,3 +199,67 @@ llm-info: ## Show Ollama version and system info
 	@ollama --version
 	@echo ""
 	@ollama list
+
+# --- RAG (Retrieval-Augmented Generation) Section ---
+
+rag-install: ## Install Python dependencies for local RAG
+	@echo "📦 Installing RAG dependencies..."
+	pip install --upgrade pip
+	pip install langchain langchain-ollama langchain-chroma langchain-community pypdf chromadb
+	@echo "✅ RAG dependencies installed."
+
+rag-index-heavy: ## Index documents in ./docs/ using Heavy stack (llama3.1 + nomic-embed-text)
+	@mkdir -p ./docs
+	@echo "📚 Generating Heavy Indexer Script..."
+	@printf 'from langchain_community.document_loaders import DirectoryLoader, PyPDFLoader\n\
+from langchain_text_splitters import RecursiveCharacterTextSplitter\n\
+from langchain_ollama import OllamaEmbeddings\n\
+from langchain_chroma import Chroma\n\
+import os\n\n\
+loader = DirectoryLoader("./docs", glob="**/*.pdf", loader_cls=PyPDFLoader)\n\
+docs = loader.load()\n\
+if not docs: print("❌ No PDFs found in ./docs"); exit()\n\n\
+text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)\n\
+splits = text_splitter.split_documents(docs)\n\
+embeddings = OllamaEmbeddings(model="nomic-embed-text")\n\
+vectorstore = Chroma.from_documents(\n\
+    documents=splits,\n\
+    embedding=embeddings,\n\
+    persist_directory="./chroma_db_heavy"\n\
+)\n\
+print("✅ Heavy RAG index created/updated in ./chroma_db_heavy")\n' > scripts/index_heavy.py
+	@python3 scripts/index_heavy.py
+	@echo "Heavy RAG indexing complete."
+
+rag-chat: ## Start a simple interactive RAG chat (Heavy config)
+	@echo "💬 Generating RAG Chat Script..."
+	@printf 'import sys\n\
+from langchain_ollama import ChatOllama, OllamaEmbeddings\n\
+from langchain_chroma import Chroma\n\
+from langchain_core.prompts import ChatPromptTemplate\n\
+from langchain_core.runnables import RunnablePassthrough\n\
+from langchain_core.output_parsers import StrOutputParser\n\n\
+embeddings = OllamaEmbeddings(model="nomic-embed-text")\n\
+vectorstore = Chroma(persist_directory="./chroma_db_heavy", embedding_function=embeddings)\n\
+retriever = vectorstore.as_retriever(search_kwargs={"k": 4})\n\
+llm = ChatOllama(model="llama3.1", temperature=0.3)\n\
+template = """Answer the question based only on the following context:\\n{context}\\nQuestion: {question}"""\n\
+prompt = ChatPromptTemplate.from_template(template)\n\
+chain = ({"context": retriever, "question": RunnablePassthrough()} | prompt | llm | StrOutputParser())\n\n\
+print("RAG Chat ready! (type exit to quit)\\n")\n\
+while True:\n\
+    try:\n\
+        q = input("You: ")\n\
+        if q.lower() in ["exit", "quit"]: break\n\
+        print("Assistant:", chain.invoke(q))\n\
+        print("-" * 60)\n\
+    except KeyboardInterrupt: break\n' > scripts/chat_heavy.py
+	@python3 scripts/chat_heavy.py
+
+rag-clean: ## Remove local Chroma vector databases
+	@echo "🗑️  Removing RAG vector stores..."
+	rm -rf ./chroma_db_heavy ./chroma_db_lean scripts/index_heavy.py scripts/chat_heavy.py
+	@echo "✅ RAG databases and temp scripts cleaned."
+
+all: purge-docker install setup-samba setup-db setup-python setup-web ## Execute the entire provisioning flow
+
