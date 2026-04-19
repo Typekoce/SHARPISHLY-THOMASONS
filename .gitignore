@@ -41,3 +41,4 @@ bin/
 *.log
 storage/log/*.log
 EOF
+venv/
