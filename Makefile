@@ -4,6 +4,8 @@
 VENV := ./venv
 PYTHON := $(VENV)/bin/python3
 PIP := $(VENV)/bin/python3 -m pip
+PROJECT_PATH := $(shell pwd)
+PHP_LOG := /var/log/php8.2-fpm.log  # Adjust version if using 8.1/8.3
 
 .PHONY: help purge-docker install setup-samba setup-db setup-web setup-python create-env all
 
@@ -86,10 +88,11 @@ setup-db: ## [2/5] Initialize MariaDB database and user
 setup-web: ## [3/5] Link Nginx config and restart PHP-FPM
 	@echo "🌐 Provisioning Native Nginx..."
 	@printf "   [▓▓░░░░░░░░] 20%% Setting directory traversal permissions..."
-	@sudo chmod +x /home/vboxuser
-	@sudo chmod +x /home/vboxuser/Documents
-	@sudo chmod +x /home/vboxuser/Documents/SHARPISHLY-THOMASONS
-	@sudo chmod -R +r /home/vboxuser/Documents/SHARPISHLY-THOMASONS/web
+	@# Traverse up to home to set +x on parent directories dynamically
+	@sudo chmod +x $(shell dirname $(shell dirname $(PROJECT_PATH))) # /home/vboxuser
+	@sudo chmod +x $(shell dirname $(PROJECT_PATH))                 # /home/vboxuser/Documents
+	@sudo chmod +x $(PROJECT_PATH)                                 # Project Root
+	@sudo chmod -R +r $(PROJECT_PATH)/web
 	@printf "\r   [▓▓▓▓░░░░░░] 40%% Linking Nginx configuration..."
 	@sudo cp ./infra/nginx/default.conf /etc/nginx/sites-available/sharpishly
 	@sudo ln -sf /etc/nginx/sites-available/sharpishly /etc/nginx/sites-enabled/
@@ -100,25 +103,34 @@ setup-web: ## [3/5] Link Nginx config and restart PHP-FPM
 	@sudo systemctl restart nginx
 	@sudo systemctl restart php8.2-fpm
 	@printf "\r   [▓▓▓▓▓▓▓▓▓▓] 100%% Web Server Ready!               \n"
+	@echo "🔐 Setting scoped permissions for web directories..."
+	@sudo chown -R $(USER):www-data $(PROJECT_PATH)/web
+	@find $(PROJECT_PATH)/web -type d -exec chmod 755 {} +
+	@find $(PROJECT_PATH)/web -type f -exec chmod 644 {} +
+	@echo "✅ Permissions updated for ./web/php and ./web/frontend"
 	@echo "-------------------------------------------------------"
 	@echo "✅ SUCCESS: SPA live at http://localhost/"
 	@echo "🔗 API: http://localhost/api/health"
-	@echo "📂 ROOT: /home/vboxuser/Documents/SHARPISHLY-THOMASONS"
+	@echo "📂 ROOT: $(PROJECT_PATH)"
 	@echo "-------------------------------------------------------"
 
 setup-db-migration: ## [4/5] Setup Sharpishly database tables
-	@echo "🚀 Starting database migration via scaffold..."
-	@curl -s -S -f -i http://localhost/php/scaffold/migrate || (echo "❌ Migration failed! Check PHP logs." && exit 1)
-	@echo "✅ Sharpishly database tables created/updated."
+	@echo "🚀 Starting database migration..."
+	@curl -s -f -i http://localhost/php/scaffold/migrate || (echo "❌ Migration failed. Run 'make logs' to see why." && exit 1)
 
 
 setup-python: ## [5/6] Setup Python VirtualEnv and install requirements
-	@cd ~/Documents/SHARPISHLY-THOMASONS && python3 -m venv venv
-	@~/Documents/SHARPISHLY-THOMASONS/venv/bin/pip install --upgrade pip
-	@~/Documents/SHARPISHLY-THOMASONS/venv/bin/pip install --progress-bar pretty -r ~/Documents/SHARPISHLY-THOMASONS/requirements.txt
+	@echo "🐍 Initializing Python Virtual Environment..."
+	@python3 -m venv $(VENV)
+	@$(PIP) install --upgrade pip
+	@$(PIP) install --progress-bar pretty -r requirements.txt
+	@echo "✅ Python environment ready."
 
-logs: ## [6/6] Display error and access logs
-	@tail -f /var/log/nginx/*.log
+logs: ## [6/6] Display error and access logs (Nginx & PHP)
+	@echo "📋 Tailing Nginx and PHP logs... (Ctrl+C to stop)"
+	@sudo tail -f /var/log/nginx/sharpishly_access.log \
+	             /var/log/nginx/sharpishly_error.log \
+	             $(PHP_LOG)
 
 setup-nats: ## [Optional] Install and configure NATS JetStream message queue
 	@echo "🚀 Setting up NATS JetStream..."

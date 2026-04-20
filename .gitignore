@@ -1,4 +1,3 @@
-cat <<EOF > .gitignore
 # --- System / IDE ---
 .DS_Store
 .vscode/
@@ -17,6 +16,7 @@ storage/**/*
 storage/ollama/
 storage/qdrant/
 mysql_data/
+chroma_db_heavy/
 
 # --- Python / AI Infrastructure ---
 __pycache__/
