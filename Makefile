@@ -106,12 +106,19 @@ setup-web: ## [3/5] Link Nginx config and restart PHP-FPM
 	@echo "📂 ROOT: /home/vboxuser/Documents/SHARPISHLY-THOMASONS"
 	@echo "-------------------------------------------------------"
 
-setup-python: ## [4/5] Setup Python VirtualEnv and install requirements
+setup-db-migration: ## [4/5] Setup Sharpishly database tables
+	@echo "🚀 Starting database migration via scaffold..."
+	@curl -s -S -f -i http://localhost/php/scaffold/migrate || (echo "❌ Migration failed! Check PHP logs." && exit 1)
+	@echo "✅ Sharpishly database tables created/updated."
+
+
+setup-python: ## [5/6] Setup Python VirtualEnv and install requirements
 	@cd ~/Documents/SHARPISHLY-THOMASONS && python3 -m venv venv
 	@~/Documents/SHARPISHLY-THOMASONS/venv/bin/pip install --upgrade pip
 	@~/Documents/SHARPISHLY-THOMASONS/venv/bin/pip install --progress-bar pretty -r ~/Documents/SHARPISHLY-THOMASONS/requirements.txt
 
-
+logs: ## [6/6] Display error and access logs
+	@tail -f /var/log/nginx/*.log
 
 setup-nats: ## [Optional] Install and configure NATS JetStream message queue
 	@echo "🚀 Setting up NATS JetStream..."
