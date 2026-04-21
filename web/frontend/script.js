@@ -192,6 +192,36 @@ const Controller = {
         setInterval(() => this.fetchHealth(), 5000);
     },
 
+    // NEW: Handle dynamic interactions for the current view
+    bindEvents() {
+        if (Model.currentPage === 'llm') {
+            const dropzone = document.getElementById('dropzone');
+            const fileInput = document.getElementById('fileInput');
+
+            if (dropzone && fileInput) {
+                // Click to open window
+                dropzone.onclick = () => fileInput.click();
+
+                // Handle file selection
+                fileInput.onchange = (e) => this.handleUpload(e.target.files);
+
+                // Drag & Drop logic
+                dropzone.ondragover = (e) => { e.preventDefault(); dropzone.classList.add('border-primary'); };
+                dropzone.ondragleave = () => dropzone.classList.remove('border-primary');
+                dropzone.ondrop = (e) => {
+                    e.preventDefault();
+                    dropzone.classList.remove('border-primary');
+                    this.handleUpload(e.dataTransfer.files);
+                };
+            }
+        }
+    },
+
+
+
+
+    //
+
     async fetchHealth() {
         try {
             const res = await fetch('/php/health');
@@ -212,6 +242,7 @@ const Controller = {
         if (force || container.innerHTML !== html) {
             container.innerHTML = html;
         }
+        this.bindEvents();
     }
 };
 
