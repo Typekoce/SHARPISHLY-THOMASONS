@@ -1,10 +1,12 @@
+from app.controllers.base_controller import BaseController
 from app.models.log_model import LogModel
 
-class LogController:
+class LogController(BaseController):
     @staticmethod
     def record_event():
         model = LogModel()
-        result = model.execute()
-        if result:
-            return "200 - OK: System event logged."
-        return "500 - Error: Log operation failed."
+        return BaseController.json_response(
+            model.execute(), 
+            "System event logged.", 
+            "Log operation failed."
+        )

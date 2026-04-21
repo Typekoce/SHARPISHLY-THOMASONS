@@ -1,10 +1,12 @@
+from app.controllers.base_controller import BaseController
 from app.models.job_model import JobModel
 
-class JobController:
+class JobController(BaseController):
     @staticmethod
     def get_status():
         model = JobModel()
-        result = model.execute()
-        if result:
-            return "200 - OK: Job status retrieved."
-        return "500 - Error: Job operation failed."
+        return BaseController.json_response(
+            model.execute(), 
+            "Job status retrieved.", 
+            "Job operation failed."
+        )
