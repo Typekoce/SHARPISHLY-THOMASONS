@@ -3,58 +3,114 @@ declare(strict_types=1);
 
 /**
  * SHARPISHLY BOOTSTRAP
- * Initialises the Autoloader and Database for the Web UI.
+ * Encapsulated initialization for Web UI and Migrations.
  */
 
-// 1. PSR-4ish Autoloader (Manual as we are not using Composer locally)
-spl_autoload_register(function ($class) {
-    $prefix = 'App\\';
-    $base_dir = __DIR__ . '/';
-    $len = strlen($prefix);
-    
-    if (strncmp($prefix, $class, $len) !== 0) {
+define('PROJECT_ROOT', dirname(__DIR__, 3));
+
+/**
+ * 1. Environment Loader
+ */
+function initializeEnvironment(string $root): void {
+    $path = $root . '/.env';
+    if (!file_exists($path)) {
+        error_log("Bootstrap: .env not found at $path");
         return;
     }
-
-    $relative_class = substr($class, $len);
-    $file = $base_dir . str_replace('\\', '/', $relative_class) . '.php';
-
-    if (file_exists($file)) {
-        require_once $file;
+    
+    $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        $line = trim($line);
+        if (!$line || strpos($line, '#') === 0) continue;
+        
+        $parts = explode('=', $line, 2);
+        if (count($parts) === 2) {
+            $name = trim($parts[0]);
+            $value = trim(trim($parts[1]), '"\'');
+            putenv("{$name}={$value}");
+            $_ENV[$name] = $value;
+            $_SERVER[$name] = $value;
+        }
     }
-});
+}
 
-// 2. Global Exception Handler for JSON responses
+/**
+ * 2. PSR-4 Autoloader
+ */
+function initializeAutoloader(string $baseDir): void {
+    spl_autoload_register(function ($class) use ($baseDir) {
+        $prefix = 'App\\';
+        $len = strlen($prefix);
+        if (strncmp($prefix, $class, $len) !== 0) return;
+
+        $relativeClass = substr($class, $len);
+        $file = $baseDir . str_replace('\\', '/', $relativeClass) . '.php';
+
+        if (file_exists($file)) {
+            require_once $file;
+        }
+    });
+}
+
+/**
+ * 3. Database & Logger Factory
+ */
+function initializeServices(): void {
+    // Instantiate Logger first so it can be used by other services
+    $logger = new \App\Services\Logger();
+    $GLOBALS['logger'] = $logger;
+    
+    $logger->info("Initializing Database connection...");
+
+    $config = [
+        'host' => getenv('DB_HOST') ?: '127.0.0.1',
+        'name' => getenv('DB_NAME'),
+        'user' => getenv('DB_USER'),
+        'pass' => getenv('DB_PASS') ?: ''
+    ];
+
+    foreach (['name', 'user'] as $key) {
+        if ($config[$key] === false || $config[$key] === null) {
+            $logger->error("Validation failed: DB_" . strtoupper($key) . " is missing.");
+            throw new \Exception("Environment Variable Missing: DB_" . strtoupper($key));
+        }
+    }
+
+    try {
+        $GLOBALS['db'] = new \App\Services\Db($config);
+        $logger->info("Database handshake successful.");
+    } catch (\Throwable $e) {
+        $logger->error("Database connection failed: " . $e->getMessage());
+        throw new \Exception("Database Connection Failed: " . $e->getMessage());
+    }
+}
+
+/**
+ * EXECUTION PHASE
+ */
+
 set_exception_handler(function ($e) {
-    header('Content-Type: application/json');
+    $msg = "Bootstrap Fatal: " . $e->getMessage();
+    
+    // Check for global instance before falling back to system log
+    if (isset($GLOBALS['logger'])) {
+        $GLOBALS['logger']->error($msg);
+    } else {
+        error_log($msg);
+    }
+
+    if (!headers_sent()) {
+        header('Content-Type: application/json');
+    }
     http_response_code(500);
     echo json_encode([
         'status'  => 'error',
-        'message' => 'Bootstrap Error: ' . $e->getMessage()
+        'message' => 'Bootstrap Error: ' . $e->getMessage(),
+        'trace'   => $e->getFile() . ' on line ' . $e->getLine()
     ]);
     exit;
 });
 
-// We pull from the environment variables defined in docker-compose.yml
-try {
-    $dbConfig = [
-        'host' => getenv('DB_HOST') ?: 'sharpishly-db',
-        'name' => getenv('DB_NAME') ?: 'sharpishly',
-        'user' => getenv('DB_USER') ?: 'root',
-        'pass' => getenv('DB_PASS') ?: 'root_password'
-    ];
-
-    // This creates the singleton/instance your BaseController uses
-    $db = new \App\Services\Db($dbConfig);
-    
-    // Inject into a global space if your BaseController looks for 'db'
-    $GLOBALS['db'] = $db;
-
-} catch (\Throwable $e) {
-    throw new \Exception("Database Connection Failed: " . $e->getMessage());
-}
-
-/**
- * Note: The PHP Worker loop has been removed from this file 
- * as it is now handled by the Python Neural Worker.
- */
+initializeEnvironment(PROJECT_ROOT);
+initializeAutoloader(__DIR__ . '/');
+initializeServices();
