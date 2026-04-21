@@ -21,9 +21,11 @@ $aliases = [
     'chat-stream'=> ['Chat', 'stream'],
 ];
 
-// 3. Parse the URI
-$uriPath = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-$parts = explode('/', trim($uriPath, '/')); 
+// 3. Parse the URI (CLI-aware fallback)
+$requestUri = $_SERVER['REQUEST_URI'] ?? '/';
+$uriPath = parse_url($requestUri, PHP_URL_PATH) ?? '/';
+
+$parts = explode('/', trim($uriPath, '/'));
 
 // 4. Strip prefixes (/php/ or /api/)
 if (isset($parts[0]) && ($parts[0] === 'php' || $parts[0] === 'api')) {
