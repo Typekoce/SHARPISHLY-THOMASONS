@@ -22,8 +22,8 @@ abstract class BaseService
     protected string $aiEndpoint;
     
     /** @var string Primary application log path */
-    protected string $logFile = '/var/www/html/storage/log/app.log';
-
+    protected string $logFile = PROJECT_ROOT . '/storage/logs/app.log';
+    
     /**
      * Bootstraps service dependencies and ensures filesystem readiness.
      */

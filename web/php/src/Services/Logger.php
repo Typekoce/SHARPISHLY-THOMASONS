@@ -15,8 +15,12 @@ class Logger extends BaseService
         $timestamp = date('Y-m-d H:i:s');
         $jsonContext = !empty($context) ? ' ' . json_encode($context, JSON_UNESCAPED_SLASHES) : '';
         
-        // Ensure log file exists (inherited from BaseService/Location)
-        $logFile = $this->logFile ?? '/var/www/html/storage/logs/app.log';
+        /**
+         * LATERAL THINKING: We use Location service to handle the directory creation
+         * but we keep the logical flow of the original logger.
+         */
+        $location = new \App\Services\Location();
+        $logFile = $location->logs('app.log');
 
         // Formatted for the log file
         $formatted = sprintf("[%s] %s: %s%s%s", 
@@ -30,7 +34,8 @@ class Logger extends BaseService
         // 1. Write with an exclusive lock (LOCK_EX) to prevent race conditions during high-volume neural tasks
         file_put_contents($logFile, $formatted, FILE_APPEND | LOCK_EX);
 
-        // 2. Mirror ERRORS to Docker logs (stderr) for visibility in 'docker compose logs'
+        // 2. Mirror ERRORS to system logs for visibility in 'make logs' 
+        // This is critical for the Native Debian/Nginx setup.
         if (in_array(strtolower($level), ['error', 'critical', 'alert', 'warning'])) {
             error_log("PHP_APP_STDOUT: [$level] $message" . $jsonContext);
         }
