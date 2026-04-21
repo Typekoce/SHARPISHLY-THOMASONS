@@ -85,40 +85,36 @@ setup-db: ## [2/5] Initialize MariaDB database and user
 	@echo "🔑 ACCESS: User '$(DB_USER)' authenticated with password."
 	@echo "-------------------------------------------------------"
 
-setup-web: ## [3/5] Link Nginx config and restart PHP-FPM
+setup-web: ## [3/5] Provision Nginx & permissions (Native Debian)
 	@echo "🌐 Provisioning Native Nginx..."
-	@printf "   [▓▓░░░░░░░░] 20%% Setting directory traversal permissions..."
-	@# Traverse up to home to set +x on parent directories dynamically
+	@# 1. Traversal Permissions
 	@sudo chmod +x $(shell dirname $(shell dirname $(PROJECT_PATH))) # /home/vboxuser
 	@sudo chmod +x $(shell dirname $(PROJECT_PATH))                 # /home/vboxuser/Documents
 	@sudo chmod +x $(PROJECT_PATH)                                 # Project Root
-	@sudo chmod -R +r $(PROJECT_PATH)/web
-	@printf "\r   [▓▓▓▓░░░░░░] 40%% Linking Nginx configuration..."
+	
+	@# 2. Nginx Configuration
 	@sudo cp ./infra/nginx/default.conf /etc/nginx/sites-available/sharpishly
 	@sudo ln -sf /etc/nginx/sites-available/sharpishly /etc/nginx/sites-enabled/
 	@sudo rm -f /etc/nginx/sites-enabled/default
-	@printf "\r   [▓▓▓▓▓▓░░░░] 60%% Testing Nginx syntax..."
-	@sudo nginx -t > /dev/null 2>&1
-	@printf "\r   [▓▓▓▓▓▓▓▓░░] 80%% Restarting Nginx & PHP-FPM..."
-	@sudo systemctl restart nginx
-	@sudo systemctl restart php8.2-fpm
-	@printf "\r   [▓▓▓▓▓▓▓▓▓▓] 100%% Web Server Ready!               \n"
-	@echo "🔐 Setting scoped permissions for web and storage..."
-	@# Check and create storage directories if they don't exist
-	@if [ ! -d "$(PROJECT_PATH)/storage" ]; then \
-		mkdir -p $(PROJECT_PATH)/storage/uploads $(PROJECT_PATH)/storage/logs; \
-		echo "📁 Created storage structure."; \
-	fi
-	@# Apply ownership: You own it, www-data can write to it
-	@sudo chown -R $(USER):www-data $(PROJECT_PATH)/web
-	@sudo chown -R $(USER):www-data $(PROJECT_PATH)/storage
-	@# Set permissions: 775 allows the group (www-data) to create subdirectories
+	@sudo nginx -t && sudo systemctl restart nginx php8.2-fpm
+
+	@# 3. Storage Provisioning & Permissions
+	@echo "🔐 Applying Setgid and scoped permissions..."
+	@mkdir -p $(PROJECT_PATH)/storage/uploads $(PROJECT_PATH)/storage/logs $(PROJECT_PATH)/storage/database
+	
+	@# Ownership: You own, group writes. 
+	@sudo chown -R $(USER):www-data $(PROJECT_PATH)/web $(PROJECT_PATH)/storage
+	
+	@# Standard Web permissions
 	@find $(PROJECT_PATH)/web -type d -exec chmod 755 {} +
 	@find $(PROJECT_PATH)/web -type f -exec chmod 644 {} +
+	
+	@# Storage: 775 + Setgid (g+s) ensures new files belong to www-data automatically
 	@chmod -R 775 $(PROJECT_PATH)/storage
-	@echo "✅ Permissions updated for ./web and ./storage"
+	@find $(PROJECT_PATH)/storage -type d -exec chmod g+s {} +
+	
 	@echo "-------------------------------------------------------"
-	@echo "✅ SUCCESS: SPA live at http://sharpishly.vm"
+	@echo "✅ SUCCESS: Environment Grounded"
 	@echo "🔗 API: http://sharpishly.vm/php/health"
 	@echo "📂 ROOT: $(PROJECT_PATH)"
 	@echo "-------------------------------------------------------"
