@@ -4,6 +4,7 @@
 .idea/
 *.swp
 *.bak
+.Trash-1000/
 
 # --- Environment & Secrets ---
 .env
@@ -11,10 +12,12 @@
 .env.*.local
 
 # --- Centralized Storage ---
-storage/**/*
+storage/*
+!storage/.gitkeep
 !storage/**/.gitkeep
 storage/ollama/
 storage/qdrant/
+chroma_db_heavy/
 mysql_data/
 chroma_db_heavy/
 
@@ -22,6 +25,7 @@ chroma_db_heavy/
 __pycache__/
 *.pyc
 ai/venv/
+venv/
 .pytest_cache/
 
 # --- Web & PHP ---
@@ -41,4 +45,3 @@ bin/
 *.log
 storage/log/*.log
 EOF
-venv/
