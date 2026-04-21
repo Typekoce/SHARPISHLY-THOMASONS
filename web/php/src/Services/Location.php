@@ -14,14 +14,15 @@ class Location {
 
     public function __construct() {
         // 1. Establish Project Root (The Source of Truth)
+        // Fix: Added parentheses to resolve the unparenthesized ternary fatal error
         $this->projectRoot = defined('PROJECT_ROOT') 
             ? PROJECT_ROOT 
-            : realpath(dirname(__DIR__, 4)) ?: '';
+            : (realpath(dirname(__DIR__, 4)) ?: '');
 
         // 2. Establish Storage Base
         $this->storageBase = $this->projectRoot . '/storage/';
         
-        // CRITICAL FUNCTIONALITY: Ensure the base storage exists immediately
+        // Ensure the base storage exists immediately
         if (!is_dir($this->storageBase)) {
             mkdir($this->storageBase, 0775, true);
         }

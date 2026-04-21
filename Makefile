@@ -103,14 +103,23 @@ setup-web: ## [3/5] Link Nginx config and restart PHP-FPM
 	@sudo systemctl restart nginx
 	@sudo systemctl restart php8.2-fpm
 	@printf "\r   [▓▓▓▓▓▓▓▓▓▓] 100%% Web Server Ready!               \n"
-	@echo "🔐 Setting scoped permissions for web directories..."
+	@echo "🔐 Setting scoped permissions for web and storage..."
+	@# Check and create storage directories if they don't exist
+	@if [ ! -d "$(PROJECT_PATH)/storage" ]; then \
+		mkdir -p $(PROJECT_PATH)/storage/uploads $(PROJECT_PATH)/storage/logs; \
+		echo "📁 Created storage structure."; \
+	fi
+	@# Apply ownership: You own it, www-data can write to it
 	@sudo chown -R $(USER):www-data $(PROJECT_PATH)/web
+	@sudo chown -R $(USER):www-data $(PROJECT_PATH)/storage
+	@# Set permissions: 775 allows the group (www-data) to create subdirectories
 	@find $(PROJECT_PATH)/web -type d -exec chmod 755 {} +
 	@find $(PROJECT_PATH)/web -type f -exec chmod 644 {} +
-	@echo "✅ Permissions updated for ./web/php and ./web/frontend"
+	@chmod -R 775 $(PROJECT_PATH)/storage
+	@echo "✅ Permissions updated for ./web and ./storage"
 	@echo "-------------------------------------------------------"
-	@echo "✅ SUCCESS: SPA live at http://localhost/"
-	@echo "🔗 API: http://localhost/api/health"
+	@echo "✅ SUCCESS: SPA live at http://sharpishly.vm"
+	@echo "🔗 API: http://sharpishly.vm/php/health"
 	@echo "📂 ROOT: $(PROJECT_PATH)"
 	@echo "-------------------------------------------------------"
 
