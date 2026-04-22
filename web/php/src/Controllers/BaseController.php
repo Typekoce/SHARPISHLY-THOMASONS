@@ -23,7 +23,8 @@ abstract class BaseController
     public $logger;
     protected $model;
     public $session;
-    public $redis;
+    public $nats
+
 
     /**
      * Default Neural Stack for Thomasons V3.
@@ -44,7 +45,7 @@ abstract class BaseController
         $this->logger   = new \App\Services\Logger();
         $this->session  = \App\Services\Session::getInstance();
         $this->db       = new \App\Services\Db($this->logger);
-        $this->redis    = new \App\Services\RedisService($this->logger); 
+        $this->nats    = new \App\Services\NatsService($this->logger); 
 
     }
     
