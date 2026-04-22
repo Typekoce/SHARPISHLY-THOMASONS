@@ -181,21 +181,16 @@ class JobController extends BaseController
         }
 
         try {
-            $redisKey = "np:job:{$id}:chunks";
-            $redis = new \Redis();
-            $redis->connect('sharpishly-redis', 6379);
 
-            $batch = [];
-            while ($item = $redis->lPop($redisKey)) {
-                $vectorData = json_decode($item, true);
-                if ($vectorData) {
-                    $batch[] = [
-                        'job_id'    => $id,
-                        'content'   => $vectorData['content'],
-                        'embedding' => json_encode($vectorData['embedding'])
-                    ];
-                }
-            }
+            // New NATS logic:
+            $nats = new \App\Services\NatsService();
+            $payload = json_encode([
+                "job_id" => $id,
+                "path"   => $filePath,
+                "action" => "vectorize"
+            ]);
+
+            $nats->publish("np.intake", $payload);
 
             if (!empty($batch)) {
                 // Assuming you have a batch insert method or use a loop with save()
