@@ -62,7 +62,7 @@ install-lemp: ## [1/5] Install LEMP stack, Python, and SSH
 
 create-env: ## Create a local .env file from template
 	@if [ ! -f .env ]; then \
-		echo "DB_NAME=sharpishly_db\nDB_USER=vboxuser\nDB_PASS=your_password" > .env; \
+		echo "DB_NAME=sharpishly_db\nDB_USER=vboxuser\nDB_PASS=your_password\nDB_HOST=sharpishly" > .env; \
 		echo ".env created. Please edit before running setup-db."; \
 	else \
 		echo ".env exists."; \
