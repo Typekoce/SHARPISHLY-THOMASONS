@@ -38,7 +38,7 @@ class Db
             $this->pdo = new PDO($dsn, $user, $pass, $options);
         } catch (PDOException $e) {
             error_log("CRITICAL DATABASE ERROR: " . $e->getMessage());
-            throw new \Exception("MySQL Connection Failed. Is the 'sharpishly-db' container running?");
+            throw new \Exception("MySQL Connection Failed. Is the '127.0.0.1' container running?");
         }
     }
 

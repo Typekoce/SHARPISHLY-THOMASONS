@@ -57,7 +57,7 @@ class ChatController extends BaseController
 
     private function callNeuralEngine(string $prompt, string $system): string
     {
-        $url = "http://sharpishly-ollama:11434/api/generate";
+        $url = "http://127.0.0.1-ollama:11434/api/generate";
         
         $payload = json_encode([
             "model" => "llama3.1", 

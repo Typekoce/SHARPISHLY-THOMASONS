@@ -88,35 +88,46 @@ setup-db: ## [2/5] Initialize MariaDB database and user
 setup-web: ## [3/5] Provision Nginx & permissions (Native Debian)
 	@echo "🌐 Provisioning Native Nginx..."
 	@# 1. Traversal Permissions
-	@sudo chmod +x $(shell dirname $(shell dirname $(PROJECT_PATH))) # /home/vboxuser
-	@sudo chmod +x $(shell dirname $(PROJECT_PATH))                 # /home/vboxuser/Documents
-	@sudo chmod +x $(PROJECT_PATH)                                 # Project Root
+	@sudo chmod +x $(shell dirname $(shell dirname $(PROJECT_PATH)))
+	@sudo chmod +x $(shell dirname $(PROJECT_PATH))
+	@sudo chmod +x $(PROJECT_PATH)
 	
-	@# 2. Nginx Configuration
+	@# 2. Nginx Configuration & Ghost Cleanup
+	@# Removed duplicate symlink attempts; clean slate approach
+	@sudo rm -f /etc/nginx/sites-enabled/default /etc/nginx/sites-enabled/default.conf /etc/nginx/sites-enabled/sharpishly
 	@sudo cp ./infra/nginx/default.conf /etc/nginx/sites-available/sharpishly
 	@sudo ln -sf /etc/nginx/sites-available/sharpishly /etc/nginx/sites-enabled/
-	@sudo rm -f /etc/nginx/sites-enabled/default
 	@sudo nginx -t && sudo systemctl restart nginx php8.2-fpm
 
-	@# 3. Storage Provisioning & Permissions
+	@# 3. Grounding: Purge Docker Hostnames
+	@echo "🧹 Purging Docker container artifacts..."
+	@# Using -r on xargs to prevent errors if no files match
+	@grep -rlE "sharpishly(-db|-redis|-ollama)" $(PROJECT_PATH)/web/php/src/ | xargs -r sed -i -E 's/sharpishly(-db|-redis|-ollama)/127.0.0.1/g'
+	@sed -i "s/Is the 'sharpishly-db' container running?/Is the MariaDB service running?/g" $(PROJECT_PATH)/web/php/src/Services/Db.php 2>/dev/null || true
+
+	@# 4. Storage Provisioning & Scoped Permissions
 	@echo "🔐 Applying Setgid and scoped permissions..."
-	@mkdir -p $(PROJECT_PATH)/storage/uploads $(PROJECT_PATH)/storage/logs $(PROJECT_PATH)/storage/database
+	@# Unified directory creation
+	@mkdir -p $(PROJECT_PATH)/storage/uploads $(PROJECT_PATH)/storage/logs $(PROJECT_PATH)/storage/database/vectors
+	@touch $(PROJECT_PATH)/storage/logs/app.log
 	
-	@# Ownership: You own, group writes. 
+	@# Ownership and Standard Permissions
 	@sudo chown -R $(USER):www-data $(PROJECT_PATH)/web $(PROJECT_PATH)/storage
-	
-	@# Standard Web permissions
 	@find $(PROJECT_PATH)/web -type d -exec chmod 755 {} +
 	@find $(PROJECT_PATH)/web -type f -exec chmod 644 {} +
 	
-	@# Storage: 775 + Setgid (g+s) ensures new files belong to www-data automatically
+	@# Storage Specific: 775 + Setgid
 	@chmod -R 775 $(PROJECT_PATH)/storage
 	@find $(PROJECT_PATH)/storage -type d -exec chmod g+s {} +
-	
+	@chmod 664 $(PROJECT_PATH)/storage/logs/app.log
+
+	@# 5. Local DNS Mapping (Deduplicated)
+	@# Check if entry exists before appending to prevent bloating /etc/hosts
+	@grep -q "sharpishly.dev" /etc/hosts || echo "127.0.0.1 sharpishly.dev crm.sharpishly.dev cyberdeck.sharpishly.dev" | sudo tee -a /etc/hosts > /dev/null
+
 	@echo "-------------------------------------------------------"
 	@echo "✅ SUCCESS: Environment Grounded"
-	@echo "🔗 API: http://sharpishly.vm/php/health"
-	@echo "📂 ROOT: $(PROJECT_PATH)"
+	@echo "🔗 API: http://sharpishly.dev/php/health"
 	@echo "-------------------------------------------------------"
 
 setup-db-migration: ## [4/5] Setup Sharpishly database tables

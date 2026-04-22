@@ -36,7 +36,7 @@ class NeuralService extends BaseService
     public function getEmbedding(string $text): ?array 
     {
         // Using the internal Docker DNS for Ollama
-        $url = "http://sharpishly-ollama:11434/api/embeddings";
+        $url = "http://127.0.0.1-ollama:11434/api/embeddings";
         
         $payload = [
             "model" => "nomic-embed-text",
