@@ -31,7 +31,6 @@ class HealthController extends BaseController
         $neuralData = $this->getNeuralStatus();
 
         $data = [
-            'status'     => ($redisAlive && $neuralData['synced']) ? 'healthy' : 'degraded',
             'database'   => true, 
             'latest_job' => $rs,
             'queue_info' => [
