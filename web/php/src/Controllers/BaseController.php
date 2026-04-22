@@ -23,7 +23,7 @@ abstract class BaseController
     public $logger;
     protected $model;
     public $session;
-    public $nats
+    public $nats;
 
 
     /**
@@ -45,7 +45,7 @@ abstract class BaseController
         $this->logger   = new \App\Services\Logger();
         $this->session  = \App\Services\Session::getInstance();
         $this->db       = new \App\Services\Db($this->logger);
-        $this->nats    = new \App\Services\NatsService($this->logger); 
+        //$this->nats    = new \App\Services\NatsService($this->logger); 
 
     }
     
