@@ -17,30 +17,39 @@ class Db
     private PDO $pdo;
     public $logger;
 
-    public function __construct($logger = null)
-    {
-        $this->logger = $logger;
-        $host = getenv('DB_HOST');
-        $db   = getenv('DB_NAME');
-        $user = getenv('DB_USER');
-        $pass = getenv('DB_PASS');
+/**
+ * web/php/src/Services/Db.php
+ */
+public function __construct(array $config, $logger = null)
+{
+    $this->logger = $logger;
 
-        $dsn = "mysql:host={$host};dbname={$db};charset=utf8mb4";
+    // Use the array keys from your new get_env() function
+    $host = $config['db_host'] ?? '127.0.0.1';
+    $db   = $config['db_name'] ?? '';
+    $user = $config['db_user'] ?? '';
+    $pass = $config['db_pass'] ?? '';
 
-        $options = [
-            PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::ATTR_EMULATE_PREPARES   => false,
-            PDO::ATTR_TIMEOUT            => 5,
-        ];
+    $dsn = "mysql:host={$host};dbname={$db};charset=utf8mb4";
 
-        try {
-            $this->pdo = new PDO($dsn, $user, $pass, $options);
-        } catch (PDOException $e) {
-            error_log("CRITICAL DATABASE ERROR: " . $e->getMessage());
-            throw new \Exception("MySQL Connection Failed. Is the '127.0.0.1' container running?");
+    $options = [
+        \PDO::ATTR_ERRMODE            => \PDO::ERRMODE_EXCEPTION,
+        \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC,
+        \PDO::ATTR_EMULATE_PREPARES   => false,
+        \PDO::ATTR_TIMEOUT            => 5,
+    ];
+
+    try {
+        // Now $user and $pass are guaranteed strings (even if empty)
+        $this->pdo = new \PDO($dsn, $user, $pass, $options);
+    } catch (\PDOException $e) {
+        if ($this->logger) {
+            $this->logger->error("Database connection failed: " . $e->getMessage());
         }
+        // Updated message to reflect native grounding
+        throw new \Exception("Database Connection Failed: " . $e->getMessage());
     }
+}
 
     /**
      * Cross-references input data against actual DB columns to prevent 1054 errors.

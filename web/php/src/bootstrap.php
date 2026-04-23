@@ -12,26 +12,17 @@ define('PROJECT_ROOT', dirname(__DIR__, 3));
  * 1. Environment Loader
  */
 function initializeEnvironment(string $root): void {
-    $path = $root . '/.env';
+    $path = $root . '/env.php';
+    
     if (!file_exists($path)) {
-        error_log("Bootstrap: .env not found at $path");
+        // We log a critical error because the app cannot function without this grounding.
+        error_log("Bootstrap Error: env.php not found at $path");
         return;
     }
-    
-    $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-    foreach ($lines as $line) {
-        $line = trim($line);
-        if (!$line || strpos($line, '#') === 0) continue;
-        
-        $parts = explode('=', $line, 2);
-        if (count($parts) === 2) {
-            $name = trim($parts[0]);
-            $value = trim(trim($parts[1]), '"\'');
-            putenv("{$name}={$value}");
-            $_ENV[$name] = $value;
-            $_SERVER[$name] = $value;
-        }
-    }
+
+    // Since env.php uses define(), requiring it makes 
+    // the constants globally available immediately.
+    require_once $path;
 }
 
 /**
@@ -52,6 +43,30 @@ function initializeAutoloader(string $baseDir): void {
     });
 }
 
+
+/**
+ * Load environment constants and return as a configuration array.
+ */
+function get_env(): array {
+    $file = PROJECT_ROOT . "/env.php";
+
+    if (!file_exists($file)) {
+        // We throw an exception here because the app cannot function without this grounding.
+        throw new \Exception("Configuration Error: 'env.php' not found at " . $file);
+    }
+
+    require_once $file;
+
+    // Return the constants as an array to keep service constructors clean
+    return [
+        'db_name' => defined('DB_NAME') ? DB_NAME : null,
+        'db_user' => defined('DB_USER') ? DB_USER : null,
+        'db_pass' => defined('DB_PASS') ? DB_PASS : null,
+        'db_host' => defined('DB_HOST') ? DB_HOST : '127.0.0.1',
+        'app_dev' => defined('APP_DEV') ? APP_DEV : 'production',
+    ];
+}
+
 /**
  * 3. Database & Logger Factory
  */
@@ -62,27 +77,8 @@ function initializeServices(): void {
     
     $logger->info("Initializing Database connection...");
 
-    $config = [
-        'host' => getenv('DB_HOST') ?: '127.0.0.1',
-        'name' => getenv('DB_NAME'),
-        'user' => getenv('DB_USER'),
-        'pass' => getenv('DB_PASS') ?: ''
-    ];
+    $db = new \App\Services\Db(get_env(), $logger);
 
-    foreach (['name', 'user'] as $key) {
-        if ($config[$key] === false || $config[$key] === null) {
-            $logger->error("Validation failed: DB_" . strtoupper($key) . " is missing.");
-            throw new \Exception("Environment Variable Missing: DB_" . strtoupper($key));
-        }
-    }
-
-    try {
-        $GLOBALS['db'] = new \App\Services\Db($config);
-        $logger->info("Database handshake successful.");
-    } catch (\Throwable $e) {
-        $logger->error("Database connection failed: " . $e->getMessage());
-        throw new \Exception("Database Connection Failed: " . $e->getMessage());
-    }
 }
 
 /**
