@@ -44,7 +44,10 @@ abstract class BaseController
         $this->smarty   = new \App\Services\Smarty();
         $this->logger   = new \App\Services\Logger();
         $this->session  = \App\Services\Session::getInstance();
-        $this->db       = new \App\Services\Db($this->logger);
+        // Safety check: if DB isn't in GLOBALS, we force a grounded instantiation
+        if (!$this->db) {
+            $this->db = new \App\Services\Db(get_env(), $this->logger);
+        }        
         //$this->nats    = new \App\Services\NatsService($this->logger); 
 
     }

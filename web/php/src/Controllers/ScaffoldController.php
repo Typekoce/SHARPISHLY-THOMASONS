@@ -56,6 +56,8 @@ class ScaffoldController extends BaseController
 
         } catch (Throwable $e) {
             $this->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+        }
+        
  
     }
     /**

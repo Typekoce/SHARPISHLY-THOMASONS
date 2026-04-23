@@ -68,21 +68,37 @@ create-env: ## Create a local .env file from template
 		echo ".env exists."; \
 	fi
 
+# 1. Extract values using the actual filename you created
+DB_NAME := $(shell php extract_env.php DB_NAME)
+DB_USER := $(shell php extract_env.php DB_USER)
+DB_PASS := $(shell php extract_env.php DB_PASS)
+
+# 2. Update setup-db target
 setup-db: ## [2/5] Initialize MariaDB database and user
 	@echo "🚀 Starting MariaDB Initialization..."
+	
+	@# Verify the bridge worked
+	@if [ -z "$(DB_NAME)" ]; then echo "❌ Error: Could not extract DB_NAME via extract.php"; exit 1; fi
+
 	@printf "   [▓▓░░░░░░░░] 20%% Starting Service..."
 	@sudo systemctl start mariadb
+	
 	@printf "\r   [▓▓▓▓░░░░░░] 40%% Creating Database ($(DB_NAME))..."
-	@sudo mysql -e "CREATE DATABASE IF NOT EXISTS $(DB_NAME);"
+	@sudo mariadb -e "CREATE DATABASE IF NOT EXISTS $(DB_NAME);"
+	
 	@printf "\r   [▓▓▓▓▓▓░░░░] 60%% Creating User ($(DB_USER))..."
-	@sudo mysql -e "CREATE USER IF NOT EXISTS '$(DB_USER)'@'localhost' IDENTIFIED BY '$(DB_PASS)';"
+	@# Native grounding: Grant for both localhost and 127.0.0.1
+	@sudo mariadb -e "CREATE USER IF NOT EXISTS '$(DB_USER)'@'localhost' IDENTIFIED BY '$(DB_PASS)';"
+	@sudo mariadb -e "CREATE USER IF NOT EXISTS '$(DB_USER)'@'127.0.0.1' IDENTIFIED BY '$(DB_PASS)';"
+	
 	@printf "\r   [▓▓▓▓▓▓▓▓░░] 80%% Granting Privileges..."
-	@sudo mysql -e "GRANT ALL PRIVILEGES ON $(DB_NAME).* TO '$(DB_USER)'@'localhost';"
-	@sudo mysql -e "FLUSH PRIVILEGES;"
+	@sudo mariadb -e "GRANT ALL PRIVILEGES ON $(DB_NAME).* TO '$(DB_USER)'@'localhost';"
+	@sudo mariadb -e "GRANT ALL PRIVILEGES ON $(DB_NAME).* TO '$(DB_USER)'@'127.0.0.1';"
+	@sudo mariadb -e "FLUSH PRIVILEGES;"
+	
 	@printf "\r   [▓▓▓▓▓▓▓▓▓▓] 100%% Handshake Complete!               \n"
 	@echo "-------------------------------------------------------"
 	@echo "✅ SUCCESS: Database '$(DB_NAME)' is live."
-	@echo "🔑 ACCESS: User '$(DB_USER)' authenticated with password."
 	@echo "-------------------------------------------------------"
 
 setup-web: ## [3/5] Provision Nginx & permissions (Native Debian)

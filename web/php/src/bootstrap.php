@@ -77,7 +77,9 @@ function initializeServices(): void {
     
     $logger->info("Initializing Database connection...");
 
-    $db = new \App\Services\Db(get_env(), $logger);
+    $config = get_env();
+
+    $db = new \App\Services\Db($config, $logger);
 
 }
 

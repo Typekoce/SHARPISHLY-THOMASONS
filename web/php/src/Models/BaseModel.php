@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Services\Db;
+use App\Services\Logger;
 
 /**
  * BASE MODEL
@@ -11,15 +12,19 @@ use App\Services\Db;
  */
 class BaseModel {
 
-    protected Db $db; // Must be protected so child classes can access it
+    protected Db $db;
 
     public function __construct()
     {
         /**
-         * MISSION: Zero Globals. 
-         * We instantiate the Db service directly. 
-         * Your Db class already handles its own PDO connection.
+         * MISSION: Zero Globals (Internal Fallback).
+         * We fetch the environment and instantiate the DB.
+         * If a global logger exists, we use it; otherwise, we stay silent.
          */
-        $this->db = new Db();
+        $logger = $GLOBALS['logger'] ?? new Logger();
+        $config = get_env(); 
+
+        // Direct assignment to satisfy the Type Hinting
+        $this->db = new Db($config, $logger);
     }
 }
