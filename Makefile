@@ -124,8 +124,8 @@ setup-web: ## [3/5] Provision Nginx & permissions (Native Debian)
 	@# 4. Storage Provisioning & Scoped Permissions
 	@echo "🔐 Applying Setgid and scoped permissions..."
 	@# Unified directory creation
-	@mkdir -p $(PROJECT_PATH)/storage/uploads $(PROJECT_PATH)/storage/logs $(PROJECT_PATH)/storage/database/vectors
-	@touch $(PROJECT_PATH)/storage/logs/app.log
+	@sudo mkdir -p $(PROJECT_PATH)/storage/uploads $(PROJECT_PATH)/storage/logs $(PROJECT_PATH)/storage/database/vectors
+	@sudo touch $(PROJECT_PATH)/storage/logs/app.log
 	
 	@# Ownership and Standard Permissions
 	@sudo chown -R $(USER):www-data $(PROJECT_PATH)/web $(PROJECT_PATH)/storage
@@ -140,6 +140,11 @@ setup-web: ## [3/5] Provision Nginx & permissions (Native Debian)
 	@# 5. Local DNS Mapping (Deduplicated)
 	@# Check if entry exists before appending to prevent bloating /etc/hosts
 	@grep -q "sharpishly.dev" /etc/hosts || echo "127.0.0.1 sharpishly.dev crm.sharpishly.dev cyberdeck.sharpishly.dev" | sudo tee -a /etc/hosts > /dev/null
+
+	@# 6. Install PHP-curl
+	@sudo apt update
+	@sudo apt install php8.2-curl
+	@sudo systemctl restart php8.2-fpm
 
 	@echo "-------------------------------------------------------"
 	@echo "✅ SUCCESS: Environment Grounded"
