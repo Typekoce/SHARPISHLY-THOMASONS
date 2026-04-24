@@ -51,6 +51,7 @@ class Location {
     }
 
     // --- Specific Domain Accessors ---
+    public function nats(string $file = ''): string { return $this->storage('uploads/nats/' . ltrim($file, '/')); }
     public function uploads(string $file = ''): string { return $this->storage('uploads/' . ltrim($file, '/')); }
     public function queue(string $file = ''): string   { return $this->storage('queue/' . ltrim($file, '/')); }
     public function logs(string $file = ''): string    { return $this->storage('logs/' . ltrim($file, '/')); } 

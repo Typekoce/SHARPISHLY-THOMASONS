@@ -35,7 +35,7 @@ class JobController extends BaseController
     public function create()
     {
         $payload = json_encode([
-            'path' => $location->uploads('test.csv'),
+            'path' => $this->location->uploads('test.csv'),
             'type'       => 'csv',
             'created_by' => 'system_mock'
         ]);
