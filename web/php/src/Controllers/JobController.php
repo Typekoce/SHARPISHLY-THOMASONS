@@ -55,11 +55,33 @@ class JobController extends BaseController
             ], 500);
         }
 
+        // --- THE NATIVE PROTOCOL TRIGGER ---
+        // We drop the 001_jobs.json to alert Python
+        $this->create_nats_item($result, $payloadData);
+
         return $this->json([
             'status'  => 'success',
-            'message' => 'Job posted to the queue.',
+            'message' => 'Job posted to the queue & and NATS handshake triggered.',
             'job_id'  => $result
         ]);
+    }
+
+    /**
+     * Internal Handshake: Drops the atomic JSON file for the Python Worker.
+     */
+    private function create_nats_item(int $jobId, array $payload)
+    {
+        $handshake = [
+            'job_id'    => $jobId,
+            'timestamp' => time(),
+            'action'    => 'process_new_job',
+            'data'      => $payload
+        ];
+
+        $filePath = $this->location->nats('001_jobs.json');
+        
+        // LOCK_EX ensures Python doesn't read a half-written file
+        return file_put_contents($filePath, json_encode($handshake, JSON_PRETTY_PRINT), LOCK_EX);
     }
 
     /**
