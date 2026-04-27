@@ -23,7 +23,6 @@ abstract class BaseController
     public $logger;
     protected $model;
     public $session;
-    public $nats;
 
 
     /**
@@ -48,7 +47,6 @@ abstract class BaseController
         if (!$this->db) {
             $this->db = new \App\Services\Db(get_env(), $this->logger);
         }        
-        //$this->nats    = new \App\Services\NatsService($this->logger); 
 
     }
     

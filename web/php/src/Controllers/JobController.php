@@ -181,17 +181,6 @@ class JobController extends BaseController
         }
 
         try {
-
-            // New NATS logic:
-            $nats = new \App\Services\NatsService();
-            $payload = json_encode([
-                "job_id" => $id,
-                "path"   => $filePath,
-                "action" => "vectorize"
-            ]);
-
-            $nats->publish("np.intake", $payload);
-
             if (!empty($batch)) {
                 // Assuming you have a batch insert method or use a loop with save()
                 foreach ($batch as $row) {
