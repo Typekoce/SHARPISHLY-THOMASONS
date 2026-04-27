@@ -2,6 +2,8 @@ from app.controllers.home_controller import HomeController
 from app.controllers.user_controller import UserController
 from app.controllers.worker_controller import WorkerController
 from app.controllers.agent_controller import AgentController
+from app.controllers.nats_controller import NatsController
+
 
 routes = {
     "/": HomeController.index,
@@ -11,7 +13,8 @@ routes = {
     "/agent/hr": AgentController.hr,
     "/users": UserController.index,
     "/users/create": UserController.create,
-    "/worker/process":WorkerController.process_task
+    "/worker/process":WorkerController.process_task,
+    "/nats":NatsController.index,
 }
 
 def route_request(path: str):
