@@ -8,7 +8,7 @@ from app.views import render_template
 class NatsController:
     # Defining 'Subjects' as Directory Channels
     # PHP writes to 'ingest', Python works in 'process'
-    BASE_DIR = "storage/nats"
+    BASE_DIR = "storage/uploads/nats"
     CHANNELS = {
         "ingest": f"{BASE_DIR}/ingest",
         "process": f"{BASE_DIR}/process",
