@@ -81,3 +81,23 @@ class NatsController:
         """[The Ack] Job complete. Remove from the processing channel."""
         if os.path.exists(file_path):
             os.remove(file_path)
+
+    @staticmethod
+    def consume():
+        """
+        The orchestrator: Subscribes to a job and notifies the source of truth.
+        """
+        result = NatsController.subscribe()
+        
+        if result:
+            job_data, file_path = result
+            job_id = job_data.get('job_id')
+            
+            # THE CRITICAL LINK: 
+            # Notify PHP/MariaDB that the worker has claimed this job.
+            NatsController.update_php(job_id, 'processing')
+            
+            # Return the data for the PyMVC runner to display
+            return job_data, file_path
+            
+        return None

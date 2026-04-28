@@ -15,7 +15,7 @@ routes = {
     "/users/create": UserController.create,
     "/worker/process":WorkerController.process_task,
     "/nats":NatsController.index,
-    "/nats/consume":NatsController.subscribe,
+    "/nats/consume":NatsController.consume,
 }
 
 def route_request(path: str):
