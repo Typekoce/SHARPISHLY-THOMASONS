@@ -98,73 +98,40 @@ class JobController extends BaseController
 
     /**
      * PUT /php/job/update/{id}
-     * Update job status (called by Python Neural Worker).
+     * Streamlined for debugging the Python handshake.
      */
     public function update($id)
     {
-        // Read JSON payload from Python
+        // Read the raw input from Python's 'requests.put'
         $json = file_get_contents('php://input');
         $data = json_decode($json, true);
+        
+        $status = $data['status'] ?? 'unknown';
 
-        // 1. Validation
-        if (!$id || !is_numeric($id)) {
-            return $this->json([
-                'status'  => 'error',
-                'message' => 'Invalid or missing job ID'
-            ], 400);
+        // Build the update array
+        $updateData = [
+            'id'     => (int)$id,
+            'status' => $status
+        ];
+
+        // Minimalist terminal state handling
+        if ($status === 'completed' || $status === 'failed') {
+            $updateData['finished_at'] = date('Y-m-d H:i:s');
         }
 
-        $allowedStatuses = ['pending', 'processing', 'completed', 'failed'];
+        // Save to MariaDB
+        $result = $this->db->save('jobs', $updateData);
 
-        if (!isset($data['status']) || !in_array($data['status'], $allowedStatuses, true)) {
-            return $this->json([
-                'status'  => 'error',
-                'message' => 'Invalid status value'
-            ], 400);
+        if ($result === false) {
+            return $this->json(['status' => 'error', 'message' => 'DB Save Failed'], 500);
         }
 
-        // Optional: Capture error message from worker
-        $errorMessage = $data['error_message'] ?? $data['error'] ?? null;
-
-        try {
-            $updateData = [
-                'id'            => (int)$id,
-                'status'        => $data['status'],
-                'error_message' => $errorMessage,
-            ];
-
-            // Set finished_at when job reaches terminal state
-            if (in_array($data['status'], ['completed', 'failed'], true)) {
-                $updateData['finished_at'] = date('Y-m-d H:i:s');
-            }
-
-            $result = $this->db->save('jobs', $updateData);
-
-            if ($result === false) {
-                $this->logger->error("Failed to update job {$id}");
-                return $this->json([
-                    'status'  => 'error',
-                    'message' => 'Database update failed'
-                ], 500);
-            }
-
-            $this->logger->info("Job {$id} updated to status: {$data['status']}");
-
-            return $this->json([
-                'status'  => 'success',
-                'message' => "Job {$id} transitioned to {$data['status']}"
-            ]);
-
-        } catch (\Exception $e) {
-            $this->logger->error("Exception updating job {$id}: " . $e->getMessage());
-
-            return $this->json([
-                'status'  => 'error',
-                'message' => 'Internal server error during update'
-            ], 500);
-        }
+        return $this->json([
+            'status' => 'success', 
+            'job_id' => $id, 
+            'new_status' => $status
+        ]);
     }
-
     /**
      * Processes the raw file, cleans it, and prepares the job for the AI worker.
      */
