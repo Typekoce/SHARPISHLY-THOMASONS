@@ -1,64 +1,83 @@
 import os
 import json
+import glob
+import time
 import requests
 from app.views import render_template
 
 class NatsController:
-    # The Shared Track
-    NATS_PATH = "storage/nats/001_jobs.json"
-    PROC_PATH = "storage/nats/processing.json"
-    
-    # The Communication Line
-    PHP_BASE_URL = "http://sharpishly.dev/php/job/update/"
+    # Defining 'Subjects' as Directory Channels
+    # PHP writes to 'ingest', Python works in 'process'
+    BASE_DIR = "storage/nats"
+    CHANNELS = {
+        "ingest": f"{BASE_DIR}/ingest",
+        "process": f"{BASE_DIR}/process",
+        "results": f"{BASE_DIR}/results"
+    }
 
     @staticmethod
     def index():
-        job = NatsController.get_job()
+        """UI Dashboard: Shows what's currently in the engine."""
+        current_job = NatsController.get_job()
         data = {
-            "title": "PyMVC Racecar",
-            "message": job if job else "Track Clear",
-            "status": "Listening for PHP Handshake"
+            "title": "PyMVC NATS-Lite",
+            "message": current_job if current_job else "Queue Empty - Waiting for PHP...",
+            "status": "Listening on subjects: " + ", ".join(NatsController.CHANNELS.keys())
         }
         return render_template("index.html", data)
 
     @staticmethod
     def get_job():
-        """Fast read of the current job state."""
-        path = NatsController.PROC_PATH if os.path.exists(NatsController.PROC_PATH) else NatsController.NATS_PATH
-        if not os.path.exists(path):
-            return None
+        """Peek at the current job in the processing channel."""
+        files = glob.glob(f"{NatsController.CHANNELS['process']}/*.json")
+        if not files:
+            # If nothing is processing, peek at the next in ingest
+            files = glob.glob(f"{NatsController.CHANNELS['ingest']}/*.json")
+        
+        if not files: return None
+
         try:
-            with open(path, 'r') as f:
+            with open(files[0], 'r') as f:
                 return json.load(f)
         except Exception:
             return None
 
     @staticmethod
-    def consume():
-        """Atomic Rename: The high-speed ingestion."""
-        if os.path.exists(NatsController.NATS_PATH):
-            try:
-                # Rename is atomic: PHP can no longer see/touch this job
-                os.replace(NatsController.NATS_PATH, NatsController.PROC_PATH)
-                return NatsController.get_job()
-            except OSError:
-                pass
-        return None
+    def subscribe():
+        """
+        [The Consumer] Moves a job from 'ingest' to 'process'.
+        This is the Atomic Handover.
+        """
+        # 1. Look for the oldest job in the ingest channel
+        files = glob.glob(f"{NatsController.CHANNELS['ingest']}/*.json")
+        if not files:
+            return None
+        
+        files.sort(key=os.path.getmtime) # FIFO
+        source_path = files[0]
+        job_name = os.path.basename(source_path)
+        dest_path = os.path.join(NatsController.CHANNELS['process'], job_name)
 
-    @staticmethod
-    def update_php(job_id, status, error=None):
-        """The HTTP Callback: Updates the source of truth on the PHP side."""
-        payload = {"status": status, "error_message": error}
         try:
-            # We use PUT to match your PHP Controller's update method
-            response = requests.put(f"{NatsController.PHP_BASE_URL}{job_id}", json=payload)
-            return response.status_code == 200
+            # Atomic Rename: No other worker can grab this job
+            os.replace(source_path, dest_path)
+            with open(dest_path, 'r') as f:
+                return json.load(f), dest_path
         except Exception as e:
-            print(f"🏎️ Callback failed: {e}")
-            return False
+            print(f"Subscription Error: {e}")
+            return None
 
     @staticmethod
-    def finalize():
-        """Clear the track for the next job."""
-        if os.path.exists(NatsController.PROC_PATH):
-            os.remove(NatsController.PROC_PATH)
+    def update_php(job_id, status):
+        """Standard HTTP Callback to update the source of truth."""
+        url = f"http://sharpishly.dev/php/job/update/{job_id}"
+        try:
+            requests.put(url, json={"status": status}, timeout=2)
+        except Exception as e:
+            print(f"PHP Callback Failed: {e}")
+
+    @staticmethod
+    def acknowledge(file_path):
+        """[The Ack] Job complete. Remove from the processing channel."""
+        if os.path.exists(file_path):
+            os.remove(file_path)

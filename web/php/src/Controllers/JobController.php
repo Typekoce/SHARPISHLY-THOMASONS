@@ -57,8 +57,10 @@ class JobController extends BaseController
 
         // --- THE NATIVE PROTOCOL TRIGGER ---
         // We drop the 001_jobs.json to alert Python
+        // Decoded payload for the handshake array
+        $payloadData = json_decode($payload, true); 
         $this->create_nats_item($result, $payloadData);
-
+        
         return $this->json([
             'status'  => 'success',
             'message' => 'Job posted to the queue & and NATS handshake triggered.',
@@ -67,7 +69,7 @@ class JobController extends BaseController
     }
 
     /**
-     * Internal Handshake: Drops the atomic JSON file for the Python Worker.
+     * Internal Handshake: Acts as the "Publisher" for NATS-Lite.
      */
     private function create_nats_item(int $jobId, array $payload)
     {
@@ -78,10 +80,20 @@ class JobController extends BaseController
             'data'      => $payload
         ];
 
-        $filePath = $this->location->nats('001_jobs.json');
+        // 1. Point to the 'ingest' channel folder
+        // 2. Use a unique ID so we don't overwrite the queue
+        $directory = $this->location->nats('ingest');
+        $finalPath = "{$directory}/job_{$jobId}.json";
         
-        // LOCK_EX ensures Python doesn't read a half-written file
-        return file_put_contents($filePath, json_encode($handshake, JSON_PRETTY_PRINT), LOCK_EX);
+        // --- LATERAL THINKING: ATOMIC WRITING ---
+        // Instead of writing directly to the queue, we write a temp file 
+        // then rename it. Rename is an atomic operation in Linux.
+        $tempPath = "{$finalPath}.tmp";
+        
+        file_put_contents($tempPath, json_encode($handshake, JSON_PRETTY_PRINT), LOCK_EX);
+        
+        // The moment this rename happens, the "Event" is published.
+        return rename($tempPath, $finalPath);
     }
 
     /**
