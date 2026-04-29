@@ -101,3 +101,21 @@ class NatsController:
             return job_data, file_path
             
         return None
+
+    def get_payload(job_id):
+        """
+        Fetches the job data from the PHP API.
+        No SQL, no DB connections, just a simple API call.
+        """
+        url = f"http://sharpishly.dev/php/jobs/payload/{job_id}"
+        try:
+            response = requests.get(url, timeout=5)
+            if response.status_code == 200:
+                # This is your raw data (CSV text, PDF bytes, etc.)
+                return response.content 
+            else:
+                print(f"❌ Failed to fetch payload: {response.status_code}")
+                return None
+        except Exception as e:
+            print(f"❌ Connection Error: {e}")
+            return None

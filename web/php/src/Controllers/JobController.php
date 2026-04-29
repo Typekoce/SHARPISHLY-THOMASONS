@@ -212,4 +212,23 @@ class JobController extends BaseController
         }
     }
 
+    /**
+     * GET /php/jobs/payload/{id}
+     * Serves the raw BLOB data for the Python Vectorizer
+     */
+    public function payload($id)
+    {
+        $job = $this->db->find('jobs', ['id' => $id]);
+
+        if (!$job || empty($job['payload'])) {
+            return $this->json(['error' => 'Payload not found'], 404);
+        }
+
+        // If it's a CSV or Text, we can return it as a string or base64
+        // If we want to stay lean, we just return the raw string
+        header('Content-Type: application/octet-stream');
+        echo $job['payload'];
+        exit;
+    }
+
 }
