@@ -213,20 +213,30 @@ class JobController extends BaseController
     }
 
     /**
-     * GET /php/jobs/payload/{id}
-     * Serves the raw BLOB data for the Python Vectorizer
+     * GET /php/job/payload/{id}
+     * Streams the raw BLOB data from MariaDB to the requester.
      */
     public function payload($id)
     {
+        // 1. Fetch the job record
         $job = $this->db->find('jobs', ['id' => $id]);
 
         if (!$job || empty($job['payload'])) {
-            return $this->json(['error' => 'Payload not found'], 404);
+            return $this->json([
+                'status'  => 'error',
+                'message' => 'Payload not found or empty'
+            ], 404);
         }
 
-        // If it's a CSV or Text, we can return it as a string or base64
-        // If we want to stay lean, we just return the raw string
+        /**
+         * LATERAL THINKING: 
+         * Instead of complex JSON wrapping, we stream the raw binary.
+         * This allows Python to handle the parsing (CSV, Text, etc.) 
+         * without double-encoding overhead.
+         */
         header('Content-Type: application/octet-stream');
+        header('Content-Length: ' . strlen($job['payload']));
+        
         echo $job['payload'];
         exit;
     }
