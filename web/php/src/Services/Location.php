@@ -29,6 +29,14 @@ class Location {
     }
 
     /**
+     * Task 2.1: Absolute path to the vector storage directory
+     */
+    public static function vectorStorage(): string {
+        // Adjust the levels based on your actual file depth to reach root/storage/vectors
+        return dirname(__DIR__, 2) . '/storage/vectors';
+    }
+
+    /**
      * STORAGE ENGINE: Handles dynamic pathing for data.
      * Includes auto-directory creation to prevent "Permission Denied" crashes.
      */

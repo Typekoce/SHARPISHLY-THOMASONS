@@ -39,3 +39,26 @@ class MetadataService:
 
         except Exception as e:
             return {"error": str(e)}
+        
+    @staticmethod
+    def export_to_disk(job_id, chunks):
+        """
+        Task 1.1: Export vector to storage/vectors/job_{id}.json
+        """
+        # Points to the shared storage area
+        folder = "storage/vectors"
+        filename = f"job_{job_id}.json"
+        full_path = os.path.join(folder, filename)
+
+        # Ensure the directory exists (as a safety measure)
+        os.makedirs(folder, exist_ok=True)
+
+        payload = {
+            "job_id": job_id,
+            "data": chunks  # Contains content, meta, and (mock) embedding
+        }
+
+        with open(full_path, 'w', encoding='utf-8') as f:
+            json.dump(payload, f, indent=4)
+        
+        print(f"Exported vectors to: {full_path}")

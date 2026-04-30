@@ -146,6 +146,10 @@ setup-web: ## [3/5] Provision Nginx & permissions (Native Debian)
 	@sudo apt install php8.2-curl
 	@sudo systemctl restart php8.2-fpm
 
+	@# 7. Vector storage
+	@sudo mkdir -p storage/vectors
+	@sudo chmod -R 775 storage/vectors
+
 	@echo "-------------------------------------------------------"
 	@echo "✅ SUCCESS: Environment Grounded"
 	@echo "🔗 API: http://sharpishly.dev/php/health"
