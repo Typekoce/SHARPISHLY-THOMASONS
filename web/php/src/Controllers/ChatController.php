@@ -1,88 +1,60 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Controllers;
 
-use App\Services\VectorDb;
-use App\Services\NeuralService;
-use App\Services\PromptService; // New Service
+use App\Services\Location;
 use Exception;
 
+/**
+ * Handles the User Interface -> Python Neural Bridge
+ */
 class ChatController extends BaseController
 {
+    /**
+     * POST /php/chat/ask
+     */
     public function ask(): void
     {
-        $input = json_decode(file_get_contents('php://input'), true);
-        $userMessage = $input['message'] ?? '';
+        $data = $this->getJsonInput();
+        $userMessage = $data['message'] ?? '';
 
         if (empty($userMessage)) {
-            $this->json(['error' => 'Question is required'], 400);
+            $this->json(['error' => 'Message cannot be empty'], 400);
             return;
         }
 
         try {
-            // 1. SEMANTIC RETRIEVAL
-            $contextRaw = $this->getNeuralContext($userMessage);
+            /**
+             * STEP 1: Hand-off to Python
+             * We write the question to a 'pending' chat file.
+             */
+            $chatId = uniqid('chat_');
+            $requestPath = Location::vectorStorage() . "/{$chatId}_req.json";
+            
+            file_put_contents($requestPath, json_encode([
+                'id' => $chatId,
+                'question' => $userMessage,
+                'timestamp' => time()
+            ]));
 
-            // 2. AUGMENTED PROMPT (Using PromptService)
-            $systemInstructions = PromptService::getSystemInstructions();
-            $finalPrompt = PromptService::buildRagPrompt($userMessage, $contextRaw);
-
-            // 3. GENERATION
-            $response = $this->callNeuralEngine($finalPrompt, $systemInstructions);
-
+            /**
+             * STEP 2: The Logic (Mental Model for today)
+             * In our current 'Manual' stage, Python will pick this up.
+             * For now, we will return a "Request Received" or call a mock 
+             * response until we build the Python listener.
+             */
+            
+            // Mocking the Python result for today's code-path draft:
             $this->json([
-                'answer' => $response,
-                'has_context' => !!$contextRaw,
-                'status' => 'success'
+                'status' => 'queued',
+                'chat_id' => $chatId,
+                'message' => 'Question handed to Neural Engine.'
             ]);
 
         } catch (Exception $e) {
-            $this->logger->log("Chat Error: " . $e->getMessage(), 'ERROR');
-            $this->json(['error' => 'Neural engine is currently offline. Please try again later.'], 500);
+            $this->json(['error' => $e->getMessage()], 500);
         }
-    }
-
-    private function getNeuralContext(string $query): string
-    {
-        $neural = new NeuralService();
-        $vectorDb = new VectorDb();
-
-        $queryVector = $neural->getEmbedding($query);
-        if (!$queryVector) return "";
-
-        $matches = $vectorDb->search($queryVector, 3);
-        return implode("\n", array_column($matches, 'content'));
-    }
-
-    private function callNeuralEngine(string $prompt, string $system): string
-    {
-        $url = "http://127.0.0.1-ollama:11434/api/generate";
-        
-        $payload = json_encode([
-            "model" => "llama3.1", 
-            "prompt" => $prompt,
-            "system" => $system,
-            "stream" => false
-        ]);
-
-        $options = [
-            'http' => [
-                'header'  => "Content-type: application/json\r\n",
-                'method'  => 'POST',
-                'content' => $payload,
-                'timeout' => 90 // Increased timeout for heavier RAG prompts
-            ],
-        ];
-
-        $context = stream_context_create($options);
-        $result = @file_get_contents($url, false, $context);
-        
-        if ($result === false) {
-            throw new Exception("Ollama connection failed or timed out.");
-        }
-
-        $data = json_decode($result, true);
-        return $data['response'] ?? 'No response from AI.';
     }
 }
