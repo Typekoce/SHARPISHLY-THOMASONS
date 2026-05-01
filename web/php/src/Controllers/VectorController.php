@@ -91,4 +91,16 @@ class VectorController extends BaseController
             'job_id' => $id
         ]);
     }
+
+/**
+ * GET /php/vector/show/{id}
+ * Fetch all vectors/chunks for a specific job.
+ */
+public function show(int $id)
+{
+    // Using your established DB pattern to get all chunks for the job
+    $vectors = $this->db->findAll('vectors', ['job_id' => $id]);
+
+    return $this->json($vectors ?: ['error' => 'No vectors found for this job']);
+}
 }

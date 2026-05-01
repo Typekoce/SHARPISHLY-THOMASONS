@@ -72,7 +72,6 @@ class NatsController:
     @staticmethod
     def update_php(job_id, status):
         """Standard HTTP Callback to update the source of truth."""
-        #url = f"http://sharpishly.dev/php/job/update/{job_id}"
         url = Config.api_url(f"job/update/{job_id}")
         try:
             requests.put(url, json={"status": status}, timeout=2)
@@ -110,7 +109,6 @@ class NatsController:
         Fetches the job data from the PHP API.
         No SQL, no DB connections, just a simple API call.
         """
-        #url = f"http://sharpishly.dev/php/jobs/payload/{job_id}"
         url = Config.api_url(f"job/payload/{job_id}")
         try:
             response = requests.get(url, timeout=5)
