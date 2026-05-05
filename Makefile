@@ -151,6 +151,9 @@ setup-web: ## [3/5] Provision Nginx & permissions (Native Debian)
 	@sudo mkdir -p storage/vectors
 	@sudo chmod -R 775 storage/vectors
 
+    @sudo mkdir -p storage/uploads/nats/process storage/uploads/nats/results
+	@sudo chmod -R 775 storage/uploads/nats
+
 	@echo "-------------------------------------------------------"
 	@echo "✅ SUCCESS: Environment Grounded"
 	@echo "🔗 API: http://sharpishly.dev/php/health"
