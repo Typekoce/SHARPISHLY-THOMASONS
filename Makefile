@@ -6,6 +6,7 @@ PYTHON := $(VENV)/bin/python3
 PIP := $(VENV)/bin/python3 -m pip
 PROJECT_PATH := $(shell pwd)
 PHP_LOG := /var/log/php8.2-fpm.log  # Adjust version if using 8.1/8.3
+NEURAL_LOG = storage/logs/neural_processor.log
 
 .PHONY: help purge-docker install setup-samba setup-db setup-web setup-python create-env all
 
@@ -171,45 +172,13 @@ logs: ## [6/6] Display error and access logs (Nginx & PHP)
 	@echo "📋 Tailing Nginx and PHP logs... (Ctrl+C to stop)"
 	@sudo tail -f /var/log/nginx/sharpishly_access.log \
 	             /var/log/nginx/sharpishly_error.log \
-	             $(PHP_LOG)
+	             $(PHP_LOG) \
+	             $(NEURAL_LOG)
 
-setup-nats: ## [Optional] Install and configure NATS JetStream message queue
-	@echo "🚀 Setting up NATS JetStream..."
-	
-	# Install NATS server
-	@if ! command -v nats-server >/dev/null 2>&1; then \
-		echo "Installing NATS server..."; \
-		sudo apt-get update -y; \
-		sudo apt-get install -y nats-server || { \
-			echo "❌ Failed to install nats-server via apt. Installing from official binary..."; \
-			curl -L https://github.com/nats-io/nats-server/releases/download/v2.10.5/nats-server-v2.10.5-linux-amd64.tar.gz | tar -xz; \
-			sudo mv nats-server-v2.10.5-linux-amd64/nats-server /usr/local/bin/; \
-			rm -rf nats-server-v2.10.5-linux-amd64*; \
-		}; \
-	else \
-		echo "✅ NATS server already installed."; \
-	fi
-
-	# Create storage directory
-	@mkdir -p storage/nats
-	@sudo chown -R $(USER):$(USER) storage/nats
-	@echo "✅ NATS storage directory created at ./storage/nats"
-
-	# Create basic NATS config via printf
-	@mkdir -p config
-	@printf "listen: 0.0.0.0:4222\n\njetstream {\n    store_dir: \"./storage/nats\"\n    max_mem: 1GB\n    max_file: 10GB\n}\n\nwebsocket {\n    port: 8081\n    no_tls: true\n}\n\nlogtime: true\ndebug: false\ntrace: false\n" > config/nats.conf
-	@echo "✅ NATS configuration created at config/nats.conf"
-
-	# Create systemd service via printf
-	@printf "[Unit]\nDescription=NATS Server for Sharpishly\nAfter=network.target\n\n[Service]\nType=simple\nUser=$(USER)\nExecStart=/usr/local/bin/nats-server -c $(shell pwd)/config/nats.conf\nRestart=always\nRestartSec=3\nWorkingDirectory=$(shell pwd)\nLimitNOFILE=100000\n\n[Install]\nWantedBy=multi-user.target\n" | sudo tee /etc/systemd/system/nats.service > /dev/null
-	@echo "✅ NATS systemd service created"
-
-	@sudo systemctl daemon-reload
-	@sudo systemctl enable --now nats.service
-
-	@echo "✅ NATS service installed and started"
-	@echo "   → Listening on port 4222"
-	@echo "   → Status: sudo systemctl status nats"
+setup-test-job: ## [7/7] Createing test job 001_job.json
+# --- Test Neural Pipeline ---
+	@echo "--- Create test job 001_job.json ---"
+	@curl -i http://sharpishly.dev/php/job/create
 
 setup-samba: ## Configure Samba for host-to-guest file sharing
 	@echo "--- Configuring Samba ---"
