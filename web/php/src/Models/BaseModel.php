@@ -6,25 +6,44 @@ namespace App\Models;
 use App\Services\Db;
 use App\Services\Logger;
 
-/**
- * BASE MODEL
- * Parent for all models. Handles database service injection.
- */
 class BaseModel {
 
     protected Db $db;
 
     public function __construct()
     {
-        /**
-         * MISSION: Zero Globals (Internal Fallback).
-         * We fetch the environment and instantiate the DB.
-         * If a global logger exists, we use it; otherwise, we stay silent.
-         */
         $logger = $GLOBALS['logger'] ?? new Logger();
         $config = get_env(); 
-
-        // Direct assignment to satisfy the Type Hinting
         $this->db = new Db($config, $logger);
+    }
+
+    /**
+     * Unified HTTP Execution for Social APIs
+     */
+    protected function http(string $url, ?string $token, array $params = [], string $method = 'GET', bool $isJson = true): array
+    {
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        
+        $headers = [];
+        if ($token) $headers[] = "Authorization: Bearer $token";
+        if ($isJson && $method === 'POST') $headers[] = "Content-Type: application/json";
+        
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+
+        if ($method === 'POST') {
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $isJson ? json_encode($params) : http_build_query($params));
+        }
+
+        $raw = curl_exec($ch);
+        $res = json_decode($raw, true) ?? [];
+        curl_close($ch);
+
+        // Normalized response for Controllers
+        return [
+            'success' => !isset($res['error']) && !isset($res['error_code']),
+            'data' => $res
+        ];
     }
 }

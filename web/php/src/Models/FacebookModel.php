@@ -2,34 +2,39 @@
 
 namespace App\Models;
 
-class FacebookModel {
-    private static $base = 'https://graph.facebook.com/v20.0/';
+namespace App\Models;
 
-    public static function request($endpoint, $token, $params = [], $post = false) {
-        $url = self::$base . $endpoint;
-        if (!$post) $url .= '?' . http_build_query($params);
+class FacebookModel extends BaseModel {
 
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        if ($token) {
-            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . $token]);
+    /**
+     * Example: Fetching user info and saving a log to MariaDB
+     */
+    public function getUser(string $token): array
+    {
+        $response = $this->http("https://graph.facebook.com/v20.0/me?fields=id,name", $token);
+
+        if ($response['success']) {
+            // Use $this->db to store the interaction (No raw SQL permitted)
+            $this->db->insert('api_logs', [
+                'provider' => 'facebook',
+                'identifier' => $response['data']['id'],
+                'created_at' => date('Y-m-d H:i:s')
+            ]);
         }
 
-        if ($post) {
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($params));
-        }
-
-        return json_decode(curl_exec($ch), true);
+        return $response;
     }
 
-    public static function auth($code) {
-        // OAuth uses the same base but different parameter handling (no Bearer header)
-        return self::request('oauth/access_token', null, [
-            'client_id' => 'YOUR_APP_ID',
-            'client_secret' => 'YOUR_APP_SECRET',
-            'redirect_uri' => 'YOUR_REDIRECT_URL',
+    /**
+     * Dedicated OAuth Exchange
+     */
+    public function exchangeCode(string $code): array
+    {
+        return $this->http("https://graph.facebook.com/v20.0/oauth/access_token", null, [
+            'client_id' => 'ID',
+            'client_secret' => 'SECRET',
+            'redirect_uri' => 'URL',
             'code' => $code
-        ]);
+        ], 'POST', false); // OAuth uses form-urlencoded
     }
 }
