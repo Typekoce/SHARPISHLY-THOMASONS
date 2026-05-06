@@ -37,7 +37,7 @@ setup-db: ## [2/5] Initialize MariaDB database and user
 
 setup-db-migration: ## [2.5/5] Run PHP database migrations
 	@echo "🗄️  Running Database Migrations..."
-	@php web/php/src/migrations/migrate.php
+	@curl -i http://sharpishly.dev/php/scaffold/migrate
 
 setup-web: ## [3/5] Provision Nginx & Storage Structure
 	@mkdir -p storage/logs storage/uploads/nats/{ingest,process,archive} storage/vectors
