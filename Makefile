@@ -40,7 +40,14 @@ setup-db-migration: ## [2.5/5] Run PHP database migrations
 	@curl -i http://sharpishly.dev/php/scaffold/migrate
 
 setup-web: ## [3/5] Provision Nginx & Storage Structure
-	@mkdir -p storage/logs storage/uploads/nats/{ingest,process,archive} storage/vectors
+	@echo "📁 Creating NATS-Lite structure..."
+	@mkdir -p storage/logs \
+		 storage/vectors \
+		 storage/uploads/nats/ingest \
+		 storage/uploads/nats/process \
+		 storage/uploads/nats/archive
+	@touch storage/logs/laravel.log storage/logs/worker.log
+	@$(MAKE) fix-permissions
 	@echo "✅ Storage structure verified."
 
 setup-python: ## [4/5] Setup VirtualEnv, Requirements, and Warm-up Model
