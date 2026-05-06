@@ -69,3 +69,6 @@ logs: ## 📋 Tailing Nginx, PHP, and Neural logs
 
 setup-test-job: ## 🧪 Create a test job via PHP endpoint
 	@curl -i http://sharpishly.dev/php/job/create
+
+check-ingest: ## 🔍 Inspect the NATS ingest folder for pending jobs
+	@ls -l storage/uploads/nats/ingest/
