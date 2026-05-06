@@ -1,5 +1,6 @@
 # --- Variables ---
 PROJECT_PATH := $(shell pwd)
+STORAGE_PATH := $(PROJECT_PATH)/storage
 VENV := venv
 PYTHON := $(PROJECT_PATH)/$(VENV)/bin/python3
 PIP := $(PROJECT_PATH)/$(VENV)/bin/pip
@@ -15,12 +16,21 @@ help: ## Show this help message
 
 all: setup-sys setup-db setup-web setup-python fix-permissions ## Execute full provisioning flow
 
-fix-permissions: ## 🔐 Apply permanent SetGID & Group permissions
-	@echo "🛠️  Applying SetGID (2775) to storage..."
-	@sudo chown -R vboxuser:www-data storage
-	@sudo chmod -R 2775 storage
-	@find storage -type d -exec sudo chmod g+s {} +
-	@echo "✅ Permissions grounded."
+# Get the absolute path of the directory containing the Makefile
+ROOT_DIR := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
+CURRENT_USER := $(shell whoami)
+
+fix-permissions: ## 🔐 Apply permanent SetGID & Group permissions (Portable)
+	@echo "🛠️  Grounding permissions at $(ROOT_DIR)/storage..."
+	@# Ensure the directory exists before touching permissions
+	@mkdir -p $(ROOT_DIR)/storage
+	@# Apply ownership to the current user and the web server group
+	@sudo chown -R $(CURRENT_USER):www-data $(ROOT_DIR)/storage
+	@# Set directory permissions: 2775 (rwxrwxr-x + SetGID)
+	@sudo chmod -R 2775 $(ROOT_DIR)/storage
+	@# Force SetGID on all subdirectories so new files inherit the 'www-data' group
+	@sudo find $(ROOT_DIR)/storage -type d -exec chmod g+s {} +
+	@echo "✅ Permissions grounded for user '$(CURRENT_USER)'."
 
 setup-sys: ## [1/5] Install LEMP stack, Python, and MariaDB
 	@sudo apt update && sudo apt install -y nginx mariadb-server php-fpm php-mysql python3-venv python3-pip curl
