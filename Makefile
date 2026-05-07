@@ -20,7 +20,7 @@ help: ## Show this help message
 
 all: setup-sys setup-hosts setup-nginx setup-db setup-web setup-python fix-permissions ## Execute full provisioning flow
 
-fix-permissions: ## 🔐 Apply permanent SetGID & Group permissions (Portable)
+fix-permissions: ##[0/10] 🔐 Apply permanent SetGID & Group permissions (Portable)
 	@echo "🛠️  Grounding permissions at $(ROOT_DIR)/storage..."
 	@mkdir -p $(ROOT_DIR)/storage
 	@sudo chown -R $(CURRENT_USER):www-data $(ROOT_DIR)/storage
@@ -28,12 +28,12 @@ fix-permissions: ## 🔐 Apply permanent SetGID & Group permissions (Portable)
 	@sudo find $(ROOT_DIR)/storage -type d -exec chmod g+s {} +
 	@echo "✅ Permissions grounded for user '$(CURRENT_USER)'."
 
-setup-sys: ## [1/5] Install LEMP stack, Python, and MariaDB
+setup-sys: ## [1/10] Install LEMP stack, Python, and MariaDB
 	@sudo apt update && sudo apt install -y nginx mariadb-server php-fpm php-mysql python3-venv python3-pip curl
 	@sudo systemctl enable nginx
 	@sudo systemctl enable mariadb
 
-setup-hosts: ## [2/5] 🌐 Map sharpishly.dev to localhost (requires sudo)
+setup-hosts: ## [2/10] 🌐 Map sharpishly.dev to localhost (requires sudo)
 	@echo "🌐 Checking local DNS for sharpishly.dev..."
 	@if grep -q "sharpishly.dev" /etc/hosts; then \
 		echo "✅ Host already mapped."; \
@@ -43,7 +43,7 @@ setup-hosts: ## [2/5] 🌐 Map sharpishly.dev to localhost (requires sudo)
 		echo "✅ Host mapped successfully."; \
 	fi
 
-setup-nginx: ## [3/5] 🌐 Provision Nginx by patching infra/ config
+setup-nginx: ## [3/10] 🌐 Provision Nginx by patching infra/ config
 	@echo "🌐 Provisioning Nginx for $(CURRENT_USER) on Ubuntu 24.04..."
 	@sudo rm /etc/nginx/sites-available/sharpishly.dev
 	@sudo rm /etc/nginx/sites-available/default
@@ -56,7 +56,7 @@ setup-nginx: ## [3/5] 🌐 Provision Nginx by patching infra/ config
 	@sudo nginx -t && sudo systemctl reload nginx
 	@echo "✅ Nginx provisioned and reloaded."
 
-setup-db: setup-hosts ## [4/5] Initialize MariaDB database and user
+setup-db: setup-hosts ## [4/10] Initialize MariaDB database and user
 	@echo "🚀 Initializing MariaDB..."
 	@sudo mariadb -e "CREATE DATABASE IF NOT EXISTS $(DB_NAME);"
 	@sudo mariadb -e "CREATE USER IF NOT EXISTS '$(DB_USER)'@'localhost' IDENTIFIED BY '$(DB_PASS)';"
@@ -64,7 +64,7 @@ setup-db: setup-hosts ## [4/5] Initialize MariaDB database and user
 	@sudo mariadb -e "FLUSH PRIVILEGES;"
 	@$(MAKE) setup-db-migration
 
-setup-web: ## [4/5] Provision Nginx & Storage Structure
+setup-web: ## [4/10] Provision Nginx & Storage Structure
 	@echo "📁 Creating NATS-Lite structure..."
 	@mkdir -p storage/logs \
 		 storage/vectors \
@@ -76,7 +76,7 @@ setup-web: ## [4/5] Provision Nginx & Storage Structure
 	@$(MAKE) fix-permissions
 	@echo "✅ Storage structure verified."
 
-setup-db-migration: ## [5/5] Run PHP database migrations
+setup-db-migration: ## [5/10] Run PHP database migrations
 	@echo "🗄️  Running Database Migrations..."
 	@# Nginx must be running for this curl to resolve
 	@curl -s -i http://sharpishly.dev/php/scaffold/migrate | grep "HTTP/1.1"
@@ -100,7 +100,7 @@ setup-test-job: ## [8/10]🧪 Create a test job via PHP endpoint
 check-ingest: ## [9/10] 🔍 Inspect the NATS ingest folder for pending jobs
 	@ls -l storage/uploads/nats/ingest/
 
-run-worker: ## 🚀 Start the NATS-Lite Neural Worker
+run-worker: ##[10/10] 🚀 Start the NATS-Lite Neural Worker
 	@echo "📦 Starting Neural Worker..."
 	@export PYTHONPATH=$(PROJECT_PATH)/pymvc; \
 	$(PYTHON) -m app.nats_worker
