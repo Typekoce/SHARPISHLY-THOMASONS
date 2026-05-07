@@ -37,7 +37,7 @@ setup-sys: ## [1/5] Install LEMP stack, Python, and MariaDB
 	@sudo systemctl enable nginx
 	@sudo systemctl enable mariadb
 
-setup-db: ## [2/5] Initialize MariaDB database and user
+setup-db: ## [3/5] Initialize MariaDB database and user
 	@echo "🚀 Initializing MariaDB..."
 	@sudo mariadb -e "CREATE DATABASE IF NOT EXISTS $(DB_NAME);"
 	@sudo mariadb -e "CREATE USER IF NOT EXISTS '$(DB_USER)'@'localhost' IDENTIFIED BY '$(DB_PASS)';"
@@ -45,7 +45,7 @@ setup-db: ## [2/5] Initialize MariaDB database and user
 	@sudo mariadb -e "FLUSH PRIVILEGES;"
 	@$(MAKE) setup-db-migration
 
-setup-db-migration: ## [2.5/5] Run PHP database migrations
+setup-db-migration: ## [4/5] Run PHP database migrations
 	@echo "🗄️  Running Database Migrations..."
 	@curl -i http://sharpishly.dev/php/scaffold/migrate
 
@@ -60,7 +60,7 @@ setup-web: ## [3/5] Provision Nginx & Storage Structure
 	@$(MAKE) fix-permissions
 	@echo "✅ Storage structure verified."
 
-setup-python: ## [4/5] Setup VirtualEnv, Requirements, and Warm-up Model
+setup-python: ## [5/5] Setup VirtualEnv, Requirements, and Warm-up Model
 	@echo "🐍 Initializing Python..."
 	@python3 -m venv $(VENV)
 	@$(PIP) install --upgrade pip
