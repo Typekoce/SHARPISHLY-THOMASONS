@@ -45,12 +45,13 @@ setup-hosts: ## [2/10] 🌐 Map sharpishly.dev to localhost (requires sudo)
 
 setup-nginx: ## [3/10] 🌐 Provision Nginx by patching infra/ config
 	@echo "🌐 Provisioning Nginx for $(CURRENT_USER) on Ubuntu 24.04..."
-	@sudo rm /etc/nginx/sites-available/sharpishly.dev
-	@sudo rm /etc/nginx/sites-available/default
-	@sudo rm /etc/nginx/sites-enabled/sharpishly.dev
-	@sudo rm /etc/nginx/sites-enabled/default
-	@sudo unlink /etc/nginx/sites-enabled/default
-	@sudo unlink /etc/nginx/sites-enabled/sharpishly.dev
+	@sudo rm -f /etc/nginx/sites-enabled/default
+	@# Patch the placeholder with the actual discovered ROOT_DIR
+	@sed "s|{{ROOT_DIR}}|$(ROOT_DIR)|g" infra/nginx/default.conf > /tmp/sharpishly.conf
+	@# Inject the discovered PHP socket (8.2, 8.3, etc.)
+	@if [ -n "$(PHP_SOCKET)" ]; then \
+		sed -i "s|fastcgi_pass unix:.*.sock;|fastcgi_pass unix:$(PHP_SOCKET);|g" /tmp/sharpishly.conf; \
+	fi
 	@sudo cp infra/nginx/default.conf /etc/nginx/sites-available/
 	@sudo ln -s /etc/nginx/sites-available/default.conf /etc/nginx/sites-enabled
 	@sudo nginx -t && sudo systemctl reload nginx
