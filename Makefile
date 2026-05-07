@@ -8,27 +8,23 @@ DB_NAME := sharpishly
 DB_USER := sharpadmin
 DB_PASS := sharpish_pass_2026
 
-# --- Primary Commands ---
-.PHONY: help all fix-permissions setup-sys setup-db setup-db-migration setup-web setup-python run-worker logs setup-test-job
-
-help: ## Show this help message
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-25s\033[0m %s\n", $$1, $$2}'
-
-all: setup-sys setup-db setup-web setup-python fix-permissions ## Execute full provisioning flow
-
 # Get the absolute path of the directory containing the Makefile
 ROOT_DIR := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 CURRENT_USER := $(shell whoami)
 
+# --- Primary Commands ---
+.PHONY: help all fix-permissions setup-sys setup-hosts setup-db setup-db-migration setup-web setup-python run-worker logs setup-test-job check-ingest
+
+help: ## Show this help message
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-25s\033[0m %s\n", $$1, $$2}'
+
+all: setup-sys setup-hosts setup-db setup-web setup-python fix-permissions ## Execute full provisioning flow
+
 fix-permissions: ## 🔐 Apply permanent SetGID & Group permissions (Portable)
 	@echo "🛠️  Grounding permissions at $(ROOT_DIR)/storage..."
-	@# Ensure the directory exists before touching permissions
 	@mkdir -p $(ROOT_DIR)/storage
-	@# Apply ownership to the current user and the web server group
 	@sudo chown -R $(CURRENT_USER):www-data $(ROOT_DIR)/storage
-	@# Set directory permissions: 2775 (rwxrwxr-x + SetGID)
 	@sudo chmod -R 2775 $(ROOT_DIR)/storage
-	@# Force SetGID on all subdirectories so new files inherit the 'www-data' group
 	@sudo find $(ROOT_DIR)/storage -type d -exec chmod g+s {} +
 	@echo "✅ Permissions grounded for user '$(CURRENT_USER)'."
 
@@ -37,27 +33,27 @@ setup-sys: ## [1/5] Install LEMP stack, Python, and MariaDB
 	@sudo systemctl enable nginx
 	@sudo systemctl enable mariadb
 
-setup-hosts: ##[1.1/5] 🌐 Map sharpishly.dev to localhost (requires sudo)
+setup-hosts: ## [1.1/5] 🌐 Map sharpishly.dev to localhost (requires sudo)
 	@echo "🌐 Checking local DNS for sharpishly.dev..."
 	@if grep -q "sharpishly.dev" /etc/hosts; then \
 		echo "✅ Host already mapped."; \
 	else \
 		echo "🛠️  Adding sharpishly.dev to /etc/hosts..."; \
-		echo "127.0.0.1    sharpishly.dev" | sudo tee -a /etc/hosts > /etc/null; \
+		echo "127.0.0.1    sharpishly.dev" | sudo tee -a /etc/hosts > /dev/null; \
 		echo "✅ Host mapped successfully."; \
 	fi
 
-setup-db: ## [2/5] Initialize MariaDB database and user
+setup-db: setup-hosts ## [2/5] Initialize MariaDB database and user
 	@echo "🚀 Initializing MariaDB..."
 	@sudo mariadb -e "CREATE DATABASE IF NOT EXISTS $(DB_NAME);"
 	@sudo mariadb -e "CREATE USER IF NOT EXISTS '$(DB_USER)'@'localhost' IDENTIFIED BY '$(DB_PASS)';"
 	@sudo mariadb -e "GRANT ALL PRIVILEGES ON $(DB_NAME).* TO '$(DB_USER)'@'localhost';"
 	@sudo mariadb -e "FLUSH PRIVILEGES;"
-	@$(MAKE) setup-db-migration
+	$(MAKE) setup-db-migration
 
 setup-db-migration: ## [4/5] Run PHP database migrations
 	@echo "🗄️  Running Database Migrations..."
-	@curl -i http://sharpishly.dev/php/scaffold/migrate
+	@curl -s -i http://sharpishly.dev/php/scaffold/migrate | grep "HTTP/1.1"
 
 setup-web: ## [3/5] Provision Nginx & Storage Structure
 	@echo "📁 Creating NATS-Lite structure..."
@@ -65,9 +61,10 @@ setup-web: ## [3/5] Provision Nginx & Storage Structure
 		 storage/vectors \
 		 storage/uploads/nats/ingest \
 		 storage/uploads/nats/process \
-		 storage/uploads/nats/archive
+		 storage/uploads/nats/archive \
+		 storage/uploads/nats/fail
 	@touch storage/logs/laravel.log storage/logs/worker.log
-	@$(MAKE) fix-permissions
+	$(MAKE) fix-permissions
 	@echo "✅ Storage structure verified."
 
 setup-python: ## [5/5] Setup VirtualEnv, Requirements, and Warm-up Model
@@ -76,7 +73,7 @@ setup-python: ## [5/5] Setup VirtualEnv, Requirements, and Warm-up Model
 	@$(PIP) install --upgrade pip
 	@$(PIP) install -r requirements.txt
 	@echo "🧠 Pre-loading Neural Model (all-MiniLM-L6-v2)..."
-	@$(PYTHON) -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
+	@$(PYTHON) -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2', device='cpu')"
 	@echo "✅ Python environment ready."
 
 run-worker: ## 🚀 Start the NATS-Lite Neural Worker
