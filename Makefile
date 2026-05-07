@@ -52,8 +52,9 @@ setup-nginx: ## [3/10] 🌐 Provision Nginx by patching infra/ config
 	@if [ -n "$(PHP_SOCKET)" ]; then \
 		sed -i "s|fastcgi_pass unix:.*.sock;|fastcgi_pass unix:$(PHP_SOCKET);|g" /tmp/sharpishly.conf; \
 	fi
-	@sudo cp infra/nginx/default.conf /etc/nginx/sites-available/
-	@sudo ln -s /etc/nginx/sites-available/default.conf /etc/nginx/sites-enabled
+	@# FIX: Copy the PATCHED file from /tmp, not the raw one from infra/
+	@sudo cp /tmp/sharpishly.conf /etc/nginx/sites-available/sharpishly.conf
+	@sudo ln -sf /etc/nginx/sites-available/sharpishly.conf /etc/nginx/sites-enabled/
 	@sudo nginx -t && sudo systemctl reload nginx
 	@echo "✅ Nginx provisioned and reloaded."
 
