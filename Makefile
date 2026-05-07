@@ -49,15 +49,6 @@ setup-nginx: ## [3/10] 🌐 Provision Nginx by patching infra/ config
 	
 	@# 1. Patch the root directory
 	@sed "s|{{ROOT_DIR}}|$(ROOT_DIR)|g" infra/nginx/default.conf > /tmp/sharpishly.conf
-	
-	@# 2. Patch the socket placeholder
-	@if [ -n "$(PHP_SOCKET)" ]; then \
-		echo "🔌 Injecting PHP socket: $(PHP_SOCKET)"; \
-		sed -i "s|{{PHP_SOCKET}}|$(PHP_SOCKET)|g" /tmp/sharpishly.conf; \
-	else \
-		echo "❌ Error: No PHP socket detected!"; exit 1; \
-	fi
-
 	@sudo cp /tmp/sharpishly.conf /etc/nginx/sites-available/sharpishly.conf
 	@sudo ln -sf /etc/nginx/sites-available/sharpishly.conf /etc/nginx/sites-enabled/
 	
