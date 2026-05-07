@@ -44,19 +44,22 @@ setup-hosts: ## [2/10] 🌐 Map sharpishly.dev to localhost (requires sudo)
 	fi
 
 setup-nginx: ## [3/10] 🌐 Provision Nginx by patching infra/ config
-	@echo "🌐 Provisioning Nginx for $(CURRENT_USER) on Ubuntu 24.04..."
+	@echo "🌐 Provisioning Nginx for $(CURRENT_USER)..."
 	@sudo rm -f /etc/nginx/sites-enabled/default
-	@# Patch the placeholder with the actual discovered ROOT_DIR
+
 	@sed "s|{{ROOT_DIR}}|$(ROOT_DIR)|g" infra/nginx/default.conf > /tmp/sharpishly.conf
-	@# Inject the discovered PHP socket (8.2, 8.3, etc.)
+
+	# Stronger socket replacement
 	@if [ -n "$(PHP_SOCKET)" ]; then \
-		sed -i "s|fastcgi_pass unix:.*.sock;|fastcgi_pass unix:$(PHP_SOCKET);|g" /tmp/sharpishly.conf; \
+		echo "🔌 Using PHP socket: $(PHP_SOCKET)"; \
+		sed -i "s|fastcgi_pass unix:.*-fpm.sock;|fastcgi_pass unix:$(PHP_SOCKET);|g" /tmp/sharpishly.conf; \
 	fi
-	@# FIX: Copy the PATCHED file from /tmp, not the raw one from infra/
+
 	@sudo cp /tmp/sharpishly.conf /etc/nginx/sites-available/sharpishly.conf
 	@sudo ln -sf /etc/nginx/sites-available/sharpishly.conf /etc/nginx/sites-enabled/
-	@sudo nginx -t && sudo systemctl reload nginx
-	@echo "✅ Nginx provisioned and reloaded."
+
+	@sudo nginx -t && sudo systemctl restart nginx
+	@echo "✅ Nginx provisioned."
 
 setup-db: setup-hosts ## [4/10] Initialize MariaDB database and user
 	@echo "🚀 Initializing MariaDB..."
