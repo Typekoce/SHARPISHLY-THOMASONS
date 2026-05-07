@@ -56,7 +56,7 @@ setup-nginx: ## [3/5] 🌐 Provision Nginx by patching infra/ config
 	@sudo nginx -t && sudo systemctl reload nginx
 	@echo "✅ Nginx provisioned and reloaded."
 
-setup-db: setup-hosts ## [2/5] Initialize MariaDB database and user
+setup-db: setup-hosts ## [4/5] Initialize MariaDB database and user
 	@echo "🚀 Initializing MariaDB..."
 	@sudo mariadb -e "CREATE DATABASE IF NOT EXISTS $(DB_NAME);"
 	@sudo mariadb -e "CREATE USER IF NOT EXISTS '$(DB_USER)'@'localhost' IDENTIFIED BY '$(DB_PASS)';"
@@ -64,12 +64,7 @@ setup-db: setup-hosts ## [2/5] Initialize MariaDB database and user
 	@sudo mariadb -e "FLUSH PRIVILEGES;"
 	@$(MAKE) setup-db-migration
 
-setup-db-migration: ## [4/5] Run PHP database migrations
-	@echo "🗄️  Running Database Migrations..."
-	@# Nginx must be running for this curl to resolve
-	@curl -s -i http://sharpishly.dev/php/scaffold/migrate | grep "HTTP/1.1"
-
-setup-web: ## [3/5] Provision Nginx & Storage Structure
+setup-web: ## [4/5] Provision Nginx & Storage Structure
 	@echo "📁 Creating NATS-Lite structure..."
 	@mkdir -p storage/logs \
 		 storage/vectors \
@@ -81,7 +76,12 @@ setup-web: ## [3/5] Provision Nginx & Storage Structure
 	@$(MAKE) fix-permissions
 	@echo "✅ Storage structure verified."
 
-setup-python: ## [5/5] Setup VirtualEnv, Requirements, and Warm-up Model
+setup-db-migration: ## [5/5] Run PHP database migrations
+	@echo "🗄️  Running Database Migrations..."
+	@# Nginx must be running for this curl to resolve
+	@curl -s -i http://sharpishly.dev/php/scaffold/migrate | grep "HTTP/1.1"
+
+setup-python: ## [6/10] Setup VirtualEnv, Requirements, and Warm-up Model
 	@echo "🐍 Initializing Python..."
 	@python3 -m venv $(VENV)
 	@$(PIP) install --upgrade pip
@@ -91,16 +91,18 @@ setup-python: ## [5/5] Setup VirtualEnv, Requirements, and Warm-up Model
 	@$(PYTHON) -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2', device='cpu')"
 	@echo "✅ Python environment ready."
 
+logs: ## [7/10] 📋 Tailing Nginx, PHP, and Neural logs
+	@tail -f storage/logs/*.log /var/log/nginx/sharpishly_access.log
+
+setup-test-job: ## [8/10]🧪 Create a test job via PHP endpoint
+	@curl -i http://sharpishly.dev/php/job/create
+
+check-ingest: ## [9/10] 🔍 Inspect the NATS ingest folder for pending jobs
+	@ls -l storage/uploads/nats/ingest/
+
 run-worker: ## 🚀 Start the NATS-Lite Neural Worker
 	@echo "📦 Starting Neural Worker..."
 	@export PYTHONPATH=$(PROJECT_PATH)/pymvc; \
 	$(PYTHON) -m app.nats_worker
 
-logs: ## 📋 Tailing Nginx, PHP, and Neural logs
-	@tail -f storage/logs/*.log /var/log/nginx/sharpishly_access.log
 
-setup-test-job: ## 🧪 Create a test job via PHP endpoint
-	@curl -i http://sharpishly.dev/php/job/create
-
-check-ingest: ## 🔍 Inspect the NATS ingest folder for pending jobs
-	@ls -l storage/uploads/nats/ingest/
