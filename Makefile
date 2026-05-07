@@ -33,7 +33,7 @@ setup-sys: ## [1/5] Install LEMP stack, Python, and MariaDB
 	@sudo systemctl enable nginx
 	@sudo systemctl enable mariadb
 
-setup-hosts: ## [1.1/5] 🌐 Map sharpishly.dev to localhost (requires sudo)
+setup-hosts: ## [2/5] 🌐 Map sharpishly.dev to localhost (requires sudo)
 	@echo "🌐 Checking local DNS for sharpishly.dev..."
 	@if grep -q "sharpishly.dev" /etc/hosts; then \
 		echo "✅ Host already mapped."; \
@@ -43,15 +43,16 @@ setup-hosts: ## [1.1/5] 🌐 Map sharpishly.dev to localhost (requires sudo)
 		echo "✅ Host mapped successfully."; \
 	fi
 
-setup-nginx: ## [1.2/5] 🌐 Provision Nginx by patching infra/ config
+setup-nginx: ## [3/5] 🌐 Provision Nginx by patching infra/ config
 	@echo "🌐 Provisioning Nginx for $(CURRENT_USER) on Ubuntu 24.04..."
-	@cp infra/nginx/default.conf /tmp/sharpishly.conf
-	@# Patch the path and PHP version for the new machine
-	@sed -i "s|/home/vboxuser/Documents/SHARPISHLY-THOMASONS|$(ROOT_DIR)|g" /tmp/sharpishly.conf
-	@sed -i "s|php8.2-fpm.sock|php8.3-fpm.sock|g" /tmp/sharpishly.conf
-	@sudo cp /tmp/sharpishly.conf /etc/nginx/sites-available/sharpishly.dev
-	@sudo ln -sf /etc/nginx/sites-available/sharpishly.dev /etc/nginx/sites-enabled/
-	@sudo rm -f /etc/nginx/sites-enabled/default
+	@sudo rm /etc/nginx/sites-available/sharpishly.dev
+	@sudo rm /etc/nginx/sites-available/default
+	@sudo rm /etc/nginx/sites-enabled/sharpishly.dev
+	@sudo rm /etc/nginx/sites-enabled/default
+	@sudo unlink /etc/nginx/sites-enabled/default
+	@sudo unlink /etc/nginx/sites-enabled/sharpishly.dev
+	@sudo cp infra/nginx/default.conf /etc/nginx/sites-available/
+	@sudo ln -s /etc/nginx/sites-available/default.conf /etc/nginx/sites-enabled
 	@sudo nginx -t && sudo systemctl reload nginx
 	@echo "✅ Nginx provisioned and reloaded."
 
