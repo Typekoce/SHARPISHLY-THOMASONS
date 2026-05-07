@@ -46,18 +46,21 @@ setup-hosts: ## [2/10] 🌐 Map sharpishly.dev to localhost (requires sudo)
 setup-nginx: ## [3/10] 🌐 Provision Nginx by patching infra/ config
 	@echo "🌐 Provisioning Nginx for $(CURRENT_USER)..."
 	@sudo rm -f /etc/nginx/sites-enabled/default
-
+	
+	@# 1. Patch the root directory
 	@sed "s|{{ROOT_DIR}}|$(ROOT_DIR)|g" infra/nginx/default.conf > /tmp/sharpishly.conf
-
-	# Stronger socket replacement
+	
+	@# 2. Patch the socket placeholder
 	@if [ -n "$(PHP_SOCKET)" ]; then \
-		echo "🔌 Using PHP socket: $(PHP_SOCKET)"; \
-		sed -i "s|fastcgi_pass unix:.*-fpm.sock;|fastcgi_pass unix:$(PHP_SOCKET);|g" /tmp/sharpishly.conf; \
+		echo "🔌 Injecting PHP socket: $(PHP_SOCKET)"; \
+		sed -i "s|{{PHP_SOCKET}}|$(PHP_SOCKET)|g" /tmp/sharpishly.conf; \
+	else \
+		echo "❌ Error: No PHP socket detected!"; exit 1; \
 	fi
 
 	@sudo cp /tmp/sharpishly.conf /etc/nginx/sites-available/sharpishly.conf
 	@sudo ln -sf /etc/nginx/sites-available/sharpishly.conf /etc/nginx/sites-enabled/
-
+	
 	@sudo nginx -t && sudo systemctl restart nginx
 	@echo "✅ Nginx provisioned."
 
