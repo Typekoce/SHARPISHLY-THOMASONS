@@ -37,7 +37,7 @@ setup-sys: ## [1/5] Install LEMP stack, Python, and MariaDB
 	@sudo systemctl enable nginx
 	@sudo systemctl enable mariadb
 
-setup-db: ## [3/5] Initialize MariaDB database and user
+setup-db: ## [2/5] Initialize MariaDB database and user
 	@echo "🚀 Initializing MariaDB..."
 	@sudo mariadb -e "CREATE DATABASE IF NOT EXISTS $(DB_NAME);"
 	@sudo mariadb -e "CREATE USER IF NOT EXISTS '$(DB_USER)'@'localhost' IDENTIFIED BY '$(DB_PASS)';"
