@@ -37,6 +37,16 @@ setup-sys: ## [1/5] Install LEMP stack, Python, and MariaDB
 	@sudo systemctl enable nginx
 	@sudo systemctl enable mariadb
 
+setup-hosts: ##[1.1/5] 🌐 Map sharpishly.dev to localhost (requires sudo)
+	@echo "🌐 Checking local DNS for sharpishly.dev..."
+	@if grep -q "sharpishly.dev" /etc/hosts; then \
+		echo "✅ Host already mapped."; \
+	else \
+		echo "🛠️  Adding sharpishly.dev to /etc/hosts..."; \
+		echo "127.0.0.1    sharpishly.dev" | sudo tee -a /etc/hosts > /etc/null; \
+		echo "✅ Host mapped successfully."; \
+	fi
+
 setup-db: ## [2/5] Initialize MariaDB database and user
 	@echo "🚀 Initializing MariaDB..."
 	@sudo mariadb -e "CREATE DATABASE IF NOT EXISTS $(DB_NAME);"
