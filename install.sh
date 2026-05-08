@@ -4,15 +4,15 @@ set -euo pipefail
 # ===================== DEFAULT CONFIG & VARIABLES =====================
 
 # Database Configuration
-DB_HOST="localhost"
-DB_USER="appuser"
-DB_PASS="ChangeMeToAStrongPassword123!"
-DB_NAME="myapp_db"
+DB_HOST="sharpishly"
+DB_USER="sharpishly"
+DB_PASS="sharpishly"
+DB_NAME="sharpishly"
 MYSQL_ROOT_PASS=""
 
 # Web Server Configuration
-DOMAIN="example.com"
-WEB_ROOT="/var/www/myapp"
+DOMAIN="sharpishly.dev"
+WEB_ROOT="/home/vboxuser/Documents/SHARPISHLY-THOMASONS/web/php/src"
 PHP_VERSION="8.3"
 
 # Project Paths
@@ -48,21 +48,32 @@ if [ -f /etc/nginx/sites-available/default ]; then
     echo "Removing default Nginx site..."
     sudo rm -f /etc/nginx/sites-available/default
     sudo rm -f /etc/nginx/sites-enabled/default
-    echo "✅ Default Nginx site removed."
 fi
 
 if [ -f "/etc/nginx/sites-available/${DOMAIN}" ]; then
     echo "Removing old configuration for ${DOMAIN}..."
     sudo rm -f "/etc/nginx/sites-available/${DOMAIN}"
     sudo rm -f "/etc/nginx/sites-enabled/${DOMAIN}"
-    echo "✅ Old site configuration cleaned."
 fi
+
+# ===================== PHP REPOSITORY SETUP (Critical Fix) =====================
+echo -e "\n=== Setting up PHP ${PHP_VERSION} Repository ==="
+
+sudo apt-get install -y software-properties-common ca-certificates apt-transport-https lsb-release
+
+if ! grep -q "ondrej/php" /etc/apt/sources.list.d/* 2>/dev/null; then
+    echo "Adding Ondrej PHP PPA..."
+    sudo add-apt-repository ppa:ondrej/php -y
+    echo "✅ PHP PPA added successfully."
+else
+    echo "✅ PHP PPA already configured."
+fi
+
+echo "Updating package list..."
+sudo apt-get update -qq
 
 # ===================== SYSTEM SETUP (LEMP + Python) =====================
 echo -e "\n=== System Setup: Installing LEMP + Python ==="
-
-echo "Updating package index..."
-sudo apt-get update -qq
 
 # Easy to edit package list
 PACKAGES=(
@@ -81,13 +92,15 @@ PACKAGES=(
     curl
 )
 
-echo "Installing packages..."
+echo "Installing core packages..."
 sudo apt-get install -y "${PACKAGES[@]}"
 
 # Enable services
 echo -e "\nEnabling services..."
 for service in nginx mariadb "php${PHP_VERSION}-fpm"; do
-    sudo systemctl enable "${service}" --now 2>/dev/null || echo "   ⚠️  Could not enable ${service}"
+    sudo systemctl enable "${service}" --now 2>/dev/null && \
+    echo "   ✅ Enabled: ${service}" || \
+    echo "   ⚠️  Could not enable ${service}"
 done
 
 echo "✅ Core system setup completed."
@@ -100,7 +113,7 @@ sudo chown -R "${CURRENT_USER}:www-data" "${STORAGE_PATH}"
 sudo chmod -R 2775 "${STORAGE_PATH}"
 sudo find "${STORAGE_PATH}" -type d -exec chmod g+s {} +
 
-echo "✅ Storage permissions applied (${CURRENT_USER}:www-data)"
+echo "✅ Storage permissions applied."
 
 # ===================== MYSQL SETUP =====================
 echo -e "\n=== Configuring MariaDB ==="
@@ -146,31 +159,14 @@ PHP_EOF
 echo "✅ env.php created."
 
 # ===================== SETUP WEB STORAGE STRUCTURE =====================
-echo -e "\n=== Setting up Web Storage Structure (NATS-Lite) ==="
+echo -e "\n=== Setting up Web Storage Structure ==="
 
-echo "📁 Creating storage directories..."
+mkdir -p "${STORAGE_PATH}"/{logs,vectors,uploads/nats/{ingest,process,archive,fail}}
 
-mkdir -p "${STORAGE_PATH}/logs" \
-         "${STORAGE_PATH}/vectors" \
-         "${STORAGE_PATH}/uploads/nats/ingest" \
-         "${STORAGE_PATH}/uploads/nats/process" \
-         "${STORAGE_PATH}/uploads/nats/archive" \
-         "${STORAGE_PATH}/uploads/nats/fail"
-
-# Create initial log files
 touch "${STORAGE_PATH}/logs/laravel.log" \
       "${STORAGE_PATH}/logs/worker.log"
 
-echo "✅ Storage directory structure created."
-
-# Apply permissions
-echo "Applying permissions..."
-# (This will call the fix-permissions section we already have)
-sudo chown -R "${CURRENT_USER}:www-data" "${STORAGE_PATH}"
-sudo chmod -R 2775 "${STORAGE_PATH}"
-sudo find "${STORAGE_PATH}" -type d -exec chmod g+s {} +
-
-echo "✅ Storage structure and permissions verified."
+echo "✅ Storage structure created."
 
 # ===================== WEB ROOT & NGINX SETUP =====================
 echo -e "\n=== Configuring Nginx ==="
@@ -179,7 +175,6 @@ sudo mkdir -p "${WEB_ROOT}"
 sudo chown -R www-data:www-data "${WEB_ROOT}"
 sudo chmod -R 755 "${WEB_ROOT}"
 
-# Create Nginx config
 sudo tee /etc/nginx/sites-available/${DOMAIN} > /dev/null <<NGINX_EOF
 server {
     listen 80;
@@ -219,35 +214,6 @@ if ! grep -q "${DOMAIN}" /etc/hosts; then
 else
     echo "ℹ️  ${DOMAIN} already in /etc/hosts"
 fi
-
-# ===================== SETUP PYTHON ENVIRONMENT =====================
-echo -e "\n=== Setting up Python Virtual Environment ==="
-
-if [ -d "${VENV}" ]; then
-    echo "Virtual environment already exists at ${VENV}"
-else
-    echo "🐍 Creating virtual environment..."
-    python3 -m venv "${VENV}"
-    echo "✅ Virtual environment created."
-fi
-
-# Uncomment when ready to test Models
-# echo "Upgrading pip..."
-# "${PIP}" install --upgrade pip
-
-# echo "Installing Python dependencies..."
-# "${PIP}" install -r requirements.txt
-
-# echo "🧠 Pre-loading Neural Model (all-MiniLM-L6-v2)..."
-# # Pre-download and warm up the model (CPU only)
-# "${PYTHON}" -c '
-# from sentence_transformers import SentenceTransformer
-# print("Loading model all-MiniLM-L6-v2...")
-# model = SentenceTransformer("all-MiniLM-L6-v2", device="cpu")
-# print("Model loaded successfully.")
-# ' || echo "⚠️  Model pre-loading failed (will be downloaded on first use)."
-
-# echo "✅ Python environment and model are ready."
 
 # ===================== FINAL SUMMARY =====================
 echo -e "\n========================================"
