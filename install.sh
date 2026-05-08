@@ -220,6 +220,35 @@ else
     echo "ℹ️  ${DOMAIN} already in /etc/hosts"
 fi
 
+# ===================== SETUP PYTHON ENVIRONMENT =====================
+echo -e "\n=== Setting up Python Virtual Environment ==="
+
+if [ -d "${VENV}" ]; then
+    echo "Virtual environment already exists at ${VENV}"
+else
+    echo "🐍 Creating virtual environment..."
+    python3 -m venv "${VENV}"
+    echo "✅ Virtual environment created."
+fi
+
+# Uncomment when ready to test Models
+# echo "Upgrading pip..."
+# "${PIP}" install --upgrade pip
+
+# echo "Installing Python dependencies..."
+# "${PIP}" install -r requirements.txt
+
+# echo "🧠 Pre-loading Neural Model (all-MiniLM-L6-v2)..."
+# # Pre-download and warm up the model (CPU only)
+# "${PYTHON}" -c '
+# from sentence_transformers import SentenceTransformer
+# print("Loading model all-MiniLM-L6-v2...")
+# model = SentenceTransformer("all-MiniLM-L6-v2", device="cpu")
+# print("Model loaded successfully.")
+# ' || echo "⚠️  Model pre-loading failed (will be downloaded on first use)."
+
+# echo "✅ Python environment and model are ready."
+
 # ===================== FINAL SUMMARY =====================
 echo -e "\n========================================"
 echo "Installation completed successfully!"
