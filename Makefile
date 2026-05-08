@@ -1,107 +1,35 @@
 # --- Variables ---
-PROJECT_PATH := $(shell pwd)
-STORAGE_PATH := $(PROJECT_PATH)/storage
-VENV := venv
-PYTHON := $(PROJECT_PATH)/$(VENV)/bin/python3
-PIP := $(PROJECT_PATH)/$(VENV)/bin/pip
-DB_NAME := sharpishly
-DB_USER := sharpadmin
-DB_PASS := sharpish_pass_2026
+ROOT_DIR     := $(shell pwd)
+STORAGE_PATH := $(ROOT_DIR)/storage
+PYTHON       := $(ROOT_DIR)/venv/bin/python3
+DOMAIN       := sharpishly.dev
 
-# Get the absolute path of the directory containing the Makefile
-ROOT_DIR := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
-CURRENT_USER := $(shell whoami)
-
-# --- Primary Commands ---
-.PHONY: help all fix-permissions setup-sys setup-hosts setup-nginx setup-db setup-db-migration setup-web setup-python run-worker logs setup-test-job check-ingest
-
+# --- Help ---
+.PHONY: help
 help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-25s\033[0m %s\n", $$1, $$2}'
 
-all: setup-sys setup-hosts setup-nginx setup-db setup-web setup-python fix-permissions ## Execute full provisioning flow
+# --- Database & Migrations ---
+.PHONY: migrate
+migrate: ## [1/4] Run PHP database migrations via entry point
+	@echo "🗄️ Running Database Migrations..."
+	@curl -s -i http://$(DOMAIN)/php/scaffold/migrate | grep "HTTP/1.1"
 
-fix-permissions: ##[0/10] 🔐 Apply permanent SetGID & Group permissions (Portable)
-	@echo "🛠️  Grounding permissions at $(ROOT_DIR)/storage..."
-	@mkdir -p $(ROOT_DIR)/storage
-	@sudo chown -R $(CURRENT_USER):www-data $(ROOT_DIR)/storage
-	@sudo chmod -R 2775 $(ROOT_DIR)/storage
-	@sudo find $(ROOT_DIR)/storage -type d -exec chmod g+s {} +
-	@echo "✅ Permissions grounded for user '$(CURRENT_USER)'."
+# --- Monitoring ---
+.PHONY: logs
+logs: ## [2/4] Tail Nginx and Project logs
+	@tail -f $(STORAGE_PATH)/logs/*.log /var/log/nginx/sharpishly_access.log
 
-setup-sys: ## [1/10] Install LEMP stack, Python, and MariaDB
-	@sudo apt update && sudo apt install -y nginx mariadb-server php-fpm php-mysql python3-venv python3-pip curl
-	@sudo systemctl enable nginx
-	@sudo systemctl enable mariadb
+# --- Neural Worker (NATS) ---
+.PHONY: run-worker
+run-worker: ## [3/4] Start the NATS-Lite Neural Worker (Python)
+	@echo "🚀 Starting Neural Worker..."
+	@export PYTHONPATH=$(ROOT_DIR)/pymvc; $(PYTHON) -m app.nats_worker
 
-setup-hosts: ## [2/10] 🌐 Map sharpishly.dev to localhost (requires sudo)
-	@echo "🌐 Checking local DNS for sharpishly.dev..."
-	@if grep -q "sharpishly.dev" /etc/hosts; then \
-		echo "✅ Host already mapped."; \
-	else \
-		echo "🛠️  Adding sharpishly.dev to /etc/hosts..."; \
-		echo "127.0.0.1    sharpishly.dev" | sudo tee -a /etc/hosts > /dev/null; \
-		echo "✅ Host mapped successfully."; \
-	fi
+# --- Testing & Inspection ---
+.PHONY: test-job check-ingest
+test-job: ## [4/4] Create a test job via PHP endpoint
+	@curl -i http://$(DOMAIN)/php/job/create
 
-setup-nginx: ## [3/10] 🌐 Provision Nginx by patching infra/ config
-	@echo "🌐 Provisioning Nginx for $(CURRENT_USER)..."
-	@sudo rm -f /etc/nginx/sites-enabled/default
-	
-	@# 1. Patch the root directory
-	@sed "s|{{ROOT_DIR}}|$(ROOT_DIR)|g" infra/nginx/default.conf > /tmp/sharpishly.conf
-	@sudo cp /tmp/sharpishly.conf /etc/nginx/sites-available/sharpishly.conf
-	@sudo ln -sf /etc/nginx/sites-available/sharpishly.conf /etc/nginx/sites-enabled/
-	
-	@sudo nginx -t && sudo systemctl restart nginx
-	@echo "✅ Nginx provisioned."
-
-setup-db: setup-hosts ## [4/10] Initialize MariaDB database and user
-	@echo "🚀 Initializing MariaDB..."
-	@sudo mariadb -e "CREATE DATABASE IF NOT EXISTS $(DB_NAME);"
-	@sudo mariadb -e "CREATE USER IF NOT EXISTS '$(DB_USER)'@'localhost' IDENTIFIED BY '$(DB_PASS)';"
-	@sudo mariadb -e "GRANT ALL PRIVILEGES ON $(DB_NAME).* TO '$(DB_USER)'@'localhost';"
-	@sudo mariadb -e "FLUSH PRIVILEGES;"
-	@$(MAKE) setup-db-migration
-
-setup-web: ## [4/10] Provision Nginx & Storage Structure
-	@echo "📁 Creating NATS-Lite structure..."
-	@mkdir -p storage/logs \
-		 storage/vectors \
-		 storage/uploads/nats/ingest \
-		 storage/uploads/nats/process \
-		 storage/uploads/nats/archive \
-		 storage/uploads/nats/fail
-	@touch storage/logs/laravel.log storage/logs/worker.log
-	@$(MAKE) fix-permissions
-	@echo "✅ Storage structure verified."
-
-setup-db-migration: ## [5/10] Run PHP database migrations
-	@echo "🗄️  Running Database Migrations..."
-	@# Nginx must be running for this curl to resolve
-	@curl -s -i http://sharpishly.dev/php/scaffold/migrate | grep "HTTP/1.1"
-
-setup-python: ## [6/10] Setup VirtualEnv, Requirements, and Warm-up Model
-	@echo "🐍 Initializing Python..."
-	@python3 -m venv $(VENV)
-	@$(PIP) install --upgrade pip
-	@$(PIP) install -r requirements.txt
-	@echo "🧠 Pre-loading Neural Model (all-MiniLM-L6-v2)..."
-	@# Explicitly use CPU for the SF113 hardware
-	@$(PYTHON) -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2', device='cpu')"
-	@echo "✅ Python environment ready."
-
-logs: ## [7/10] 📋 Tailing Nginx, PHP, and Neural logs
-	@tail -f storage/logs/*.log /var/log/nginx/sharpishly_access.log
-
-setup-test-job: ## [8/10]🧪 Create a test job via PHP endpoint
-	@curl -i http://sharpishly.dev/php/job/create
-
-check-ingest: ## [9/10] 🔍 Inspect the NATS ingest folder for pending jobs
-	@ls -l storage/uploads/nats/ingest/
-
-run-worker: ##[10/10] 🚀 Start the NATS-Lite Neural Worker
-	@echo "📦 Starting Neural Worker..."
-	@export PYTHONPATH=$(PROJECT_PATH)/pymvc; \
-	$(PYTHON) -m app.nats_worker
-
-
+check-ingest: ## Inspect the NATS ingest folder for pending jobs
+	@ls -l $(STORAGE_PATH)/uploads/nats/ingest/
