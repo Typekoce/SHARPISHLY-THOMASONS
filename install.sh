@@ -145,6 +145,33 @@ PHP_EOF
 
 echo "✅ env.php created."
 
+# ===================== SETUP WEB STORAGE STRUCTURE =====================
+echo -e "\n=== Setting up Web Storage Structure (NATS-Lite) ==="
+
+echo "📁 Creating storage directories..."
+
+mkdir -p "${STORAGE_PATH}/logs" \
+         "${STORAGE_PATH}/vectors" \
+         "${STORAGE_PATH}/uploads/nats/ingest" \
+         "${STORAGE_PATH}/uploads/nats/process" \
+         "${STORAGE_PATH}/uploads/nats/archive" \
+         "${STORAGE_PATH}/uploads/nats/fail"
+
+# Create initial log files
+touch "${STORAGE_PATH}/logs/laravel.log" \
+      "${STORAGE_PATH}/logs/worker.log"
+
+echo "✅ Storage directory structure created."
+
+# Apply permissions
+echo "Applying permissions..."
+# (This will call the fix-permissions section we already have)
+sudo chown -R "${CURRENT_USER}:www-data" "${STORAGE_PATH}"
+sudo chmod -R 2775 "${STORAGE_PATH}"
+sudo find "${STORAGE_PATH}" -type d -exec chmod g+s {} +
+
+echo "✅ Storage structure and permissions verified."
+
 # ===================== WEB ROOT & NGINX SETUP =====================
 echo -e "\n=== Configuring Nginx ==="
 
