@@ -253,6 +253,22 @@ else
     echo "ℹ️  ${DOMAIN} already in /etc/hosts"
 fi
 
+# ===================== PYTHON LIBRARIES (Neural Path) =====================
+echo -e "\n=== Installing Python Application Dependencies ==="
+
+# Using --break-system-packages if not using a venv, 
+# or standard install if within a venv.
+PYTHON_DEPS=(
+    requests
+    chromadb
+)
+
+echo "Installing: ${PYTHON_DEPS[*]}..."
+# -m pip ensures we use the pip associated with python3
+python3 -m pip install "${PYTHON_DEPS[@]}" --quiet
+
+echo "✅ Python libraries grounded."
+
 # ===================== FINAL SUMMARY =====================
 echo -e "\n========================================"
 echo "Installation completed successfully!"
