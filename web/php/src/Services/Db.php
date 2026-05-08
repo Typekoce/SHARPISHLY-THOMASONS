@@ -24,11 +24,13 @@ public function __construct(array $config, $logger = null)
 {
     $this->logger = $logger;
 
-    // Use the array keys from your new get_env() function
-    $host = $config['db_host'] ?? '127.0.0.1';
-    $db   = $config['db_name'] ?? '';
-    $user = $config['db_user'] ?? '';
-    $pass = $config['db_pass'] ?? '';
+    //echo "<pre>";
+	//print(DB_HOST);
+	//print_r($GLOBALS);die();
+    $host = DB_HOST;
+    $db   = DB_NAME;
+    $user = DB_USER;
+    $pass = DB_PASS;
 
     $dsn = "mysql:host={$host};dbname={$db};charset=utf8mb4";
 

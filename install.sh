@@ -4,7 +4,7 @@ set -euo pipefail
 # ===================== DEFAULT CONFIG & VARIABLES =====================
 
 # Database Configuration
-DB_HOST="sharpishly"
+DB_HOST="localhost"
 DB_USER="sharpishly"
 DB_PASS="sharpishly"
 DB_NAME="sharpishly"
@@ -56,18 +56,22 @@ if [ -f "/etc/nginx/sites-available/${DOMAIN}" ]; then
     sudo rm -f "/etc/nginx/sites-enabled/${DOMAIN}"
 fi
 
-# ===================== PHP REPOSITORY SETUP (Critical Fix) =====================
-echo -e "\n=== Setting up PHP ${PHP_VERSION} Repository ==="
+# ===================== PHP REPOSITORY SETUP (SURY) =====================
+echo -e "\n=== Setting up PHP ${PHP_VERSION} Repository (deb.sury.org) ==="
 
-sudo apt-get install -y software-properties-common ca-certificates apt-transport-https lsb-release
+# Install dependencies
+sudo apt-get install -y ca-certificates apt-transport-https lsb-release gnupg curl
 
-if ! grep -q "ondrej/php" /etc/apt/sources.list.d/* 2>/dev/null; then
-    echo "Adding Ondrej PHP PPA..."
-    sudo add-apt-repository ppa:ondrej/php -y
-    echo "✅ PHP PPA added successfully."
-else
-    echo "✅ PHP PPA already configured."
-fi
+echo "Adding official SURY PHP repository..."
+
+# Download and install the official signing key
+curl -fsSL https://packages.sury.org/php/apt.gpg | sudo gpg --dearmor -o /usr/share/keyrings/sury-php.gpg
+
+# Add the repository
+echo "deb [signed-by=/usr/share/keyrings/sury-php.gpg] https://packages.sury.org/php/ $(lsb_release -sc) main" | \
+sudo tee /etc/apt/sources.list.d/sury-php.list > /dev/null
+
+echo "✅ SURY PHP repository added successfully."
 
 echo "Updating package list..."
 sudo apt-get update -qq
@@ -183,16 +187,50 @@ server {
     root ${WEB_ROOT};
     index index.php index.html index.htm;
 
+    # Logging - pointing to your local storage
+    access_log /var/log/nginx/sharpishly_access.log;
+    error_log  /var/log/nginx/sharpishly_error.log warn;
+
+    # 1. Frontend SPA
     location / {
-        try_files \$uri \$uri/ /index.php?\$query_string;
+        try_files $uri $uri/ /index.html;
     }
 
-    location ~ \.php$ {
-        fastcgi_pass unix:/var/run/php/php${PHP_VERSION}-fpm.sock;
-        fastcgi_index index.php;
-        fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
+    # location ~ \.php$ {
+    #     fastcgi_pass unix:/var/run/php/php${PHP_VERSION}-fpm.sock;
+    #     fastcgi_index index.php;
+    #     fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
+    #     include fastcgi_params;
+    # }
+
+    # 2. PHP API - Everything under /php or /api goes to index.php
+    location ~ ^/(php|api)(/|$) {
+        # Single entry point for all PHP routing
+        fastcgi_param SCRIPT_FILENAME $base_path/web/php/src/index.php;
+        fastcgi_param PATH_INFO       $fastcgi_path_info;
+
         include fastcgi_params;
+        
+        # NATIVE CHANGE: Connect to the local PHP-FPM socket instead of "php:9000"
+        fastcgi_pass unix:/var/run/php/php${PHP_VERSION}-fpm.sock;
+
+        # Preserve full original URI for router
+        fastcgi_param REQUEST_URI      $request_uri;
+
+        # Timeouts for Neural/Path B tasks
+        fastcgi_read_timeout  600;
+        fastcgi_send_timeout  600;
+
+        # Buffering off for Path B streaming
+        fastcgi_buffering     off;
     }
+
+    # Security & Buffers
+    client_max_body_size 50M;
+    client_body_buffer_size 1M;
+    add_header X-Content-Type-Options nosniff;
+    add_header X-Frame-Options SAMEORIGIN;
+
 
     location ~ /\.ht {
         deny all;
