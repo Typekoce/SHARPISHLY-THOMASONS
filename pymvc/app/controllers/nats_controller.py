@@ -121,3 +121,36 @@ class NatsController:
         except Exception as e:
             print(f"❌ Connection Error: {e}")
             return None
+@staticmethod
+    def embeddings(job_id):
+        """
+        Phase 2: Transition from raw payload to vector-ready chunks.
+        """
+        # 1. Update PHP that we are starting the Neural work
+        NatsController.update_php(job_id, 'processing_embeddings')
+
+        # 2. Fetch the raw CSV/Text from the PHP API
+        payload = NatsController.get_payload(job_id)
+        if not payload:
+            NatsController.update_php(job_id, 'failed_payload_fetch')
+            return None
+
+        # 3. Hand over to the ChunkingService (to be implemented in utils)
+        # We don't do the work here; we orchestrate it.
+        from app.utils.ChunkingService import ChunkingService
+        chunker = ChunkingService()
+        chunks = chunker.create_chunks(payload)
+
+        return chunks
+
+    @staticmethod
+    def vectorstorage(job_id, collection_name, vector_count):
+        """
+        Phase 3: Finalize the Vector DB link and signal completion.
+        """
+        # 1. Final status update to PHP
+        # This signals Path B in the PHP router to mark the job as 'completed'
+        status = f"vectorized:{collection_name}:{vector_count}"
+        NatsController.update_php(job_id, status)
+        
+        print(f"✅ Job {job_id} grounded in Vector DB: {collection_name}")
