@@ -1,89 +1,27 @@
 #!/bin/bash
 set -euo pipefail
 
-# ===================== PRE-INSTALLATION CLEAN-UP =====================
-echo -e "\n=== Pre-installation Cleanup ==="
+# ===================== DEFAULT CONFIG & VARIABLES =====================
 
-# Remove default Nginx site if it exists
-if [ -f /etc/nginx/sites-available/default ]; then
-    echo "Removing default Nginx site..."
-    sudo rm -f /etc/nginx/sites-available/default
-    sudo rm -f /etc/nginx/sites-enabled/default
-    echo "✅ Default Nginx site removed."
-else
-    echo "ℹ️  No default Nginx site found."
-fi
-
-# Optional: Remove old site config with same domain (if re-running script)
-if [ -f "/etc/nginx/sites-available/${DOMAIN}" ]; then
-    echo "Removing old configuration for ${DOMAIN}..."
-    sudo rm -f "/etc/nginx/sites-available/${DOMAIN}"
-    sudo rm -f "/etc/nginx/sites-enabled/${DOMAIN}"
-    echo "✅ Old site configuration cleaned."
-fi
-
-# ===================== VARIABLES =====================
-
-# Absolute path of the directory where install.sh is located
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-# Project root (can be same as ROOT_DIR or overridden)
-PROJECT_PATH="${ROOT_DIR}"
-
-STORAGE_PATH="${PROJECT_PATH}/storage"
-VENV="${PROJECT_PATH}/venv"
-
-PYTHON="${VENV}/bin/python3"
-PIP="${VENV}/bin/pip"
-
-CURRENT_USER="$(whoami)"
-
-# ===================== FIX PERMISSIONS =====================
-echo -e "\n=== Fixing Storage Permissions ==="
-
-echo "🛠️  Grounding permissions at ${STORAGE_PATH}..."
-
-# Create storage directory if it doesn't exist
-mkdir -p "${STORAGE_PATH}"
-
-# Set ownership: current user + www-data group
-sudo chown -R "${CURRENT_USER}:www-data" "${STORAGE_PATH}"
-
-# Set permissions: rwxrwxr-x with SetGID bit
-sudo chmod -R 2775 "${STORAGE_PATH}"
-
-# Ensure new directories inherit the group (SetGID)
-sudo find "${STORAGE_PATH}" -type d -exec chmod g+s {} +
-
-echo "✅ Permissions applied successfully for user '${CURRENT_USER}'."
-echo "   → Owner: ${CURRENT_USER}:www-data"
-echo "   → Mode : 2775 (with SetGID)"
-
-
-# ===================== DEFAULT CONFIG =====================
+# Database Configuration
 DB_HOST="localhost"
 DB_USER="appuser"
 DB_PASS="ChangeMeToAStrongPassword123!"
 DB_NAME="myapp_db"
 MYSQL_ROOT_PASS=""
 
-# Web server configuration
-DOMAIN="example.com"          # Change this or pass via flag
+# Web Server Configuration
+DOMAIN="example.com"
 WEB_ROOT="/var/www/myapp"
 PHP_VERSION="8.3"
 
-# ===================== SET HOSTS =====================
-echo -e "\n=== Updating /etc/hosts ==="
+# Project Paths
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_PATH="${ROOT_DIR}"
+STORAGE_PATH="${PROJECT_PATH}/storage"
+VENV="${PROJECT_PATH}/venv"
 
-HOSTS_ENTRY="127.0.0.1   ${DOMAIN} www.${DOMAIN}"
-
-if grep -q "${DOMAIN}" /etc/hosts; then
-    echo "ℹ️  ${DOMAIN} already present in /etc/hosts"
-else
-    echo "${HOSTS_ENTRY}" | sudo tee -a /etc/hosts >/dev/null
-    echo "✅ Successfully added to /etc/hosts:"
-    echo "   ${HOSTS_ENTRY}"
-fi
+CURRENT_USER="$(whoami)"
 
 # ===================== PARSE ARGUMENTS =====================
 while getopts ":H:u:p:d:r:D:w:v:" opt; do
@@ -103,32 +41,69 @@ while getopts ":H:u:p:d:r:D:w:v:" opt; do
   esac
 done
 
-echo "=== Full Stack Installer (MySQL + PHP + Nginx) ==="
-echo "Domain   : ${DOMAIN}"
-echo "Web Root : ${WEB_ROOT}"
-echo "PHP      : ${PHP_VERSION}"
-echo "Database : ${DB_NAME} (${DB_USER})"
+# ===================== PRE-INSTALLATION CLEAN-UP =====================
+echo -e "\n=== Pre-installation Cleanup ==="
 
-# ===================== UPDATE SYSTEM =====================
-echo -e "\nUpdating system packages..."
+if [ -f /etc/nginx/sites-available/default ]; then
+    echo "Removing default Nginx site..."
+    sudo rm -f /etc/nginx/sites-available/default
+    sudo rm -f /etc/nginx/sites-enabled/default
+    echo "✅ Default Nginx site removed."
+fi
+
+if [ -f "/etc/nginx/sites-available/${DOMAIN}" ]; then
+    echo "Removing old configuration for ${DOMAIN}..."
+    sudo rm -f "/etc/nginx/sites-available/${DOMAIN}"
+    sudo rm -f "/etc/nginx/sites-enabled/${DOMAIN}"
+    echo "✅ Old site configuration cleaned."
+fi
+
+# ===================== SYSTEM SETUP (LEMP + Python) =====================
+echo -e "\n=== System Setup: Installing LEMP + Python ==="
+
+echo "Updating package index..."
 sudo apt-get update -qq
 
-# ===================== PHP SETUP =====================
-echo -e "\nInstalling PHP ${PHP_VERSION} + extensions..."
-sudo apt-get install -y \
-    php${PHP_VERSION} \
-    php${PHP_VERSION}-fpm \
-    php${PHP_VERSION}-mysql \
-    php${PHP_VERSION}-curl \
-    php${PHP_VERSION}-mbstring \
-    php${PHP_VERSION}-xml \
-    php${PHP_VERSION}-zip \
+# Easy to edit package list
+PACKAGES=(
+    nginx
+    mariadb-server
+    php${PHP_VERSION}
+    php${PHP_VERSION}-fpm
+    php${PHP_VERSION}-mysql
+    php${PHP_VERSION}-curl
+    php${PHP_VERSION}-mbstring
+    php${PHP_VERSION}-xml
+    php${PHP_VERSION}-zip
     php${PHP_VERSION}-gd
+    python3-venv
+    python3-pip
+    curl
+)
 
-echo "✅ PHP ${PHP_VERSION} installed."
+echo "Installing packages..."
+sudo apt-get install -y "${PACKAGES[@]}"
+
+# Enable services
+echo -e "\nEnabling services..."
+for service in nginx mariadb "php${PHP_VERSION}-fpm"; do
+    sudo systemctl enable "${service}" --now 2>/dev/null || echo "   ⚠️  Could not enable ${service}"
+done
+
+echo "✅ Core system setup completed."
+
+# ===================== FIX PERMISSIONS =====================
+echo -e "\n=== Fixing Storage Permissions ==="
+
+mkdir -p "${STORAGE_PATH}"
+sudo chown -R "${CURRENT_USER}:www-data" "${STORAGE_PATH}"
+sudo chmod -R 2775 "${STORAGE_PATH}"
+sudo find "${STORAGE_PATH}" -type d -exec chmod g+s {} +
+
+echo "✅ Storage permissions applied (${CURRENT_USER}:www-data)"
 
 # ===================== MYSQL SETUP =====================
-echo -e "\nConfiguring MySQL..."
+echo -e "\n=== Configuring MariaDB ==="
 
 if [ -n "$MYSQL_ROOT_PASS" ]; then
     MYSQL_CMD=(mysql -uroot -p"${MYSQL_ROOT_PASS}")
@@ -150,15 +125,15 @@ GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.*
 FLUSH PRIVILEGES;
 SQL
 
-echo "✅ MySQL setup completed."
+echo "✅ Database and user created."
 
 # ===================== CREATE env.php =====================
-echo -e "\nCreating env.php..."
+echo -e "\n=== Creating env.php ==="
+
 cat > env.php <<PHP_EOF
 <?php
 /**
- * Database Configuration
- * Generated by install.sh
+ * Database Configuration - Generated by install.sh
  */
 
 define('DB_HOST', '${DB_HOST}');
@@ -170,17 +145,14 @@ PHP_EOF
 
 echo "✅ env.php created."
 
-# ===================== Nginx SETUP =====================
-echo -e "\nInstalling and configuring Nginx..."
+# ===================== WEB ROOT & NGINX SETUP =====================
+echo -e "\n=== Configuring Nginx ==="
 
-sudo apt-get install -y nginx
-
-# Create web root directory
 sudo mkdir -p "${WEB_ROOT}"
 sudo chown -R www-data:www-data "${WEB_ROOT}"
 sudo chmod -R 755 "${WEB_ROOT}"
 
-# Create Nginx site configuration
+# Create Nginx config
 sudo tee /etc/nginx/sites-available/${DOMAIN} > /dev/null <<NGINX_EOF
 server {
     listen 80;
@@ -206,27 +178,34 @@ server {
 }
 NGINX_EOF
 
-# Enable site and disable default
 sudo ln -sf /etc/nginx/sites-available/${DOMAIN} /etc/nginx/sites-enabled/
-sudo rm -f /etc/nginx/sites-enabled/default
-
-# Test and reload Nginx
 sudo nginx -t && sudo systemctl reload nginx
 
-echo "✅ Nginx installed and configured."
+echo "✅ Nginx configured for ${DOMAIN}"
+
+# ===================== SET HOSTS =====================
+echo -e "\n=== Updating /etc/hosts ==="
+HOSTS_ENTRY="127.0.0.1   ${DOMAIN} www.${DOMAIN}"
+if ! grep -q "${DOMAIN}" /etc/hosts; then
+    echo "${HOSTS_ENTRY}" | sudo tee -a /etc/hosts > /dev/null
+    echo "✅ Added ${DOMAIN} to /etc/hosts"
+else
+    echo "ℹ️  ${DOMAIN} already in /etc/hosts"
+fi
 
 # ===================== FINAL SUMMARY =====================
 echo -e "\n========================================"
 echo "Installation completed successfully!"
 echo "========================================"
-echo "Web Root     : ${WEB_ROOT}"
 echo "Domain       : ${DOMAIN}"
+echo "Web Root     : ${WEB_ROOT}"
 echo "PHP Version  : ${PHP_VERSION}"
 echo "Database     : ${DB_NAME}"
+echo "Storage Path : ${STORAGE_PATH}"
 echo "env.php      : Created"
 echo ""
 echo "Next steps:"
-echo "1. Upload your PHP files to ${WEB_ROOT}"
-echo "2. Point your domain to this server"
-echo "3. Change the password in env.php for production!"
+echo "   1. Upload your application files to ${WEB_ROOT}"
+echo "   2. Change DB password in env.php"
+echo "   3. Consider setting up SSL (Let's Encrypt)"
 echo "========================================"
