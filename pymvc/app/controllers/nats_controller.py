@@ -121,7 +121,7 @@ class NatsController:
         except Exception as e:
             print(f"❌ Connection Error: {e}")
             return None
-@staticmethod
+    @staticmethod
     def embeddings(job_id):
         """
         Phase 2: Transition from raw payload to vector-ready chunks.
@@ -154,3 +154,29 @@ class NatsController:
         NatsController.update_php(job_id, status)
         
         print(f"✅ Job {job_id} grounded in Vector DB: {collection_name}")
+
+
+    @staticmethod
+    def process_neural_path(job_id):
+        """
+        The full NP surgery: Ingest -> Chunk -> Embed -> Store -> Notify
+        """
+        # 1. Chunking (using the updated row-aware service)
+        from app.utils.ChunkingService import ChunkingService
+        payload = NatsController.get_payload(job_id)
+        chunks = ChunkingService.create_chunks(payload, job_id)
+        
+        # 2. Storage & Vectorization
+        from app.utils.VectorStorageService import VectorStorageService
+        # Passing mock_vector as the embedder for now
+        coll, count = VectorStorageService.store_chunks(
+            job_id, 
+            chunks, 
+            ChunkingService.mock_vector
+        )
+        
+        # 3. Grounding Handshake
+        VectorStorageService.finalize_handshake(job_id, coll, count)
+        
+        # 4. Acknowledge and cleanup 'process' folder
+        # NatsController.acknowledge(file_path)
