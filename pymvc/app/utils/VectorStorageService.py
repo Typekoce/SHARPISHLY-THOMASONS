@@ -1,38 +1,57 @@
-import random
+import os
+import chromadb
 from app.utils.Config import Config
 
 class VectorStorageService:
     @staticmethod
+    def get_client():
+        """
+        Initializes a persistent Chroma client.
+        Data is grounded in storage/vector_db to survive container restarts.
+        """
+        persist_path = "storage/vector_db"
+        if not os.path.exists(persist_path):
+            os.makedirs(persist_path, exist_ok=True)
+            
+        return chromadb.PersistentClient(path=persist_path)
+
+    @staticmethod
     def store_chunks(job_id, chunks, embedder_func):
         """
         [The Grounding]
-        Iterates through chunks, generates embeddings, and persists to the Vector DB.
+        Iterates through chunks, generates embeddings, and persists to ChromaDB.
         """
-        # 1. Initialize your Vector DB collection (e.g., Chroma, Qdrant)
-        # Using a job-specific collection name for isolation
-        collection_name = f"job_{job_id}"
+        client = VectorStorageService.get_client()
         
-        # 2. Iterate and Embed
-        stored_count = 0
-        for chunk in chunks:
-            content = chunk["content"]
-            meta = chunk["meta"]
-            
-            # Generate the vector using the provided embedder function
-            # Dimensions should match your model (e.g., 1536)
-            vector = embedder_func(content)
-            
-            # 3. UPSERT to Vector DB
-            # Note: Replace this pseudo-code with your specific DB driver logic
-            # collection.upsert(
-            #     ids=[f"j{job_id}_c{meta['chunk_num']}"],
-            #     embeddings=[vector],
-            #     documents=[content],
-            #     metadatas=[meta]
-            # )
-            stored_count += 1
+        # Isolation: Each job gets its own collection
+        collection_name = f"job_{job_id}"
+        collection = client.get_or_create_collection(name=collection_name)
+        
+        ids = []
+        documents = []
+        metadatas = []
+        embeddings = []
 
-        return collection_name, stored_count
+        for chunk in chunks:
+            meta = chunk["meta"]
+            content = chunk["content"]
+            
+            # Prepare batch data
+            ids.append(f"j{job_id}_c{meta['chunk_num']}")
+            documents.append(content)
+            metadatas.append(meta)
+            embeddings.append(embedder_func(content))
+
+        # Atomic Upsert to ChromaDB
+        if ids:
+            collection.upsert(
+                ids=ids,
+                embeddings=embeddings,
+                metadatas=metadatas,
+                documents=documents
+            )
+
+        return collection_name, len(ids)
 
     @staticmethod
     def finalize_handshake(job_id, collection_name, count):
@@ -41,7 +60,6 @@ class VectorStorageService:
         """
         from app.controllers.nats_controller import NatsController
         
-        # Use the existing callback mechanism to update MariaDB via PHP
-        # We send the collection name so PHP knows where to look for future searches
+        # Grounding the final state in the PHP/MariaDB source of truth
         status = f"completed:{collection_name}:{count}"
         NatsController.update_php(job_id, status)
