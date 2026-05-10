@@ -269,6 +269,38 @@ python3 -m pip install "${PYTHON_DEPS[@]}" --quiet
 
 echo "✅ Python libraries grounded."
 
+
+# ===================== OLLAMA ===========================
+
+# Optional: Store models on a separate drive/SD card for space savings
+export OLLAMA_MODELS="${OLLAMA_MODELS:-$HOME/.ollama/models}"
+# Example for external drive: export OLLAMA_MODELS="/mnt/external/ollama/models"
+
+mkdir -p "$OLLAMA_MODELS"
+
+# Official installer
+curl -fsSL https://ollama.com/install.sh | sh
+
+# Start Ollama in background
+ollama serve >/tmp/ollama.log 2>&1 &
+OLLAMA_PID=$!
+
+# Wait for readiness
+for i in {1..30}; do
+  if ollama --version >/dev/null 2>&1; then
+    break
+  fi
+  sleep 1
+done
+
+# Pull small models (see recommendations below)
+ollama pull gemma3:4b          # or phi:3.8b / llama3.2:3b for chat
+ollama pull all-minilm         # Very tiny embedding model (~46MB)
+
+ollama run gemma3:4b "Hello, world!"   # Quick test
+
+wait "$OLLAMA_PID" || true
+
 # ===================== FINAL SUMMARY =====================
 echo -e "\n========================================"
 echo "Installation completed successfully!"
