@@ -3,6 +3,7 @@ from app.controllers.user_controller import UserController
 from app.controllers.worker_controller import WorkerController
 from app.controllers.agent_controller import AgentController
 from app.controllers.nats_controller import NatsController
+from app.controllers.devices_controller import DevicesController
 
 
 routes = {
@@ -16,6 +17,7 @@ routes = {
     "/worker/process":WorkerController.process_task,
     "/nats":NatsController.index,
     "/nats/consume":NatsController.consume,
+    "/devices":DevicesController.consume,
 }
 
 def route_request(path: str):
