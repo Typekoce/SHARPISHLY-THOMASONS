@@ -1,6 +1,35 @@
 #!/bin/bash
 set -euo pipefail
 
+# Clear terminal
+clear
+
+# ===================== UTILITIES =====================
+# Generic string replacement utility to bypass EOF expansion issues
+string_replace() {
+    local search="$1"
+    local replace="$2"
+    local file="$3"
+    if [[ -f "$file" ]]; then
+        sudo sed -i "s|${search}|${replace}|g" "$file"
+        echo "   ✅ Grounded ${search} in ${file}"
+    fi
+}
+
+# Generic utility to remove a file from Nginx config if it exists
+if_exists_remove() {
+    local file_name="$1"
+    local avail_path="/etc/nginx/sites-available/${file_name}"
+    local enable_path="/etc/nginx/sites-enabled/${file_name}"
+
+    if [ -f "$avail_path" ] || [ -L "$enable_path" ]; then
+        echo "Removing conflicting Nginx config: ${file_name}..."
+        sudo rm -f "$avail_path"
+        sudo rm -f "$enable_path"
+        echo "   ✅ Cleaned: ${file_name}"
+    fi
+}
+
 # ===================== DEFAULT CONFIG & VARIABLES =====================
 
 # Database Configuration
@@ -11,7 +40,7 @@ DB_NAME="sharpishly"
 MYSQL_ROOT_PASS=""
 
 # Web Server Configuration
-DOMAIN="sharpishly.dev"
+DOMAIN="${DOMAIN:-sharpishly.dev}"
 WEB_ROOT="/home/vboxuser/Documents/SHARPISHLY-THOMASONS/web/php/src"
 PHP_VERSION="8.3"
 
@@ -44,42 +73,27 @@ done
 # ===================== PRE-INSTALLATION CLEAN-UP =====================
 echo -e "\n=== Pre-installation Cleanup ==="
 
-if [ -f /etc/nginx/sites-available/default ]; then
-    echo "Removing default Nginx site..."
-    sudo rm -f /etc/nginx/sites-available/default
-    sudo rm -f /etc/nginx/sites-enabled/default
-fi
+# Using utility to clear legacy configs and current domain for fresh grounding
+if_exists_remove "default.conf"
+if_exists_remove "sharpishly"
+if_exists_remove "default"
+if_exists_remove "${DOMAIN}"
 
-if [ -f "/etc/nginx/sites-available/${DOMAIN}" ]; then
-    echo "Removing old configuration for ${DOMAIN}..."
-    sudo rm -f "/etc/nginx/sites-available/${DOMAIN}"
-    sudo rm -f "/etc/nginx/sites-enabled/${DOMAIN}"
-fi
+echo "✅ Pre-installation cleanup completed."
 
 # ===================== PHP REPOSITORY SETUP (SURY) =====================
 echo -e "\n=== Setting up PHP ${PHP_VERSION} Repository (deb.sury.org) ==="
 
-# Install dependencies
 sudo apt-get install -y ca-certificates apt-transport-https lsb-release gnupg curl
-
 echo "Adding official SURY PHP repository..."
-
-# Download and install the official signing key
 curl -fsSL https://packages.sury.org/php/apt.gpg | sudo gpg --dearmor -o /usr/share/keyrings/sury-php.gpg
-
-# Add the repository
 echo "deb [signed-by=/usr/share/keyrings/sury-php.gpg] https://packages.sury.org/php/ $(lsb_release -sc) main" | \
 sudo tee /etc/apt/sources.list.d/sury-php.list > /dev/null
-
-echo "✅ SURY PHP repository added successfully."
-
-echo "Updating package list..."
 sudo apt-get update -qq
 
 # ===================== SYSTEM SETUP (LEMP + Python) =====================
 echo -e "\n=== System Setup: Installing LEMP + Python ==="
 
-# Easy to edit package list
 PACKAGES=(
     nginx
     mariadb-server
@@ -99,29 +113,22 @@ PACKAGES=(
 echo "Installing core packages..."
 sudo apt-get install -y "${PACKAGES[@]}"
 
-# Enable services
 echo -e "\nEnabling services..."
 for service in nginx mariadb "php${PHP_VERSION}-fpm"; do
     sudo systemctl enable "${service}" --now 2>/dev/null && \
-    echo "   ✅ Enabled: ${service}" || \
-    echo "   ⚠️  Could not enable ${service}"
+    echo "    ✅ Enabled: ${service}" || \
+    echo "    ⚠️  Could not enable ${service}"
 done
-
-echo "✅ Core system setup completed."
 
 # ===================== FIX PERMISSIONS =====================
 echo -e "\n=== Fixing Storage Permissions ==="
-
 mkdir -p "${STORAGE_PATH}"
 sudo chown -R "${CURRENT_USER}:www-data" "${STORAGE_PATH}"
 sudo chmod -R 2775 "${STORAGE_PATH}"
 sudo find "${STORAGE_PATH}" -type d -exec chmod g+s {} +
 
-echo "✅ Storage permissions applied."
-
 # ===================== MYSQL SETUP =====================
 echo -e "\n=== Configuring MariaDB ==="
-
 if [ -n "$MYSQL_ROOT_PASS" ]; then
     MYSQL_CMD=(mysql -uroot -p"${MYSQL_ROOT_PASS}")
 else
@@ -129,99 +136,69 @@ else
 fi
 
 "${MYSQL_CMD[@]}" <<SQL
-CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` 
-    CHARACTER SET utf8mb4 
-    COLLATE utf8mb4_unicode_ci;
-
-CREATE USER IF NOT EXISTS '${DB_USER}'@'${DB_HOST}' 
-    IDENTIFIED BY '${DB_PASS}';
-
-GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* 
-    TO '${DB_USER}'@'${DB_HOST}';
-
+CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER IF NOT EXISTS '${DB_USER}'@'${DB_HOST}' IDENTIFIED BY '${DB_PASS}';
+GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'${DB_HOST}';
 FLUSH PRIVILEGES;
 SQL
 
-echo "✅ Database and user created."
-
 # ===================== CREATE env.php =====================
 echo -e "\n=== Creating env.php ==="
-
-cat > env.php <<PHP_EOF
+cat > env.php <<'PHP_EOF'
 <?php
 /**
  * Database Configuration - Generated by install.sh
  */
-
-define('DB_HOST', '${DB_HOST}');
-define('DB_USER', '${DB_USER}');
-define('DB_PASS', '${DB_PASS}');
-define('DB_NAME', '${DB_NAME}');
-
+define('DB_HOST', '{{DB_HOST}}');
+define('DB_USER', '{{DB_USER}}');
+define('DB_PASS', '{{DB_PASS}}');
+define('DB_NAME', '{{DB_NAME}}');
 PHP_EOF
 
-echo "✅ env.php created."
+string_replace "{{DB_HOST}}" "${DB_HOST}" "env.php"
+string_replace "{{DB_USER}}" "${DB_USER}" "env.php"
+string_replace "{{DB_PASS}}" "${DB_PASS}" "env.php"
+string_replace "{{DB_NAME}}" "${DB_NAME}" "env.php"
 
 # ===================== SETUP WEB STORAGE STRUCTURE =====================
 echo -e "\n=== Setting up Web Storage Structure ==="
-
 mkdir -p "${STORAGE_PATH}"/{logs,vectors,uploads/nats/{ingest,process,archive,fail}}
-
-touch "${STORAGE_PATH}/logs/laravel.log" \
-      "${STORAGE_PATH}/logs/worker.log"
-
-echo "✅ Storage structure created."
+touch "${STORAGE_PATH}/logs/laravel.log" "${STORAGE_PATH}/logs/worker.log"
 
 # ===================== WEB ROOT & NGINX SETUP =====================
 echo -e "\n=== Configuring Nginx ==="
-
 sudo mkdir -p "${WEB_ROOT}"
 sudo chown -R www-data:www-data "${WEB_ROOT}"
 sudo chmod -R 755 "${WEB_ROOT}"
 
-sudo tee /etc/nginx/sites-available/${DOMAIN} > /dev/null <<NGINX_EOF
+CONF_FILE="/etc/nginx/sites-available/${DOMAIN}"
+sudo tee "$CONF_FILE" > /dev/null <<'NGINX_EOF'
 server {
     listen 80;
-    server_name ${DOMAIN} www.${DOMAIN};
+    server_name {{DOMAIN}} www.{{DOMAIN}};
 
-    root ${WEB_ROOT};
+    root {{WEB_ROOT}};
     index index.php index.html index.htm;
 
-    # Logging - pointing to your local storage
     access_log /var/log/nginx/sharpishly_access.log;
     error_log  /var/log/nginx/sharpishly_error.log warn;
 
-    # 1. Frontend SPA
     location / {
         try_files $uri $uri/ /index.html;
     }
 
-    # location ~ \.php$ {
-    #     fastcgi_pass unix:/var/run/php/php${PHP_VERSION}-fpm.sock;
-    #     fastcgi_index index.php;
-    #     fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
-    #     include fastcgi_params;
-    # }
-
-    # 2. PHP API - Everything under /php or /api goes to index.php
     location ~ ^/(php|api)(/|$) {
         # Single entry point for all PHP routing
-        fastcgi_param SCRIPT_FILENAME $base_path/web/php/src/index.php;
+        fastcgi_param SCRIPT_FILENAME {{WEB_ROOT}}/index.php;
         fastcgi_param PATH_INFO       $fastcgi_path_info;
-
         include fastcgi_params;
         
-        # NATIVE CHANGE: Connect to the local PHP-FPM socket instead of "php:9000"
-        fastcgi_pass unix:/var/run/php/php${PHP_VERSION}-fpm.sock;
-
-        # Preserve full original URI for router
+        fastcgi_pass unix:/var/run/php/php{{PHP_VERSION}}-fpm.sock;
         fastcgi_param REQUEST_URI      $request_uri;
 
         # Timeouts for Neural/Path B tasks
         fastcgi_read_timeout  600;
         fastcgi_send_timeout  600;
-
-        # Buffering off for Path B streaming
         fastcgi_buffering     off;
     }
 
@@ -231,89 +208,67 @@ server {
     add_header X-Content-Type-Options nosniff;
     add_header X-Frame-Options SAMEORIGIN;
 
-
     location ~ /\.ht {
         deny all;
     }
 }
 NGINX_EOF
 
-sudo ln -sf /etc/nginx/sites-available/${DOMAIN} /etc/nginx/sites-enabled/
-sudo nginx -t && sudo systemctl reload nginx
+string_replace "{{DOMAIN}}" "${DOMAIN}" "$CONF_FILE"
+string_replace "{{WEB_ROOT}}" "${WEB_ROOT}" "$CONF_FILE"
+string_replace "{{PHP_VERSION}}" "${PHP_VERSION}" "$CONF_FILE"
 
-echo "✅ Nginx configured for ${DOMAIN}"
+sudo ln -sf "$CONF_FILE" /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
 
 # ===================== SET HOSTS =====================
 echo -e "\n=== Updating /etc/hosts ==="
 HOSTS_ENTRY="127.0.0.1   ${DOMAIN} www.${DOMAIN}"
 if ! grep -q "${DOMAIN}" /etc/hosts; then
     echo "${HOSTS_ENTRY}" | sudo tee -a /etc/hosts > /dev/null
-    echo "✅ Added ${DOMAIN} to /etc/hosts"
-else
-    echo "ℹ️  ${DOMAIN} already in /etc/hosts"
 fi
 
 # ===================== PYTHON LIBRARIES (Neural Path) =====================
 echo -e "\n=== Installing Python Application Dependencies ==="
 
-# Using --break-system-packages if not using a venv, 
-# or standard install if within a venv.
-PYTHON_DEPS=(
-    requests
-    chromadb
-)
+if [ ! -d "$VENV" ]; then
+    echo "Creating virtual environment at $VENV..."
+    python3 -m venv "$VENV"
+fi
 
-echo "Installing: ${PYTHON_DEPS[*]}..."
-# -m pip ensures we use the pip associated with python3
-python3 -m pip install "${PYTHON_DEPS[@]}" --quiet
+VENV_PIP="$VENV/bin/pip"
+$VENV_PIP install --upgrade pip --quiet
 
-echo "✅ Python libraries grounded."
+PYTHON_DEPS=(requests chromadb ollama)
+echo "Installing: ${PYTHON_DEPS[*]} into venv..."
+$VENV_PIP install "${PYTHON_DEPS[@]}" --quiet
 
-
-# ===================== OLLAMA ===========================
-
-# Optional: Store models on a separate drive/SD card for space savings
-export OLLAMA_MODELS="${OLLAMA_MODELS:-$HOME/.ollama/models}"
-# Example for external drive: export OLLAMA_MODELS="/mnt/external/ollama/models"
-
-mkdir -p "$OLLAMA_MODELS"
-
-# Official installer
-curl -fsSL https://ollama.com/install.sh | sh
-
-# Start Ollama in background
-ollama serve >/tmp/ollama.log 2>&1 &
-OLLAMA_PID=$!
-
-# Wait for readiness
-for i in {1..30}; do
-  if ollama --version >/dev/null 2>&1; then
-    break
-  fi
-  sleep 1
-done
-
-# Pull small models (see recommendations below)
-ollama pull gemma3:4b          # or phi:3.8b / llama3.2:3b for chat
-ollama pull all-minilm         # Very tiny embedding model (~46MB)
-
-ollama run gemma3:4b "Hello, world!"   # Quick test
-
-wait "$OLLAMA_PID" || true
+# ===================== OLLAMA SETUP (Uncomment when ready) =====================
+# echo -e "\n=== Setting up Ollama ==="
+# export OLLAMA_MODELS="${OLLAMA_MODELS:-$HOME/.ollama/models}"
+# mkdir -p "$OLLAMA_MODELS"
+# curl -fsSL https://ollama.com/install.sh | sh
+# ollama serve >/tmp/ollama.log 2>&1 &
+# OLLAMA_PID=$!
+# trap 'kill "$OLLAMA_PID" >/dev/null 2>&1 || true' EXIT
+# for i in {1..30}; do
+#   if ollama --version >/dev/null 2>&1; then break; fi
+#   sleep 1
+# done
+# ollama pull llama3.1
+# ollama pull jina/jina-embeddings-v2-small-en
+# ollama run llama3.1 "Hello world"
 
 # ===================== FINAL SUMMARY =====================
 echo -e "\n========================================"
 echo "Installation completed successfully!"
-echo "========================================"
 echo "Domain       : ${DOMAIN}"
 echo "Web Root     : ${WEB_ROOT}"
 echo "PHP Version  : ${PHP_VERSION}"
-echo "Database     : ${DB_NAME}"
-echo "Storage Path : ${STORAGE_PATH}"
-echo "env.php      : Created"
-echo ""
-echo "Next steps:"
-echo "   1. Upload your application files to ${WEB_ROOT}"
-echo "   2. Change DB password in env.php"
-echo "   3. Consider setting up SSL (Let's Encrypt)"
+echo "Venv Path    : ${VENV}"
 echo "========================================"
+
+# Safety check for Ollama process if it was uncommented
+if [ -n "${OLLAMA_PID:-}" ]; then
+    wait "$OLLAMA_PID"
+fi
