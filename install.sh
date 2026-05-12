@@ -52,6 +52,11 @@ VENV="${PROJECT_PATH}/venv"
 
 CURRENT_USER="$(whoami)"
 
+# ==================== OLLAMA PATH =========================
+export PROJECT_PATH=$PWD
+# Now your previous command will work:
+${PROJECT_PATH}/venv/bin/python -c "import ollama; print(ollama.list())"
+
 # ===================== PARSE ARGUMENTS =====================
 while getopts ":H:u:p:d:r:D:w:v:" opt; do
   case "${opt}" in
