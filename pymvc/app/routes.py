@@ -1,3 +1,5 @@
+import json
+
 from app.controllers.home_controller import HomeController
 from app.controllers.user_controller import UserController
 from app.controllers.worker_controller import WorkerController
@@ -17,7 +19,8 @@ routes = {
     "/worker/process":WorkerController.process_task,
     "/nats":NatsController.index,
     "/nats/consume":NatsController.consume,
-    "/devices":DevicesController.consume,
+    "/devices":DevicesController.index,
+    '/devices/usb': lambda: json.dumps(DevicesController.get_usb_devices(), indent=2),
 }
 
 def route_request(path: str):
