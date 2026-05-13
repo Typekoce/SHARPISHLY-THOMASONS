@@ -264,6 +264,57 @@ $VENV_PIP install "${PYTHON_DEPS[@]}" --quiet
 # ollama pull jina/jina-embeddings-v2-small-en
 # ollama run llama3.1 "Hello world"
 
+echo -e "\n=== Setting up Ollama & Micro-Models ==="
+
+export OLLAMA_MODELS="${OLLAMA_MODELS:-$HOME/.ollama/models}"
+mkdir -p "$OLLAMA_MODELS"
+
+if ! command -v ollama &>/dev/null; then
+  echo "   Installing Ollama binary..."
+  curl -fsSL https://ollama.com/install.sh | sh
+else
+  echo "   ✅ Ollama binary already detected; skipping installation."
+fi
+
+# Start Ollama only if not already running
+if pgrep -x ollama >/dev/null 2>&1; then
+  echo "   ✅ Ollama already running, skipping serve() start."
+else
+  echo "   Starting Ollama in background..."
+  ollama serve >/tmp/ollama.log 2>&1 &
+  OLLAMA_PID=$!
+fi
+
+# Wait for readiness (30s)
+echo "   Waiting for Ollama service to respond..."
+for i in {1..30}; do
+  if ollama --version >/dev/null 2>&1; then
+    echo "   ✅ Ollama service is active."
+    break
+  fi
+  sleep 1
+done
+
+# Helper to pull only if missing
+pull_if_missing() {
+  local model="$1"
+  if ollama list | grep -Fq "$model"; then
+    echo "   ✓ Model '$model' already present, skipping pull."
+  else
+    echo "   → Pulling model: $model"
+    ollama pull "$model"
+  fi
+}
+
+echo "   Pulling lightweight models (tinydolphin & jina-embeddings)..."
+pull_if_missing "tinydolphin"
+pull_if_missing "jina/jina-embeddings-v2-small-en"
+
+echo "   Running neural path sanity check..."
+ollama run tinydolphin "Confirm system grounding." || echo "   ⚠️  Cold-start test failed (non-zero exit). Check /tmp/ollama.log"
+
+echo "=== Ollama Setup Complete ==="
+
 # ===================== FINAL SUMMARY =====================
 echo -e "\n========================================"
 echo "Installation completed successfully!"
