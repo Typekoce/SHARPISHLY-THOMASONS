@@ -7,29 +7,37 @@ class SearchService:
     def find_context(job_id):
         """
         Retrieves chunks from the PHP API instead of direct DB access.
+        Standardizes on response.status for 200 OK check.
         """
         url = Config.api_url(f"vector/show/{job_id}")
         
         try:
-            # Use standard urllib to keep dependencies zero/low
+            # Use urllib to maintain zero-dependency profile on seaview
             with urllib.request.urlopen(url) as response:
-                if response.getcode() != 200:
+                if response.status != 200:
                     return ""
                 
-                data = json.loads(response.read().decode())
+                raw = response.read().decode("utf-8")
+                data = json.loads(raw)
                 
-                # If PHP returns an error or empty list
-                if 'error' in data or not isinstance(data, list):
+                # Defensive parsing for PHP error shapes or non-list returns
+                if isinstance(data, dict) and "error" in data:
+                    return ""
+                
+                if not isinstance(data, list) or not data:
                     return ""
 
-                # MOCK SEARCH: Take the first 3 chunks found
-                # In the future, we will sort these by Cosine Similarity here
+                # MOCK SEARCH: Grabbing first 3 until semantic query is wired in
                 top_chunks = data[:3]
                 
-                context_block = "\n---\n".join([chunk['content'] for chunk in top_chunks])
-                return context_block
+                # Join content safely using get() to avoid KeyErrors
+                return "\n---\n".join(
+                    chunk.get("content", "") 
+                    for chunk in top_chunks 
+                    if chunk.get("content")
+                )
 
         except Exception as e:
-            # Log error locally or return empty to fail gracefully
+            # TODO: Transition to AppLogger once confirmed
             print(f"SearchService Error: {e}")
             return ""

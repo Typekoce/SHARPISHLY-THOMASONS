@@ -96,10 +96,22 @@ class VectorController extends BaseController
  * GET /php/vector/show/{id}
  * Fetch all vectors/chunks for a specific job.
  */
-public function show(int $id)
+public function show($id)
 {
     // Using your established DB pattern to get all chunks for the job
-    $vectors = $this->db->findAll('vectors', ['job_id' => $id]);
+   // $vectors = $this->db->findAll('vectors', ['job_id' => $id]);
+
+	// Cast to int to ensure type safety for the DB query
+    $id = (int)$id;
+
+    // Standardized DB pattern for the SHARPISHLY-THOMASONS framework
+    $conditions = [
+        'tbl'   => 'vectors',
+        'where' => ['job_id' => $id]
+    ];
+
+    // Using the verified find() method
+    $vectors = $this->db->find($conditions);
 
     return $this->json($vectors ?: ['error' => 'No vectors found for this job']);
 }
