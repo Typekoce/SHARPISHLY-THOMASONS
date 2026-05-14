@@ -96,11 +96,60 @@ class JobController extends BaseController
         return rename($tempPath, $finalPath);
     }
 
+
+/**
+     * PUT /php/job/update/{id}
+     * Persists neural chunks to MariaDB using the ScaffoldModel schema.
+     */
+    public function update($id)
+    {
+        $json = file_get_contents('php://input');
+        $data = json_decode($json, true);
+        
+        $id = (int)$id;
+        $status = $data['status'] ?? 'unknown';
+
+        $updateData = [
+            'id'     => $id,
+            'status' => $status
+        ];
+
+        if ($status === 'completed' || $status === 'failed') {
+            $updateData['finished_at'] = date('Y-m-d H:i:s');
+        }
+
+        // 1. Update Job Status
+        $result = $this->db->save('jobs', $updateData);
+
+        // 2. Sync Vectors (Neural Path)
+        if (!empty($data['chunks']) && is_array($data['chunks'])) {
+            foreach ($data['chunks'] as $chunk) {
+                $this->db->save('vectors', [
+                    'job_id'    => $id,
+                    'content'   => $chunk['content'] ?? '',
+                    'embedding' => json_encode($chunk['embedding'] ?? []), // Saved as JSON string
+                    'pref'      => $chunk['pref'] ?? null // Mapping to your 'pref' column
+                ]);
+            }
+        }
+
+        if ($result === false) {
+            return $this->json(['status' => 'error', 'message' => 'DB Save Failed'], 500);
+        }
+
+        return $this->json([
+            'status' => 'success', 
+            'job_id' => $id, 
+            'chunks_synced' => count($data['chunks'] ?? [])
+        ]);
+    }
+
+
     /**
      * PUT /php/job/update/{id}
      * Streamlined for debugging the Python handshake.
      */
-    public function update($id)
+    public function mock_update($id)
     {
         // Read the raw input from Python's 'requests.put'
         $json = file_get_contents('php://input');

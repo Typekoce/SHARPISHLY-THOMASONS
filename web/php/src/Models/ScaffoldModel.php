@@ -82,7 +82,7 @@ class ScaffoldModel extends BaseModel
             'vectors' => [
                 'id'          => 'INT AUTO_INCREMENT PRIMARY KEY',
                 'job_id'      => 'INT NOT NULL',
-                'content'     => 'TEXT NOT NULL',
+                //'content'     => 'TEXT NOT NULL',
                 'embedding'   => 'JSON NOT NULL',
                 'created_at'  => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
                 'pref'  => 'VARCHAR(255) DEFAULT NULL',

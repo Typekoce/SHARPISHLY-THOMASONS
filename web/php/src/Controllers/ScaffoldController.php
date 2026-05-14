@@ -8,11 +8,64 @@ use Throwable;
 
 class ScaffoldController extends BaseController
 {
-    /**
+
+/**
      * GET /php/scaffold/migrate
      * The unified migration endpoint for PyMVC and the Frontend.
      */
     public function migrate(): void
+    {
+        // 1. Session Gate: Avoid redundant checks during a single session
+        if ($this->session->get('migrated', false) === true) {
+            $this->json(['status' => 'skip', 'message' => 'Schema verified.']);
+            return;
+        }
+
+        try {
+            $scaffold = new ScaffoldModel();
+
+            // --- THE FIX: Bridge to Scaffold Logic ---
+            // syncSchema builds the tables (including 'vectors') based on your 
+            // ScaffoldModel array before we attempt to query the 'migrations' table.
+            $scaffold->syncSchema(); 
+            // --- THE FIX END ---
+
+            $lastMigration = 'v3_6_neural_pipeline_init';
+
+            // Check if this specific version is already recorded in MariaDB
+            $alreadyRun = $this->db->find([
+                'tbl'   => 'migrations',
+                'where' => ['migration_name' => $lastMigration]
+            ]);
+
+            if (empty($alreadyRun)) {
+                // Record the v3.6 milestone to prevent re-runs
+                $this->db->save('migrations', [
+                    'migration_name' => $lastMigration,
+                    'batch'          => 1
+                ]);
+
+                $this->session->set('migrated', true);
+                $this->json([
+                    'status'  => 'success',
+                    'message' => 'Schema migration and migrations table initialized.'
+                ]);
+            } else {
+                $this->session->set('migrated', true);
+                $this->json(['status' => 'skip', 'message' => 'Already up to date.']);
+            }
+
+        } catch (Throwable $e) {
+            // Consistent error reporting for the Python SearchService
+            $this->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * GET /php/scaffold/migrate
+     * The unified migration endpoint for PyMVC and the Frontend.
+     */
+    public function old_migrate(): void
     {
         // 1. Session Gate remains the same
         if ($this->session->get('migrated', false) === true) {
