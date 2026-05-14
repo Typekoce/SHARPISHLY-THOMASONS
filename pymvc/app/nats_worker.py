@@ -22,7 +22,10 @@ def run_worker():
                 print(f"📦 Claimed Job #{job_id}. Processing...")
                 
                 # Simulate AI/Neural Work
-                time.sleep(5) 
+                vector = NatsController.vectors(job_data)
+
+                if vector:
+                    print(f"   🧠 Vector generated ({len(vector)} dimensions).")
                 
                 # Update PHP to 'completed'
                 NatsController.update_php(job_id, 'completed')

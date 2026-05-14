@@ -5,9 +5,40 @@ import time
 import requests
 from app.views import render_template
 from app.utils.Config import Config
-
+# Grounded Imports for Neural Path
+from app.utils.VectorStorageService import VectorStorageService
+from app.models.neural_model import NeuralModel
 
 class NatsController:
+    @staticmethod
+    def vectors(job_data):
+        """
+        Encapsulated Vectorization:
+        Extracts content from job_data and generates a 512-dim vector via Jina.
+        """
+        job_id = job_data.get('job_id')
+        # Extract content (assumes 'payload' or 'description' based on your MVC context)
+        content = job_data.get('content') or job_data.get('payload', '')
+
+        if not content:
+            print(f"⚠️ No content for Job #{job_id}. Skipping vectorization.")
+            return False
+
+        try:
+            # 1. Generate Embedding via Jina-Small (30MB) verified on seaview
+            service = VectorStorageService()
+            embedding = service.generate_embedding(content)
+
+            if embedding:
+                # 2. Persist to MariaDB via the NeuralModel (No raw SQL)
+                model = NeuralModel()
+                return model.save_vector(job_id, 'job', embedding)
+        except Exception as e:
+            print(f"⚠️ Neural Bridge Error: {e}")
+            return False
+        
+        return False
+
     # Defining 'Subjects' as Directory Channels
     # PHP writes to 'ingest', Python works in 'process'
     BASE_DIR = "storage/uploads/nats"
