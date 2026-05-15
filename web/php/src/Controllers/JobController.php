@@ -34,8 +34,10 @@ class JobController extends BaseController
      */
     public function create()
     {
+        $logger = new \App\Services\Logger();
+
         $payload = json_encode([
-            'path' => $this->location->uploads('test.csv'),
+            'path'       => $this->location->uploads('test.csv'),
             'type'       => 'csv',
             'created_by' => 'system_mock'
         ]);
@@ -49,17 +51,29 @@ class JobController extends BaseController
         $result = $this->db->save('jobs', $data);
 
         if ($result === false) {
+            $logger->error("NP Step 1: Failed to write initial job header to MariaDB");
             return $this->json([
                 'status'  => 'error',
                 'message' => 'Failed to create job'
             ], 500);
         }
 
+        $logger->info("NP Step 1: Job record saved to DB", ['job_id' => $result]);
+
+        // --- THE MISSING PIPELINE BRIDGE ---
+        // We look for the file and extract its content text into the job's payload field
+        // before informing the Python side.
+        $prepared = $this->prepareJob((int)$result);
+        
+        $logger->info("NP Step 1.5: Content parsing execution", [
+            'job_id'             => $result,
+            'file_extracted_ok'  => $prepared
+        ]);
+
         // --- THE NATIVE PROTOCOL TRIGGER ---
-        // We drop the 001_jobs.json to alert Python
-        // Decoded payload for the handshake array
+        // We drop the file inside the filesystem ingest folder to alert Python
         $payloadData = json_decode($payload, true); 
-        $this->create_nats_item($result, $payloadData);
+        $this->create_nats_item((int)$result, $payloadData);
         
         return $this->json([
             'status'  => 'success',
@@ -80,29 +94,24 @@ class JobController extends BaseController
             'data'      => $payload
         ];
 
-        // 1. Point to the 'ingest' channel folder
-        // 2. Use a unique ID so we don't overwrite the queue
         $directory = $this->location->nats('ingest');
         $finalPath = "{$directory}/job_{$jobId}.json";
         
         // --- LATERAL THINKING: ATOMIC WRITING ---
-        // Instead of writing directly to the queue, we write a temp file 
-        // then rename it. Rename is an atomic operation in Linux.
         $tempPath = "{$finalPath}.tmp";
         
         file_put_contents($tempPath, json_encode($handshake, JSON_PRETTY_PRINT), LOCK_EX);
         
-        // The moment this rename happens, the "Event" is published.
         return rename($tempPath, $finalPath);
     }
 
-
-/**
+    /**
      * PUT /php/job/update/{id}
      * Persists neural chunks to MariaDB using the ScaffoldModel schema.
      */
     public function update($id)
     {
+        $logger = new \App\Services\Logger();
         $json = file_get_contents('php://input');
         $data = json_decode($json, true);
         
@@ -118,6 +127,12 @@ class JobController extends BaseController
             $updateData['finished_at'] = date('Y-m-d H:i:s');
         }
 
+        $logger->info("NP Step 4: Update received from Python Worker", [
+            'job_id'     => $id,
+            'status'     => $status,
+            'chunk_size' => isset($data['chunks']) ? count($data['chunks']) : 0
+        ]);
+
         // 1. Update Job Status
         $result = $this->db->save('jobs', $updateData);
 
@@ -127,13 +142,14 @@ class JobController extends BaseController
                 $this->db->save('vectors', [
                     'job_id'    => $id,
                     'content'   => $chunk['content'] ?? '',
-                    'embedding' => json_encode($chunk['embedding'] ?? []), // Saved as JSON string
-                    'pref'      => $chunk['pref'] ?? null // Mapping to your 'pref' column
+                    'embedding' => json_encode($chunk['embedding'] ?? []),
+                    'pref'      => $chunk['pref'] ?? null
                 ]);
             }
         }
 
         if ($result === false) {
+            $logger->error("NP Step 4 Failed: MariaDB update failed to write", ['job_id' => $id]);
             return $this->json(['status' => 'error', 'message' => 'DB Save Failed'], 500);
         }
 
@@ -144,31 +160,26 @@ class JobController extends BaseController
         ]);
     }
 
-
     /**
      * PUT /php/job/update/{id}
      * Streamlined for debugging the Python handshake.
      */
     public function mock_update($id)
     {
-        // Read the raw input from Python's 'requests.put'
         $json = file_get_contents('php://input');
         $data = json_decode($json, true);
         
         $status = $data['status'] ?? 'unknown';
 
-        // Build the update array
         $updateData = [
             'id'     => (int)$id,
             'status' => $status
         ];
 
-        // Minimalist terminal state handling
         if ($status === 'completed' || $status === 'failed') {
             $updateData['finished_at'] = date('Y-m-d H:i:s');
         }
 
-        // Save to MariaDB
         $result = $this->db->save('jobs', $updateData);
 
         if ($result === false) {
@@ -181,6 +192,7 @@ class JobController extends BaseController
             'new_status' => $status
         ]);
     }
+
     /**
      * Processes the raw file, cleans it, and prepares the job for the AI worker.
      */
@@ -198,16 +210,13 @@ class JobController extends BaseController
             $rawContent = file_get_contents($filePath);
             
             // --- The PHP Cleaning Logic ---
-            // 1. Strip tags if it's HTML/XML
-            // 2. Normalize whitespace (replaces newlines/tabs with single space)
-            // 3. Trim edges
             $cleanContent = preg_replace('/\s+/', ' ', strip_tags($rawContent));
             $cleanContent = trim($cleanContent);
 
             // Update the job with the actual text data
             $this->db->save('jobs', [
                 'id'      => $jobId,
-                'payload' => $cleanContent, // Now 'payload' is the text, not the filename
+                'payload' => $cleanContent, 
                 'status'  => 'pending'
             ]);
 
@@ -232,15 +241,13 @@ class JobController extends BaseController
 
         try {
             if (!empty($batch)) {
-                // Assuming you have a batch insert method or use a loop with save()
                 foreach ($batch as $row) {
                     $this->db->save('vectors', $row);
                 }
             }
 
-            // Mark job as completed
             $this->db->save('jobs', [
-                'id'         => (int)$id,
+                'id'          => (int)$id,
                 'status'     => 'completed',
                 'finished_at'=> date('Y-m-d H:i:s')
             ]);
@@ -267,7 +274,6 @@ class JobController extends BaseController
      */
     public function payload($id)
     {
-        // 1. Fetch the job record
         $job = $this->db->find('jobs', ['id' => $id]);
 
         if (!$job || empty($job['payload'])) {
@@ -276,18 +282,7 @@ class JobController extends BaseController
                 'message' => 'Payload not found or empty'
             ], 404);
         }
-
-        /**
-         * LATERAL THINKING: 
-         * Instead of complex JSON wrapping, we stream the raw binary.
-         * This allows Python to handle the parsing (CSV, Text, etc.) 
-         * without double-encoding overhead.
-         */
-        header('Content-Type: application/octet-stream');
-        header('Content-Length: ' . strlen($job['payload']));
         
-        echo $job['payload'];
-        exit;
+        return $this->json(['status' => 'success', 'payload' => $job['payload']]);
     }
-
 }
