@@ -1,213 +1,115 @@
 import os
 import json
-import glob
-import time
 import requests
-from app.views import render_template
-from app.utils.Config import Config
-# Grounded Imports for Neural Path
-from app.utils.VectorStorageService import VectorStorageService
-from app.models.neural_model import NeuralModel
 
 class NatsController:
-    @staticmethod
-    def vectors(job_data):
-        """
-        Encapsulated Vectorization:
-        Extracts content from job_data and generates a 512-dim vector via Jina.
-        """
-        job_id = job_data.get('job_id')
-        # Extract content (assumes 'payload' or 'description' based on your MVC context)
-        content = job_data.get('content') or job_data.get('payload', '')
-
-        if not content:
-            print(f"⚠️ No content for Job #{job_id}. Skipping vectorization.")
-            return False
-
-        try:
-            # 1. Generate Embedding via Jina-Small (30MB) verified on seaview
-            service = VectorStorageService()
-            embedding = service.generate_embedding(content)
-
-            if embedding:
-                # 2. Persist to MariaDB via the NeuralModel (No raw SQL)
-                model = NeuralModel()
-                return model.save_vector(job_id, 'job', embedding)
-        except Exception as e:
-            print(f"⚠️ Neural Bridge Error: {e}")
-            return False
-        
-        return False
-
-    # Defining 'Subjects' as Directory Channels
-    # PHP writes to 'ingest', Python works in 'process'
-    BASE_DIR = "storage/uploads/nats"
-    CHANNELS = {
-        "ingest": f"{BASE_DIR}/ingest",
-        "process": f"{BASE_DIR}/process",
-        "results": f"{BASE_DIR}/results"
-    }
-
-    @staticmethod
-    def index():
-        """UI Dashboard: Shows what's currently in the engine."""
-        current_job = NatsController.get_job()
-        data = {
-            "title": "PyMVC NATS-Lite",
-            "message": current_job if current_job else "Queue Empty - Waiting for PHP...",
-            "status": "Listening on subjects: " + ", ".join(NatsController.CHANNELS.keys())
-        }
-        return render_template("index.html", data)
-
-    @staticmethod
-    def get_job():
-        """Peek at the current job in the processing channel."""
-        files = glob.glob(f"{NatsController.CHANNELS['process']}/*.json")
-        if not files:
-            # If nothing is processing, peek at the next in ingest
-            files = glob.glob(f"{NatsController.CHANNELS['ingest']}/*.json")
-        
-        if not files: return None
-
-        try:
-            with open(files[0], 'r') as f:
-                return json.load(f)
-        except Exception:
-            return None
-
-    @staticmethod
-    def subscribe():
-        """
-        [The Consumer] Moves a job from 'ingest' to 'process'.
-        This is the Atomic Handover.
-        """
-        # 1. Look for the oldest job in the ingest channel
-        files = glob.glob(f"{NatsController.CHANNELS['ingest']}/*.json")
-        if not files:
-            return None
-        
-        files.sort(key=os.path.getmtime) # FIFO
-        source_path = files[0]
-        job_name = os.path.basename(source_path)
-        dest_path = os.path.join(NatsController.CHANNELS['process'], job_name)
-
-        try:
-            # Atomic Rename: No other worker can grab this job
-            os.replace(source_path, dest_path)
-            with open(dest_path, 'r') as f:
-                return json.load(f), dest_path
-        except Exception as e:
-            print(f"Subscription Error: {e}")
-            return None
-
-    @staticmethod
-    def update_php(job_id, status):
-        """Standard HTTP Callback to update the source of truth."""
-        url = Config.api_url(f"job/update/{job_id}")
-        try:
-            requests.put(url, json={"status": status}, timeout=2)
-        except Exception as e:
-            print(f"PHP Callback Failed: {e}")
-
-    @staticmethod
-    def acknowledge(file_path):
-        """[The Ack] Job complete. Remove from the processing channel."""
-        if os.path.exists(file_path):
-            os.remove(file_path)
 
     @staticmethod
     def consume():
         """
-        The orchestrator: Subscribes to a job and notifies the source of truth.
+        Scans the NATS ingest directory for pending job handshakes.
+        Moves valid items to 'process' atomically to prevent race conditions.
         """
-        result = NatsController.subscribe()
-        
-        if result:
-            job_data, file_path = result
-            job_id = job_data.get('job_id')
-            
-            # THE CRITICAL LINK: 
-            # Notify PHP/MariaDB that the worker has claimed this job.
-            NatsController.update_php(job_id, 'processing')
-            
-            # Return the data for the PyMVC runner to display
-            return job_data, file_path
-            
+        base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../storage/uploads/nats'))
+        ingest_dir = os.path.join(base_dir, 'ingest')
+        process_dir = os.path.join(base_dir, 'process')
+
+        if not os.path.exists(ingest_dir):
+            return None
+
+        for filename in os.listdir(ingest_dir):
+            if filename.endswith('.json'):
+                ingest_path = os.path.join(ingest_dir, filename)
+                process_path = os.path.join(process_dir, filename)
+                
+                try:
+                    os.rename(ingest_path, process_path)
+                    
+                    with open(process_path, 'r') as f:
+                        job_wrapper = json.load(f)
+                    
+                    job_data = job_wrapper.get('data', {})
+                    job_data['job_id'] = job_wrapper.get('job_id')
+                    
+                    return job_data, process_path
+                except Exception:
+                    continue
         return None
 
-    def get_payload(job_id):
+    @staticmethod
+    def vectors(job_data: dict) -> list:
         """
-        Fetches the job data from the PHP API.
-        No SQL, no DB connections, just a simple API call.
+        Splits raw text strings into sentences/chunks and vectors them via Ollama.
         """
-        url = Config.api_url(f"job/payload/{job_id}")
+        content_to_parse = job_data.get('extracted_text')
+        if not content_to_parse or len(content_to_parse.strip()) == 0:
+            return []
+
+        # Minimalist string chunker (~200 character boundary)
+        chunks = []
+        words = content_to_parse.split(' ')
+        current_chunk = []
+        current_length = 0
+
+        for word in words:
+            current_chunk.append(word)
+            current_length += len(word) + 1
+            if current_length >= 200:
+                chunks.append(" ".join(current_chunk).strip())
+                current_chunk = []
+                current_length = 0
+        if current_chunk:
+            chunks.append(" ".join(current_chunk).strip())
+
+        payload_chunks = []
+        ollama_url = "http://localhost:11434/api/embeddings"
+
+        for idx, chunk_text in enumerate(chunks):
+            if not chunk_text:
+                continue
+            try:
+                response = requests.post(ollama_url, json={
+                    "model": "jina/jina-embeddings-v2-small-en",
+                    "prompt": chunk_text
+                }, timeout=10)
+                
+                if response.status_code == 200:
+                    embedding = response.json().get("embedding", [])
+                    payload_chunks.append({
+                        "content": chunk_text,
+                        "embedding": embedding,
+                        "pref": idx + 1
+                    })
+            except Exception as e:
+                print(f"⚠️ Ollama embedding generation failed for chunk {idx}: {e}")
+                continue
+
+        return payload_chunks
+
+    @staticmethod
+    def update_php(job_id: int, status: str, chunks: list = None):
+        """
+        Pushes state tracking payloads back up to the main MVC framework via PUT.
+        Accommodates optional vector chunks collections seamlessly.
+        """
+        url = f"http://sharpishly.dev/php/job/update/{job_id}"
+        payload = {
+            "status": status,
+            "chunks": chunks or []
+        }
         try:
-            response = requests.get(url, timeout=5)
-            if response.status_code == 200:
-                # This is your raw data (CSV text, PDF bytes, etc.)
-                return response.content 
-            else:
-                print(f"❌ Failed to fetch payload: {response.status_code}")
-                return None
+            headers = {"Content-Type": "application/json"}
+            requests.put(url, json=payload, headers=headers, timeout=5)
         except Exception as e:
-            print(f"❌ Connection Error: {e}")
-            return None
-    @staticmethod
-    def embeddings(job_id):
-        """
-        Phase 2: Transition from raw payload to vector-ready chunks.
-        """
-        # 1. Update PHP that we are starting the Neural work
-        NatsController.update_php(job_id, 'processing_embeddings')
-
-        # 2. Fetch the raw CSV/Text from the PHP API
-        payload = NatsController.get_payload(job_id)
-        if not payload:
-            NatsController.update_php(job_id, 'failed_payload_fetch')
-            return None
-
-        # 3. Hand over to the ChunkingService (to be implemented in utils)
-        # We don't do the work here; we orchestrate it.
-        from app.utils.ChunkingService import ChunkingService
-        chunker = ChunkingService()
-        chunks = chunker.create_chunks(payload)
-
-        return chunks
+            print(f"⚠️ Communication breakdown updating PHP state for job {job_id}: {e}")
 
     @staticmethod
-    def vectorstorage(job_id, collection_name, vector_count):
+    def acknowledge(file_path: str):
         """
-        Phase 3: Finalize the Vector DB link and signal completion.
+        Cleans up the file system transaction safely.
         """
-        # 1. Final status update to PHP
-        # This signals Path B in the PHP router to mark the job as 'completed'
-        status = f"vectorized:{collection_name}:{vector_count}"
-        NatsController.update_php(job_id, status)
-        
-        print(f"✅ Job {job_id} grounded in Vector DB: {collection_name}")
-
-
-    @staticmethod
-    def process_neural_path(job_id):
-        """
-        The full NP surgery: Ingest -> Chunk -> Embed -> Store -> Notify
-        """
-        # 1. Chunking (using the updated row-aware service)
-        from app.utils.ChunkingService import ChunkingService
-        payload = NatsController.get_payload(job_id)
-        chunks = ChunkingService.create_chunks(payload, job_id)
-        
-        # 2. Storage & Vectorization
-        from app.utils.VectorStorageService import VectorStorageService
-        # Passing mock_vector as the embedder for now
-        coll, count = VectorStorageService.store_chunks(
-            job_id, 
-            chunks, 
-            ChunkingService.mock_vector
-        )
-        
-        # 3. Grounding Handshake
-        VectorStorageService.finalize_handshake(job_id, coll, count)
-        
-        # 4. Acknowledge and cleanup 'process' folder
-        # NatsController.acknowledge(file_path)
+        try:
+            if os.path.exists(file_path):
+                os.remove(file_path)
+        except Exception as e:
+            print(f"⚠️ Failed to acknowledge handshake file context: {e}")
