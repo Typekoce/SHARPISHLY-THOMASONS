@@ -1,29 +1,39 @@
+import ollama
+from app.utils.VectorStorageService import VectorStorageService
+
 class RagService:
+    LLM_MODEL = "llama3"
+
     @staticmethod
-    def build_prompt(question, context):
+    def ask(question: str, job_id: int = None) -> str:
         """
-        The RAG Template: This forces the AI to stay 'inside the box' 
-        of the uploaded document.
+        Gathers truth text vectors from ChromaDB (globally or job-scoped) 
+        and runs local LLM context synthesis.
         """
-        system_instructions = (
-            "You are a helpful assistant. Use the provided context to answer the user. "
-            "If the answer isn't in the context, say you don't know. Do not make things up."
+        # 1. Pull relevant chunks via the unified database service query method
+        matched_chunks = VectorStorageService.query_relevant_context(question, n_results=3, job_id=job_id)
+        context_window = "\n".join([f"- {chunk}" for chunk in matched_chunks])
+        
+        if not context_window:
+            context_window = "No context data found in database storage."
+
+        # 2. Forge prompt constraints to anchor the model response text
+        prompt = (
+            "You are an internal automation module for SHARPISHLY-THOMASONS.\n"
+            "Answer the user query accurately relying strictly on the context items listed below.\n"
+            "If the knowledge baseline doesn't contain details, say 'Context data insufficient.'\n\n"
+            f"CONTEXT BASELINE:\n{context_window}\n\n"
+            f"USER QUERY: {question}\n\n"
+            "ANSWER:"
         )
-
-        prompt = f"""
-        CONTEXT FROM UPLOADED DOCUMENT:
-        {context}
-
-        USER QUESTION:
-        {question}
-
-        FINAL ANSWER:
-        """
-        return {"system": system_instructions, "prompt": prompt}
-
-    @staticmethod
-    def mock_generate_response(prompt_package):
-        """
-        Task 3.1: Mock the AI response until we hook up Ollama.
-        """
-        return f"MOCK AI RESPONSE: I found information in your document regarding your question. [Sample Data based on context]."
+        
+        # 3. Request inference stream generation from local runtime instance
+        try:
+            response = ollama.generate(
+                model=RagService.LLM_MODEL,
+                prompt=prompt,
+                stream=False
+            )
+            return response.get("response", "").strip()
+        except Exception as e:
+            return f"⚠️ Neural Generation Failed: {e}"

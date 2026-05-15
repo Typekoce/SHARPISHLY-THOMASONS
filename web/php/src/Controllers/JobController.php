@@ -47,10 +47,10 @@ class JobController extends BaseController
 
         // 3. Prepare the dataset for MariaDB
         $jobData = [
-            'status'    => 'pending',
-            'file_name' => basename($meta['path']),
+            'status'     => 'pending',
+            'file_name'  => basename($meta['path']),
             // DRY: Save raw text content if extracted; fallback to JSON tracking metadata
-            'payload'   => $extractedText ?: json_encode(array_merge($meta, ['created_by' => 'system_mock'])),
+            'payload'    => $extractedText ?: json_encode(array_merge($meta, ['created_by' => 'system_mock'])),
             'created_at' => date('Y-m-d H:i:s')
         ];
 
@@ -178,22 +178,42 @@ class JobController extends BaseController
         }
 
         $extension = strtolower(pathinfo($resolvedPath, PATHINFO_EXTENSION));
-        $extractedText = '';
 
         if ($extension === 'csv') {
-            if (($handle = fopen($resolvedPath, 'r')) !== false) {
-                while (($data = fgetcsv($handle, 1000, ',')) !== false) {
-                    $cleanRow = array_filter(array_map('trim', $data));
-                    if (!empty($cleanRow)) {
-                        $extractedText .= implode(' ', $cleanRow) . " ";
-                    }
-                }
-                fclose($handle);
-            }
-        } else {
-            $extractedText = file_get_contents($resolvedPath);
+            return $this->parseCsvToString($resolvedPath);
         }
 
+        $extractedText = file_get_contents($resolvedPath);
+        return !empty(trim($extractedText)) ? trim($extractedText) : null;
+    }
+
+    /**
+     * Sub-method: Dedicated Robust CSV parsing driver preserving row structures.
+     */
+    private function parseCsvToString(string $resolvedPath): ?string
+    {
+        $extractedText = '';
+
+        if (($handle = fopen($resolvedPath, 'r')) === false) {
+            return null;
+        }
+
+        while (($data = fgetcsv($handle, 1000, ',')) !== false) {
+            // Sanitize cells without dropping structural empty columns
+            $escapedRow = array_map(function($cell) {
+                $cell = trim((string)$cell);
+                // Wrap cell in quotes if it contains structural separators or line breaks
+                if (strpbrk($cell, ",\"\n\r") !== false) {
+                    return '"' . str_replace('"', '""', $cell) . '"';
+                }
+                return $cell;
+            }, $data);
+
+            // Re-assemble row with true comma boundaries and raw line breaks
+            $extractedText .= implode(',', $escapedRow) . "\n";
+        }
+
+        fclose($handle);
         return !empty(trim($extractedText)) ? trim($extractedText) : null;
     }
 

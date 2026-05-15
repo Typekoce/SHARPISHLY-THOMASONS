@@ -8,6 +8,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Corrected Imports: matching the snake_case filenames in your tree
 from app.controllers.nats_controller import NatsController
+from app.utils.ChunkingService import ChunkingService
+from app.utils.VectorStorageService import VectorStorageService
 
 def run_worker():
     print("🚀 NATS-Lite Worker Started. Listening for jobs...")
@@ -34,18 +36,25 @@ def run_worker():
                     NatsController.acknowledge(file_path)
                     continue
 
-                # 4. Inject raw text into job_data for the vectorizer method
-                job_data['extracted_text'] = text_content
+                # 4. Segment CSV rows using the correct ChunkingService signature
+                # Passing text_content and job_id explicitly as required by the method signature
+                chunks = ChunkingService.create_chunks(text_content, job_id)
 
-                # 5. Generate neural chunk arrays and embeddings
-                vector_chunks = NatsController.vectors(job_data)
+                if not chunks:
+                    print(f"⚠️ Chunking returned an empty set for Job #{job_id}. Aborting.")
+                    NatsController.update_php(job_id, 'failed')
+                    NatsController.acknowledge(file_path)
+                    continue
+
+                # 5. Persist chunks inside ChromaDB and compile array payload for MariaDB
+                collection_name, count, vector_chunks = VectorStorageService.store_chunks(job_id, chunks)
 
                 # 6. Push chunks to MariaDB via PHP PUT handler and mark 'completed'
                 NatsController.update_php(job_id, 'completed', chunks=vector_chunks)
                 
                 # 7. Complete the NATS file handshake transaction safely
                 NatsController.acknowledge(file_path)
-                print(f"✅ Job #{job_id} Completed and Acknowledged.")
+                print(f"✅ Job #{job_id} Completed and Acknowledged ({count} vectors mapped).")
                 
         except Exception as e:
             print(f"⚠️ Worker Error Loop: {e}")
@@ -61,9 +70,13 @@ def fetch_payload(job_id: int) -> str | None:
         response = requests.get(url, timeout=5)
         
         if response.status_code == 200:
-            data = response.json()
-            if data.get('status') == 'success':
-                return data.get('payload')
+            content_type = response.headers.get('Content-Type', '')
+            if 'application/json' in content_type:
+                data = response.json()
+                if data.get('status') == 'success':
+                    return data.get('payload')
+            else:
+                return response.text.strip()
         return None
     except Exception as e:
         print(f"⚠️ Failed to pull payload from PHP Endpoint: {e}")
