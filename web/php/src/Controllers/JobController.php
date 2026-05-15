@@ -30,25 +30,32 @@ class JobController extends BaseController
 
     /**
      * POST /php/job/create
-     * Create a mock/test job (useful for testing the pipeline).
+     * Create a job and extract plain text data prior to NATS queue handshake dispatching.
      */
     public function create()
     {
         $logger = new \App\Services\Logger();
 
-        $payload = json_encode([
-            'path'       => $this->location->uploads('test.csv'),
-            'type'       => 'csv',
-            'created_by' => 'system_mock'
-        ]);
-
-        $data = [
-            'payload'   => $payload,
-            'status'    => 'pending',
-            'file_name' => 'test.csv'
+        // 1. Explicitly build the metadata layout from the request context
+        $meta = [
+            'path' => $_POST['path'] ?? 'storage/uploads/test.csv',
+            'type' => $_POST['type'] ?? 'csv'
         ];
 
-        $result = $this->db->save('jobs', $data);
+        // 2. Extract the text content before inserting into the database
+        $extractedText = $this->prepareJob($meta);
+
+        // 3. Prepare the dataset for MariaDB
+        $jobData = [
+            'status'    => 'pending',
+            'file_name' => basename($meta['path']),
+            // DRY: Save raw text content if extracted; fallback to JSON tracking metadata
+            'payload'   => $extractedText ?: json_encode(array_merge($meta, ['created_by' => 'system_mock'])),
+            'created_at' => date('Y-m-d H:i:s')
+        ];
+
+        // 4. Save initial job tracking record to database
+        $result = $this->db->save('jobs', $jobData);
 
         if ($result === false) {
             $logger->error("NP Step 1: Failed to write initial job header to MariaDB");
@@ -60,20 +67,13 @@ class JobController extends BaseController
 
         $logger->info("NP Step 1: Job record saved to DB", ['job_id' => $result]);
 
-        // --- THE MISSING PIPELINE BRIDGE ---
-        // We look for the file and extract its content text into the job's payload field
-        // before informing the Python side.
-        $prepared = $this->prepareJob((int)$result);
-        
         $logger->info("NP Step 1.5: Content parsing execution", [
-            'job_id'             => $result,
-            'file_extracted_ok'  => $prepared
+            'job_id'            => $result,
+            'file_extracted_ok' => !empty($extractedText)
         ]);
 
-        // --- THE NATIVE PROTOCOL TRIGGER ---
-        // We drop the file inside the filesystem ingest folder to alert Python
-        $payloadData = json_decode($payload, true); 
-        $this->create_nats_item((int)$result, $payloadData);
+        // 5. Build NATS payload wrapper and trigger atomic file-system transaction
+        $this->create_nats_item((int)$result, $meta);
         
         return $this->json([
             'status'  => 'success',
@@ -161,69 +161,40 @@ class JobController extends BaseController
     }
 
     /**
-     * PUT /php/job/update/{id}
-     * Streamlined for debugging the Python handshake.
+     * Parse raw document text content prior to NATS dispatching
      */
-    public function old_update($id)
+    private function prepareJob(array $meta): ?string
     {
-        $json = file_get_contents('php://input');
-        $data = json_decode($json, true);
-        
-        $status = $data['status'] ?? 'unknown';
-
-        $updateData = [
-            'id'     => (int)$id,
-            'status' => $status
-        ];
-
-        if ($status === 'completed' || $status === 'failed') {
-            $updateData['finished_at'] = date('Y-m-d H:i:s');
+        if (!isset($this->location)) {
+            $this->location = new \App\Services\Location();
         }
 
-        $result = $this->db->save('jobs', $updateData);
+        // Isolate filename to strip out brittle host-specific home paths
+        $filename = basename($meta['path'] ?? 'test.csv');
+        $resolvedPath = $this->location->uploads($filename);
 
-        if ($result === false) {
-            return $this->json(['status' => 'error', 'message' => 'DB Save Failed'], 500);
+        if (!file_exists($resolvedPath) || !is_readable($resolvedPath)) {
+            return null; // Triggers file_extracted_ok: false
         }
 
-        return $this->json([
-            'status' => 'success', 
-            'job_id' => $id, 
-            'new_status' => $status
-        ]);
-    }
+        $extension = strtolower(pathinfo($resolvedPath, PATHINFO_EXTENSION));
+        $extractedText = '';
 
-    /**
-     * Processes the raw file, cleans it, and prepares the job for the AI worker.
-     */
-    public function prepareJob(int $jobId)
-    {
-        $job = $this->db->find(['tbl' => 'jobs', 'where' => ['id' => $jobId]])[0] ?? null;
-
-        if (!$job || empty($job['file_name'])) {
-            return false;
+        if ($extension === 'csv') {
+            if (($handle = fopen($resolvedPath, 'r')) !== false) {
+                while (($data = fgetcsv($handle, 1000, ',')) !== false) {
+                    $cleanRow = array_filter(array_map('trim', $data));
+                    if (!empty($cleanRow)) {
+                        $extractedText .= implode(' ', $cleanRow) . " ";
+                    }
+                }
+                fclose($handle);
+            }
+        } else {
+            $extractedText = file_get_contents($resolvedPath);
         }
 
-        $filePath = $this->location->uploads($job['file_name']);
-
-        if (file_exists($filePath)) {
-            $rawContent = file_get_contents($filePath);
-            
-            // --- The PHP Cleaning Logic ---
-            $cleanContent = preg_replace('/\s+/', ' ', strip_tags($rawContent));
-            $cleanContent = trim($cleanContent);
-
-            // Update the job with the actual text data
-            $this->db->save('jobs', [
-                'id'      => $jobId,
-                'payload' => $cleanContent, 
-                'status'  => 'pending'
-            ]);
-
-            return true;
-        }
-
-        return false;
+        return !empty(trim($extractedText)) ? trim($extractedText) : null;
     }
 
     /**
@@ -267,13 +238,13 @@ class JobController extends BaseController
             ], 500);
         }
     }
-     /**
+
+    /**
      * GET /php/job/payload/{id}
      * Streams the raw BLOB data from MariaDB to the requester.
      */
     public function payload($id)
     {
-        // THE FIX: Enforce the single array configuration pattern
         $conditions = [
             'tbl'   => 'jobs',
             'where' => ['id' => (int)$id]
@@ -291,7 +262,4 @@ class JobController extends BaseController
         
         return $this->json(['status' => 'success', 'payload' => $job['payload']]);
     }
-
 }
-
-

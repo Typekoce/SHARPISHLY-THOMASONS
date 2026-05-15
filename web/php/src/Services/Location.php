@@ -12,7 +12,27 @@ class Location {
     private string $storageBase;
     private string $projectRoot;
 
+
     public function __construct() {
+        // 1. Establish Project Root (The Source of Truth)
+        if (defined('PROJECT_ROOT')) {
+            $this->projectRoot = PROJECT_ROOT;
+        } else {
+            // Robust absolute calculation down from web/php/src/Services/Location.php
+            $calculated = realpath(dirname(__DIR__, 4));
+            $this->projectRoot = $calculated ?: rtrim(dirname(__DIR__, 4), '/');
+        }
+
+        // 2. Establish Storage Base
+        $this->storageBase = $this->projectRoot . '/storage/';
+        
+        // Ensure the base storage exists immediately
+        if (!is_dir($this->storageBase)) {
+            mkdir($this->storageBase, 0775, true);
+        }
+    }
+
+    public function old_construct() {
         // 1. Establish Project Root (The Source of Truth)
         // Fix: Added parentheses to resolve the unparenthesized ternary fatal error
         $this->projectRoot = defined('PROJECT_ROOT') 
