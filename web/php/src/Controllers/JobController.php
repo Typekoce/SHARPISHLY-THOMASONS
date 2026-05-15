@@ -164,7 +164,7 @@ class JobController extends BaseController
      * PUT /php/job/update/{id}
      * Streamlined for debugging the Python handshake.
      */
-    public function mock_update($id)
+    public function old_update($id)
     {
         $json = file_get_contents('php://input');
         $data = json_decode($json, true);
@@ -267,14 +267,20 @@ class JobController extends BaseController
             ], 500);
         }
     }
-
-    /**
+     /**
      * GET /php/job/payload/{id}
      * Streams the raw BLOB data from MariaDB to the requester.
      */
     public function payload($id)
     {
-        $job = $this->db->find('jobs', ['id' => $id]);
+        // THE FIX: Enforce the single array configuration pattern
+        $conditions = [
+            'tbl'   => 'jobs',
+            'where' => ['id' => (int)$id]
+        ];
+
+        $jobResult = $this->db->find($conditions);
+        $job = $jobResult[0] ?? null; 
 
         if (!$job || empty($job['payload'])) {
             return $this->json([
@@ -285,4 +291,7 @@ class JobController extends BaseController
         
         return $this->json(['status' => 'success', 'payload' => $job['payload']]);
     }
+
 }
+
+
