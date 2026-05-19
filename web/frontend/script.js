@@ -26,17 +26,36 @@ const Model = {
 };
 
 const Controller = {
-    init() {
+    // Crucial: Async init enforces synchronous bootstrapping execution order
+    async init() {
         const host = window.location.hostname;
         const sub = host.split('.')[0];
-        
+
+        try {
+            // Force the layout engine to completely parse header.html before evaluating nav links
+            const res = await fetch('views/layouts/header.html');
+            if (res.ok) {
+                let headerTemplate = await res.text();
+                
+                // Process initial h1 template tags matching the initial routing state
+                const initialH1 = (sub === 'cyberdeck') ? 'Cyberdeck (LLM)' : 'Thomasons V3';
+                document.getElementById('header').innerHTML = headerTemplate.replace(/{{\s*h1\s*}}/g, initialH1);
+            }
+        } catch (e) { 
+            console.error("Layout Engine initialization failed:", e); 
+        }
+
+        // Subdomain router execution loop
         if (sub === 'crm') App.crm();
         else if (sub === 'cyberdeck') App.cyberdeck();
         else this.navigate('home');
 
         document.addEventListener('click', (e) => {
             const page = e.target.closest('[data-page]')?.dataset.page;
-            if (page) this.navigate(page);
+            if (page) {
+                e.preventDefault();
+                this.navigate(page);
+            }
         });
 
         setInterval(() => this.fetchHealth(), 5000);
@@ -54,7 +73,7 @@ const Controller = {
         try {
             const res = await fetch('/php/job/create', { method: 'POST', body: formData });
             const result = await res.json();
-            // Update queue status from NATS response
+            // Update queue status from NATS response loop
             Model.queue.forEach(item => { item.status = 'queued'; item.progress = 50; });
             this.render();
         } catch (e) { console.error("Upload failed"); }
@@ -93,9 +112,25 @@ const Controller = {
         const target = document.getElementById('app');
         if (!target) return;
 
-        let html = await App.loadTemplate(`views/pages/${Model.currentPage}.html`, {
+        // Path resolution separation: ensures home maps to views/home/ index while others use views/pages/
+        const templatePath = Model.currentPage === 'home' 
+            ? 'views/home/index.html' 
+            : `views/pages/${Model.currentPage}.html`;
+
+        let html = await App.loadTemplate(templatePath, {
             health: Model.healthStatus,
             queue: Model.queue
+        });
+
+        // Update the template layout header H1 tag configuration dynamically on each navigation pass
+        const headerH1 = document.querySelector('#header h1');
+        if (headerH1) {
+            headerH1.textContent = Model.currentPage === 'home' ? 'Thomasons V3' : Model.currentPage.toUpperCase();
+        }
+
+        // Toggles active bootstrap navigation items cleanly inside the loaded layout element tree
+        document.querySelectorAll('.navbar .nav-link').forEach(link => {
+            link.classList.toggle('active', link.dataset.page === Model.currentPage);
         });
 
         // Critical: Manual Loop Injection for the Queue
