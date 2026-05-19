@@ -49,6 +49,45 @@ abstract class BaseController
         }        
 
     }
+
+
+    /**
+     * Centralized File Path Resolver for Ingestion Handshakes.
+     * Diagnostic mode: Tracks file metadata layout configurations in app.log.
+     */
+    protected function baseUpload(string $filename = ''): array
+    {
+        $cleanName = $filename ? basename($filename) : 'EMPTY';
+
+        // Log the structural validation check cleanly using your standard trace format
+        $this->logger->log("NP Base Handshake: Path resolution diagnostic triggered for file [{$cleanName}]", 'INFO');
+
+        return [
+            'upload_dir'      => '',
+            'target_file'     => '',
+            'nats_ingest_dir' => '',
+            'filename'        => $filename ? $cleanName : null,
+        ];
+    }
+
+    /**
+     * Centralized File Path Resolver for Ingestion Handshakes.
+     * Currently operating in strict logging-only diagnostics mode.
+     */
+    protected function old_baseUpload(string $filename = ''): array
+    {
+        // Log the structural event tracking line cleanly
+        $this->logger->log("NP Base Handshake: Resolving path configurations for file: " . ($filename ?: 'EMPTY'), 'INFO');
+
+        // Return empty structure for now to keep child signatures happy without altering disk state
+        return [
+            'upload_dir'      => '',
+            'target_file'     => '',
+            'nats_ingest_dir' => '',
+            'filename'        => $filename ? basename($filename) : null,
+        ];
+    }	
+
     
     /**
      * Standardized JSON Response Handler

@@ -6,20 +6,20 @@ namespace App\Controllers;
 
 /**
  * JobController
- * Handles job queue operations between PHP and the Python Neural Worker.
+ * Handles job queue operations between PHP and the Python Neural Worker using NATS file handshakes.
  */
 class JobController extends BaseController
 {
     /**
      * GET /php/job/index
-     * Fetch the next pending job for the Neural Worker.
+     * Fetch the next pending job for the Neural Worker (FIFO structure).
      */
     public function index()
     {
         $conditions = [
             'tbl'   => 'jobs',
             'where' => ['status' => 'pending'],
-            'order' => ['id' => 'ASC'],        // ASC is better for FIFO processing
+            'order' => ['id' => 'ASC'],
             'limit' => 1
         ];
 
@@ -34,50 +34,49 @@ class JobController extends BaseController
      */
     public function create()
     {
-        $logger = new \App\Services\Logger();
+        // Capture incoming parameters safely
+        $inputPath = $_POST['path'] ?? 'test.csv';
 
-        // 1. Explicitly build the metadata layout from the request context
+        // Trigger the parent centralized resolver diagnostics mode
+        $paths = $this->baseUpload($inputPath);
+
+        // Build the metadata framework layout from request context
         $meta = [
             'path' => $_POST['path'] ?? 'storage/uploads/test.csv',
             'type' => $_POST['type'] ?? 'csv'
         ];
 
-        // 2. Extract the text content before inserting into the database
+        // Extract raw document contents safely using unified paths
         $extractedText = $this->prepareJob($meta);
 
-        // 3. Prepare the dataset for MariaDB
+        // Prepare the dataset properties for MariaDB mapping
         $jobData = [
             'status'     => 'pending',
             'file_name'  => basename($meta['path']),
-            // DRY: Save raw text content if extracted; fallback to JSON tracking metadata
             'payload'    => $extractedText ?: json_encode(array_merge($meta, ['created_by' => 'system_mock'])),
             'created_at' => date('Y-m-d H:i:s')
         ];
 
-        // 4. Save initial job tracking record to database
+        // Save initial job tracking metrics
         $result = $this->db->save('jobs', $jobData);
 
         if ($result === false) {
-            $logger->error("NP Step 1: Failed to write initial job header to MariaDB");
+            $this->logger->log("NP Step 1: Failed to write initial job header to MariaDB", 'ERROR');
             return $this->json([
                 'status'  => 'error',
                 'message' => 'Failed to create job'
             ], 500);
         }
 
-        $logger->info("NP Step 1: Job record saved to DB", ['job_id' => $result]);
+        $this->logger->log("NP Step 1: Job record saved to DB with ID: " . $result, 'INFO');
+        $this->logger->log("NP Step 1.5: Content parsing execution status [Extracted: " . ($extractedText ? 'YES' : 'NO') . "]", 'INFO');
 
-        $logger->info("NP Step 1.5: Content parsing execution", [
-            'job_id'            => $result,
-            'file_extracted_ok' => !empty($extractedText)
-        ]);
-
-        // 5. Build NATS payload wrapper and trigger atomic file-system transaction
+        // Build NATS handshake files atomically
         $this->create_nats_item((int)$result, $meta);
         
         return $this->json([
             'status'  => 'success',
-            'message' => 'Job posted to the queue & and NATS handshake triggered.',
+            'message' => 'Job posted to the queue & NATS handshake triggered.',
             'job_id'  => $result
         ]);
     }
@@ -85,7 +84,7 @@ class JobController extends BaseController
     /**
      * Internal Handshake: Acts as the "Publisher" for NATS-Lite.
      */
-    private function create_nats_item(int $jobId, array $payload)
+    private function create_nats_item(int $jobId, array $payload): bool
     {
         $handshake = [
             'job_id'    => $jobId,
@@ -94,11 +93,12 @@ class JobController extends BaseController
             'data'      => $payload
         ];
 
-        $directory = $this->location->nats('ingest');
-        $finalPath = "{$directory}/job_{$jobId}.json";
+        // Switch to parent array structures cleanly
+        $paths = $this->baseUpload();
+        $directory = $paths['nats_ingest_dir'] ?: $this->location->storage('uploads/nats/ingest/');
         
-        // --- LATERAL THINKING: ATOMIC WRITING ---
-        $tempPath = "{$finalPath}.tmp";
+        $finalPath = rtrim($directory, '/') . "/job_{$jobId}.json";
+        $tempPath  = "{$finalPath}.tmp";
         
         file_put_contents($tempPath, json_encode($handshake, JSON_PRETTY_PRINT), LOCK_EX);
         
@@ -107,13 +107,12 @@ class JobController extends BaseController
 
     /**
      * PUT /php/job/update/{id}
-     * Persists neural chunks to MariaDB using the ScaffoldModel schema.
+     * Persists neural chunks to MariaDB via framework repository layer.
      */
     public function update($id)
     {
-        $logger = new \App\Services\Logger();
         $json = file_get_contents('php://input');
-        $data = json_decode($json, true);
+        $data = json_decode($json, true) ?? [];
         
         $id = (int)$id;
         $status = $data['status'] ?? 'unknown';
@@ -127,16 +126,12 @@ class JobController extends BaseController
             $updateData['finished_at'] = date('Y-m-d H:i:s');
         }
 
-        $logger->info("NP Step 4: Update received from Python Worker", [
-            'job_id'     => $id,
-            'status'     => $status,
-            'chunk_size' => isset($data['chunks']) ? count($data['chunks']) : 0
-        ]);
+        $this->logger->log("NP Step 4: Update received from Python Worker for Job ID: {$id}", 'INFO');
 
-        // 1. Update Job Status
+        // Update Job state metrics
         $result = $this->db->save('jobs', $updateData);
 
-        // 2. Sync Vectors (Neural Path)
+        // Sync Vectors directly to MariaDB safely (No raw SQL)
         if (!empty($data['chunks']) && is_array($data['chunks'])) {
             foreach ($data['chunks'] as $chunk) {
                 $this->db->save('vectors', [
@@ -149,7 +144,7 @@ class JobController extends BaseController
         }
 
         if ($result === false) {
-            $logger->error("NP Step 4 Failed: MariaDB update failed to write", ['job_id' => $id]);
+            $this->logger->log("NP Step 4 Failed: MariaDB update failed to write for job {$id}", 'ERROR');
             return $this->json(['status' => 'error', 'message' => 'DB Save Failed'], 500);
         }
 
@@ -165,16 +160,14 @@ class JobController extends BaseController
      */
     private function prepareJob(array $meta): ?string
     {
-        if (!isset($this->location)) {
-            $this->location = new \App\Services\Location();
-        }
-
-        // Isolate filename to strip out brittle host-specific home paths
+        // Leverage our single source of truth for safe file extraction
         $filename = basename($meta['path'] ?? 'test.csv');
-        $resolvedPath = $this->location->uploads($filename);
+        $paths = $this->baseUpload($filename);
+        $resolvedPath = $paths['target_file'] ?: $this->location->storage("uploads/{$filename}");
 
         if (!file_exists($resolvedPath) || !is_readable($resolvedPath)) {
-            return null; // Triggers file_extracted_ok: false
+            $this->logger->log("NP Prepare Job: Missing target source asset file at path: {$resolvedPath}", 'ERROR');
+            return null; 
         }
 
         $extension = strtolower(pathinfo($resolvedPath, PATHINFO_EXTENSION));
@@ -199,17 +192,14 @@ class JobController extends BaseController
         }
 
         while (($data = fgetcsv($handle, 1000, ',')) !== false) {
-            // Sanitize cells without dropping structural empty columns
             $escapedRow = array_map(function($cell) {
                 $cell = trim((string)$cell);
-                // Wrap cell in quotes if it contains structural separators or line breaks
                 if (strpbrk($cell, ",\"\n\r") !== false) {
                     return '"' . str_replace('"', '""', $cell) . '"';
                 }
                 return $cell;
             }, $data);
 
-            // Re-assemble row with true comma boundaries and raw line breaks
             $extractedText .= implode(',', $escapedRow) . "\n";
         }
 
@@ -219,21 +209,29 @@ class JobController extends BaseController
 
     /**
      * POST /php/job/finalize/{id}
-     * Called by Python worker after pushing vectors to Redis.
+     * Called by Python worker after processing data pipelines.
      */
     public function finalize($id)
     {
-        $json = file_get_contents('php://input');
-        $data = json_decode($json, true);
-
         if (!$id || !is_numeric($id)) {
             return $this->json(['status' => 'error', 'message' => 'Invalid job ID'], 400);
         }
 
+        $json = file_get_contents('php://input');
+        $data = json_decode($json, true) ?? [];
+        
+        // FIX: Extract vector items array from incoming payload safely
+        $vectorPayloads = $data['chunks'] ?? $data['vectors'] ?? [];
+
         try {
-            if (!empty($batch)) {
-                foreach ($batch as $row) {
-                    $this->db->save('vectors', $row);
+            if (!empty($vectorPayloads) && is_array($vectorPayloads)) {
+                foreach ($vectorPayloads as $row) {
+                    $this->db->save('vectors', [
+                        'job_id'    => (int)$id,
+                        'content'   => $row['content'] ?? '',
+                        'embedding' => json_encode($row['embedding'] ?? []),
+                        'pref'      => $row['pref'] ?? null
+                    ]);
                 }
             }
 
@@ -243,18 +241,18 @@ class JobController extends BaseController
                 'finished_at'=> date('Y-m-d H:i:s')
             ]);
 
-            $this->logger->info("Job {$id} finalized from Redis buffer", ['vectors_count' => count($batch)]);
+            $this->logger->log("Job {$id} finalized and sync targets mapped out.", 'INFO');
 
             return $this->json([
                 'status'  => 'success',
-                'message' => "Job {$id} vectors ingested from Redis"
+                'message' => "Job {$id} vectors saved securely."
             ]);
 
         } catch (\Exception $e) {
-            $this->logger->error("Finalize failed for job {$id}: " . $e->getMessage());
+            $this->logger->log("Finalize failed for job {$id}: " . $e->getMessage(), 'ERROR');
             return $this->json([
                 'status'  => 'error',
-                'message' => 'Failed to ingest vectors from Redis'
+                'message' => 'Failed to ingest vectors into storage layer'
             ], 500);
         }
     }
