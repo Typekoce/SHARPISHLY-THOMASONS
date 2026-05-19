@@ -21,19 +21,19 @@ def run_worker():
             if result:
                 job_data, file_path = result
                 job_id = job_data.get('job_id')
-                print(f"📦 Claimed Job #{job_id}. Processing...")
+                print(f"📦 Claimed Job #{job_id}. Fetching footprint...")
                 
-                # 2. Update status to 'processing' in MariaDB
-                NatsController.update_php(job_id, 'processing')
-
-                # 3. Fetch the raw parsed string payload from the PHP endpoint
+                # 2. GATEKEEPER: Fetch the raw parsed string payload from the PHP endpoint first
                 text_content = fetch_payload(job_id)
 
                 if not text_content:
                     print(f"⚠️ No content found for Job #{job_id} via API. Skipping vectorization.")
                     NatsController.update_php(job_id, 'failed')
-                    NatsController.fail_job(file_path)
+                    NatsController.fail_job(file_path)  # Isolate file to prevent re-picking
                     continue
+
+                # 3. PROCEED: Valid content verified, transition state to processing in MariaDB
+                NatsController.update_php(job_id, 'processing')
 
                 # 4. Segment CSV rows using the correct ChunkingService signature
                 chunks = ChunkingService.create_chunks(text_content, job_id)
@@ -41,7 +41,7 @@ def run_worker():
                 if not chunks:
                     print(f"⚠️ Chunking returned an empty set for Job #{job_id}. Aborting.")
                     NatsController.update_php(job_id, 'failed')
-                    NatsController.fail_job(file_path)
+                    NatsController.fail_job(file_path)  # Isolate file from active process track
                     continue
 
                 # 5. Persist chunks inside ChromaDB and compile array payload for MariaDB
