@@ -6,7 +6,6 @@ import requests
 # Add the 'pymvc' directory to sys.path so 'app' is found
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Corrected Imports: matching the snake_case filenames in your tree
 from app.controllers.nats_controller import NatsController
 from app.utils.ChunkingService import ChunkingService
 from app.utils.VectorStorageService import VectorStorageService
@@ -33,17 +32,16 @@ def run_worker():
                 if not text_content:
                     print(f"⚠️ No content found for Job #{job_id} via API. Skipping vectorization.")
                     NatsController.update_php(job_id, 'failed')
-                    NatsController.acknowledge(file_path)
+                    NatsController.fail_job(file_path)
                     continue
 
                 # 4. Segment CSV rows using the correct ChunkingService signature
-                # Passing text_content and job_id explicitly as required by the method signature
                 chunks = ChunkingService.create_chunks(text_content, job_id)
 
                 if not chunks:
                     print(f"⚠️ Chunking returned an empty set for Job #{job_id}. Aborting.")
                     NatsController.update_php(job_id, 'failed')
-                    NatsController.acknowledge(file_path)
+                    NatsController.fail_job(file_path)
                     continue
 
                 # 5. Persist chunks inside ChromaDB and compile array payload for MariaDB

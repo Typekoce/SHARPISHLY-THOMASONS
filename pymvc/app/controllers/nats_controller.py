@@ -5,24 +5,30 @@ import requests
 class NatsController:
 
     @staticmethod
+    def _ensure_dirs(base_dir):
+        """Guarantees directory layouts exist securely."""
+        for folder in ['ingest', 'process', 'fail']:
+            os.makedirs(os.path.join(base_dir, folder), exist_ok=True)
+
+    @staticmethod
     def consume():
         """
         Scans the NATS ingest directory for pending job handshakes.
         Moves valid items to 'process' atomically to prevent race conditions.
         """
         base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../storage/uploads/nats'))
+        NatsController._ensure_dirs(base_dir)
+        
         ingest_dir = os.path.join(base_dir, 'ingest')
         process_dir = os.path.join(base_dir, 'process')
 
-        if not os.path.exists(ingest_dir):
-            return None
-
         for filename in os.listdir(ingest_dir):
-            if filename.endswith('.json'):
+            if filename.endswith('.json') and not filename.endswith('.tmp'):
                 ingest_path = os.path.join(ingest_dir, filename)
                 process_path = os.path.join(process_dir, filename)
                 
                 try:
+                    # Atomic directory shift to claim the job ownership
                     os.rename(ingest_path, process_path)
                     
                     with open(process_path, 'r') as f:
@@ -32,65 +38,15 @@ class NatsController:
                     job_data['job_id'] = job_wrapper.get('job_id')
                     
                     return job_data, process_path
-                except Exception:
+                except Exception as e:
+                    print(f"⚠️ Failed to safely consume handshake message packet: {e}")
                     continue
         return None
-
-    @staticmethod
-    def vectors(job_data: dict) -> list:
-        """
-        Splits raw text strings into sentences/chunks and vectors them via Ollama.
-        """
-        content_to_parse = job_data.get('extracted_text')
-        if not content_to_parse or len(content_to_parse.strip()) == 0:
-            return []
-
-        # Minimalist string chunker (~200 character boundary)
-        chunks = []
-        words = content_to_parse.split(' ')
-        current_chunk = []
-        current_length = 0
-
-        for word in words:
-            current_chunk.append(word)
-            current_length += len(word) + 1
-            if current_length >= 200:
-                chunks.append(" ".join(current_chunk).strip())
-                current_chunk = []
-                current_length = 0
-        if current_chunk:
-            chunks.append(" ".join(current_chunk).strip())
-
-        payload_chunks = []
-        ollama_url = "http://localhost:11434/api/embeddings"
-
-        for idx, chunk_text in enumerate(chunks):
-            if not chunk_text:
-                continue
-            try:
-                response = requests.post(ollama_url, json={
-                    "model": "jina/jina-embeddings-v2-small-en",
-                    "prompt": chunk_text
-                }, timeout=10)
-                
-                if response.status_code == 200:
-                    embedding = response.json().get("embedding", [])
-                    payload_chunks.append({
-                        "content": chunk_text,
-                        "embedding": embedding,
-                        "pref": idx + 1
-                    })
-            except Exception as e:
-                print(f"⚠️ Ollama embedding generation failed for chunk {idx}: {e}")
-                continue
-
-        return payload_chunks
 
     @staticmethod
     def update_php(job_id: int, status: str, chunks: list = None):
         """
         Pushes state tracking payloads back up to the main MVC framework via PUT.
-        Accommodates optional vector chunks collections seamlessly.
         """
         url = f"http://sharpishly.dev/php/job/update/{job_id}"
         payload = {
@@ -106,10 +62,27 @@ class NatsController:
     @staticmethod
     def acknowledge(file_path: str):
         """
-        Cleans up the file system transaction safely.
+        Cleans up the file system transaction safely and remains noisy on failure.
         """
         try:
             if os.path.exists(file_path):
                 os.remove(file_path)
+                print(f"🧹 Clean Closeout: Removed transaction file {os.path.basename(file_path)}")
+            else:
+                print(f"🧹 Acknowledge skipped; file missing: {file_path}")
         except Exception as e:
             print(f"⚠️ Failed to acknowledge handshake file context: {e}")
+
+    @staticmethod
+    def fail_job(file_path: str):
+        """
+        Dead-letter queue pattern. Shifts unprocessable handshakes out of process/.
+        """
+        try:
+            if os.path.exists(file_path):
+                fail_dir = os.path.abspath(os.path.join(os.path.dirname(file_path), '../fail'))
+                fail_path = os.path.join(fail_dir, os.path.basename(file_path))
+                os.rename(file_path, fail_path)
+                print(f"❌ Pipeline Failure: Isolated handshake file to dead-letter queue: {fail_path}")
+        except Exception as e:
+            print(f"⚠️ Emergency state transition failed to move file to fail/: {e}")
