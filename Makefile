@@ -33,3 +33,10 @@ test-job: ## [4/4] Create a test job via PHP endpoint
 
 check-ingest: ## Inspect the NATS ingest folder for pending jobs
 	@ls -l $(STORAGE_PATH)/uploads/nats/ingest/
+
+# --- Neural Path (RAG) ---
+.PHONY: run-rag
+run-rag: ## [NEW] Start the RAG Microservice (Python)
+	@echo "🧠 Starting RAG Microservice on port 8765..."
+	@export PYTHONPATH=$(ROOT_DIR)/pymvc; nohup $(PYTHON) -m app.rag_service > $(STORAGE_PATH)/logs/rag_service.log 2>&1 &
+	@echo "🚀 RAG service running in background. Check $(STORAGE_PATH)/logs/rag_service.log for output."
