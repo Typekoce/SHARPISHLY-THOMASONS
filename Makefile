@@ -17,9 +17,11 @@ migrate: ## [1/4] Run PHP database migrations via entry point
 
 # --- Monitoring ---
 .PHONY: logs
+#logs: ## [2/4] Tail Nginx and Project logs
+#	@tail -f $(STORAGE_PATH)/logs/*.log /var/log/nginx/sharpishly_access.log
+#.PHONY: logs
 logs: ## [2/4] Tail Nginx and Project logs
-	@tail -f $(STORAGE_PATH)/logs/*.log /var/log/nginx/sharpishly_access.log
-
+	@tail -f $(STORAGE_PATH)/logs/*.log $(STORAGE_PATH)/log/*.log /var/log/nginx/sharpishly_access.log
 # --- Neural Worker (NATS) ---
 .PHONY: run-worker
 run-worker: ## [3/4] Start the NATS-Lite Neural Worker (Python)

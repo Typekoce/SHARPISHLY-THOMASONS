@@ -26,6 +26,31 @@ const Model = {
 };
 
 const Controller = {
+    async bindRag() {
+        const btn = document.getElementById('rag-send');
+        const input = document.getElementById('rag-input');
+        const history = document.getElementById('chat-history');
+
+        if (!btn) return;
+
+        btn.onclick = async () => {
+            const query = input.value.trim();
+            if (!query) return;
+
+            history.innerHTML += `<p><strong>You:</strong> ${query}</p>`;
+            input.value = '';
+
+            try {
+                const res = await fetch(`/php/rag/chat/?query=${encodeURIComponent(query)}`);
+                const data = await res.json();
+                history.innerHTML += `<p><strong>Bot:</strong> ${data.answer || data.message}</p>`;
+            } catch (e) {
+                history.innerHTML += `<p class="text-danger">Error: Service unavailable</p>`;
+            }
+            history.scrollTop = history.scrollHeight;
+        };
+    },
+
     // Crucial: Async init enforces synchronous bootstrapping execution order
     async init() {
         const host = window.location.hostname;
@@ -112,7 +137,7 @@ const Controller = {
         const target = document.getElementById('app');
         if (!target) return;
 
-        // Path resolution separation: ensures home maps to views/home/ index while others use views/pages/
+        // Path resolution separation
         const templatePath = Model.currentPage === 'home' 
             ? 'views/home/index.html' 
             : `views/pages/${Model.currentPage}.html`;
@@ -122,18 +147,18 @@ const Controller = {
             queue: Model.queue
         });
 
-        // Update the template layout header H1 tag configuration dynamically on each navigation pass
+        // Update the template layout header
         const headerH1 = document.querySelector('#header h1');
         if (headerH1) {
             headerH1.textContent = Model.currentPage === 'home' ? 'Thomasons V3' : Model.currentPage.toUpperCase();
         }
 
-        // Toggles active bootstrap navigation items cleanly inside the loaded layout element tree
+        // Toggles active navigation items
         document.querySelectorAll('.navbar .nav-link').forEach(link => {
             link.classList.toggle('active', link.dataset.page === Model.currentPage);
         });
 
-        // Critical: Manual Loop Injection for the Queue
+        // Queue rendering
         if (Model.currentPage === 'llm') {
             const itemsHtml = Model.queue.map(item => `
                 <div class="card mb-2 p-2 small border-0 shadow-sm">
@@ -150,7 +175,10 @@ const Controller = {
         }
 
         target.innerHTML = `<div class="fade-in">${html}</div>`;
+        
+        // Final Event Binding
         this.bindEvents();
+        if (Model.currentPage === 'rag') this.bindRag();
     }
 };
 

@@ -103,6 +103,7 @@ sudo chmod -R 2775 "${STORAGE_PATH}"
 echo -e "\n=== Installing Python Dependencies ==="
 [ ! -d "$VENV" ] && python3 -m venv "$VENV"
 "$VENV/bin/pip" install --upgrade pip --quiet
+# Added 'requests' for LLM generation connectivity
 "$VENV/bin/pip" install requests chromadb ollama --quiet
 
 # ===================== OLLAMA SETUP =====================
@@ -120,10 +121,8 @@ pull_if_missing() {
   ollama list | grep -Fq "$1" || ollama pull "$1"
 }
 
-pull_if_missing "tinydolphin"
+pull_if_missing "llama3"
 pull_if_missing "jina/jina-embeddings-v2-small-en"
 
-# ===================== NGINX CONFIG =====================
-# ... [Nginx config remains as per your working template] ...
-
 echo -e "\n=== Installation Complete ==="
+echo -e "Run 'make run-rag' to start the RAG service."
