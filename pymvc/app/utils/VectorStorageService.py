@@ -5,7 +5,8 @@ import ollama
 
 class VectorStorageService:
     MODEL_NAME = "jina/jina-embeddings-v2-small-en"
-    PERSIST_PATH = "storage/vector_db"
+    # Hardcoded to the path verified to contain 15 documents
+    PERSIST_PATH = "/home/seaview/Documents/SHARPISHLY-THOMASONS/storage/vector_db"
     GLOBAL_COLLECTION = "sharpishly_knowledge_base"
     EXPECTED_DIM = 512
 
