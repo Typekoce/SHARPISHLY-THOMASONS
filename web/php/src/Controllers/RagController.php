@@ -31,6 +31,8 @@ class RagController extends BaseController {
             return $this->json(['status' => 'error', 'message' => 'No query provided'], 400);
         }
 
+	$this->query($query);
+
         // Prepare request to the Python microservice
         $url = self::RAG_SERVICE_URL . '?query=' . urlencode($query);
         
@@ -54,5 +56,13 @@ class RagController extends BaseController {
 
         // Return the JSON response from the Python service
         return $this->json(json_decode($response, true));
+    }
+
+    /**
+    * Save queries
+    *
+    **/
+    public function query($query = ''){
+	$this->logger->log($query);
     }
 }
