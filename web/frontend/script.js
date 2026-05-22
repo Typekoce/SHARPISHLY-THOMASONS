@@ -83,8 +83,8 @@ const Controller = {
                 this.navigate(page);
             }
         });
-
-        setInterval(() => this.fetchHealth(), 5000);
+	//TODO: Only display on health page
+        //setInterval(() => this.fetchHealth(), 5000);
     },
 
     async handleUpload(files) {
