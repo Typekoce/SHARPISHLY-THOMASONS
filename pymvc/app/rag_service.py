@@ -22,7 +22,7 @@ class RAGHandler(BaseHTTPRequestHandler):
                 response = requests.post(
                     "http://localhost:11434/api/generate",
                     json={"model": "tinydolphin", "prompt": prompt, "stream": False},
-                    timeout=60
+                    timeout=300
                 )
                 answer = response.json().get("response", "No answer generated.")
             except Exception as e:

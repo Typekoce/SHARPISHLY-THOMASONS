@@ -121,7 +121,7 @@ const Controller = {
         };
     },
 
-    async fetchHealth() {
+    async old_fetchHealth() {
         try {
             const res = await fetch('/php/health');
             Model.healthStatus = await res.json();
