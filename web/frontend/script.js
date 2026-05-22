@@ -26,6 +26,18 @@ const Model = {
 };
 
 const Controller = {
+    async getQueries() {
+            try {
+                //const res = await fetch(`http://192.168.0.22:8765/rag/ask?query=What%20is%20Ste>
+                const res = await fetch(`http://192.168.0.22/php/query`);
+                const data = await res.json();
+		console.log(data);
+                //history.innerHTML += `<p><strong>Bot:</strong> ${data.answer || data.message}</p>>
+            } catch (e) {
+                //history.innerHTML += `<p class="text-danger">Error: Service unavailable</p>`;
+            }
+    },
+
     async bindRag() {
         const btn = document.getElementById('rag-send');
         const input = document.getElementById('rag-input');
@@ -34,6 +46,8 @@ const Controller = {
         if (!btn) return;
 
         btn.onclick = async () => {
+            //TODO: Add autocomplete drop down
+            this.getQueries();
             const query = input.value.trim();
             if (!query) return;
 
