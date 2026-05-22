@@ -41,7 +41,9 @@ const Controller = {
             input.value = '';
 
             try {
-                const res = await fetch(`/php/rag/chat/?query=${encodeURIComponent(query)}`);
+		//TODO: The rag call coud be replaced by "http://localhost:8765/rag/ask?query="
+		const res = await fetch(`http://192.168.0.11/php/rag/chat/?query=${encodeURIComponent(query)}`);
+               //const res = await fetch(`/php/rag/chat/?query=${encodeURIComponent(query)}`);
                 const data = await res.json();
                 history.innerHTML += `<p><strong>Bot:</strong> ${data.answer || data.message}</p>`;
             } catch (e) {
