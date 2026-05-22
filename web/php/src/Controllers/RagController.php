@@ -63,6 +63,15 @@ class RagController extends BaseController {
     *
     **/
     public function query($query = ''){
+
 	$this->logger->log($query);
+
+	$conditions = array(
+		'title' 	=> 'rag-chat',
+		'message'	=> $query,
+		'created_at'	=> date('Y-m-d H:i:s')
+        );
+
+	$this->db->save('queries',$conditions);
     }
 }
