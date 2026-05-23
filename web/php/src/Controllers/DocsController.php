@@ -6,6 +6,8 @@ class DocsController extends BaseController {
 
 	public function index(){
 
+		$data = array();
+
 		//TODO: Move to DocsModel
 		$conditions = array(
 			'tbl'	=> 'queries',
@@ -15,9 +17,13 @@ class DocsController extends BaseController {
 		$records = $this->db->find($conditions);
 
 		foreach($records as $record){
-			$this->dBug($record);
+			$record['url'] = 'php/docs/pdf/' . $record['id'];
+			$content = json_decode($record['content'],TRUE)['answer'];
+			$record['answer'] = $content;
+			$data['records'][] = $record;
+			//$this->dBug($record);
 		}
-
+		$this->Json($data);
 	}
 
 }// end of class
