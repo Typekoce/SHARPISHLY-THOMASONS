@@ -28,7 +28,7 @@ const Model = {
 const Controller = {
 
     autoFill(){
-	var input = document.getElementById('rag-input');
+	var input = document.getElementById('autocomplete');
 	var ul = document.createElement('ul');
 	var li = document.createElement('li');
 	li.innerHTML="test";
