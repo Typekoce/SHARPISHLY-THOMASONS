@@ -185,6 +185,23 @@ const Controller = {
             link.classList.toggle('active', link.dataset.page === Model.currentPage);
         });
 
+
+        // Docs rendering
+        if (Model.currentPage === 'docs') {
+	   try {
+		//TODO: Load views/pags/docs template
+                const res = await fetch(`http://192.168.0.22/php/docs`);
+                const data = await res.json();
+                console.log(data);
+                this.autoFill();
+                //history.innerHTML += `<p><strong>Bot:</strong> ${data.answer || data.message}</p>>
+            } catch (e) {
+                //history.innerHTML += `<p class="text-danger">Error: Service unavailable</p>`;
+            }
+
+		alert('docs');
+        };
+
         // Queue rendering
         if (Model.currentPage === 'llm') {
             const itemsHtml = Model.queue.map(item => `
