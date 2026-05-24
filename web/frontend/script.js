@@ -160,6 +160,29 @@ const Controller = {
         this.render();
     },
 
+   async docs(page) {
+	if(page === 'docs') {
+		alert('this is the fucking docs page!!!!');
+
+		try {
+	
+			const res = await fetch('http://192.168.0.22/php/docs');
+
+			console.log(res);
+
+			const data = await res.json();
+               		
+
+			 console.log(data);
+
+		} catch (e) {
+	
+			console.error("Request error",e); 
+
+		}
+	}
+    },
+
     async render() {
         const target = document.getElementById('app');
         if (!target) return;
@@ -187,20 +210,7 @@ const Controller = {
 
 
         // Docs rendering
-        if (Model.currentPage === 'docs') {
-	   try {
-		//TODO: Load views/pags/docs template
-                const res = await fetch(`http://192.168.0.22/php/docs`);
-                const data = await res.json();
-                console.log(data);
-                this.autoFill();
-                //history.innerHTML += `<p><strong>Bot:</strong> ${data.answer || data.message}</p>>
-            } catch (e) {
-                //history.innerHTML += `<p class="text-danger">Error: Service unavailable</p>`;
-            }
-
-		alert('docs');
-        };
+	this.docs(Model.currentPage);
 
         // Queue rendering
         if (Model.currentPage === 'llm') {
