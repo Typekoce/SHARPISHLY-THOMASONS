@@ -166,15 +166,11 @@ const Controller = {
 		alert('this is the fucking docs page!!!!');
 
 		try {
-	
 			const res = await fetch(App.url('docs'));
-
 			console.log(res);
-
 			const data = await res.json();
-               		
-
-			 console.log(data);
+               		console.log(data);
+			console.log(data[0]);
 
 		} catch (e) {
 	
