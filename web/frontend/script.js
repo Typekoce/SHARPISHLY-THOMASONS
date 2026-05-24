@@ -167,10 +167,11 @@ const Controller = {
 
 		try {
 			const res = await fetch(App.url('docs'));
-			console.log(res);
 			const data = await res.json();
-               		console.log(data);
-			console.log(data[0]);
+			for(id in data.records){
+				record = data.records[id];
+				console.log(record);
+			}
 
 		} catch (e) {
 	
