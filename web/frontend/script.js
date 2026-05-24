@@ -16,7 +16,10 @@ const App = {
         }
     },
     crm() { Model.currentPage = 'home'; Controller.render(); },
-    cyberdeck() { Model.currentPage = 'llm'; Controller.render(); }
+    cyberdeck() { Model.currentPage = 'llm'; Controller.render(); },
+    url (url) {
+	return 'http://192.168.0.22/php/' + url ;
+    }
 };
 
 const Model = {
@@ -24,7 +27,7 @@ const Model = {
     healthStatus: null,
     currentPage: 'home'
 };
-
+// end of App
 const Controller = {
 
     autoFill(){
@@ -39,8 +42,7 @@ const Controller = {
 
     async getQueries(input) {
             try {
-                //const res = await fetch(`http://192.168.0.22:8765/rag/ask?query=What%20is%20Ste>
-                const res = await fetch(`http://192.168.0.22/php/query`);
+                const res = await fetch(App.url('query'));
                 const data = await res.json();
 		console.log(data);
 		this.autoFill();
@@ -67,8 +69,7 @@ const Controller = {
             input.value = '';
 
             try {
-		//const res = await fetch(`http://192.168.0.22:8765/rag/ask?query=What%20is%20Steve%20Austin%27s%20email%3F`);
-                const res = await fetch(`http://192.168.0.22/php/rag/chat/?query=${encodeURIComponent(query)}`);
+                const res = await fetch(App.url('rag/chat/?query=${encodeURIComponent(query)}'));
                 const data = await res.json();
                 history.innerHTML += `<p><strong>Bot:</strong> ${data.answer || data.message}</p>`;
             } catch (e) {
@@ -123,7 +124,7 @@ const Controller = {
         this.render();
         
         try {
-            const res = await fetch('/php/job/create', { method: 'POST', body: formData });
+            const res = await fetch(App.url('job/create'), { method: 'POST', body: formData });
             const result = await res.json();
             // Update queue status from NATS response loop
             Model.queue.forEach(item => { item.status = 'queued'; item.progress = 50; });
@@ -149,7 +150,7 @@ const Controller = {
 
     async old_fetchHealth() {
         try {
-            const res = await fetch('/php/health');
+            const res = await fetch(App.url('/php/health'));
             Model.healthStatus = await res.json();
             if (Model.currentPage === 'health' || Model.currentPage === 'llm') this.render();
         } catch (e) { console.error("Monitor Offline"); }
@@ -166,7 +167,7 @@ const Controller = {
 
 		try {
 	
-			const res = await fetch('http://192.168.0.22/php/docs');
+			const res = await fetch(App.url('docs'));
 
 			console.log(res);
 
