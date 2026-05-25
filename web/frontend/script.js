@@ -161,21 +161,32 @@ const Controller = {
         this.render();
     },
 
+   docsBind(record,ul){
+	li = document.createElement('li');
+	li.innerHTML = '<b>You</b>' + record.message;
+	ul.appendChild(li);
+   },
+
    async docs(page) {
 	if(page === 'docs') {
 		alert('this is the fucking docs page!!!!');
 
 		try {
-			const res = await fetch(App.url('docs'));
-			const data = await res.json();
-			for(id in data.records){
-				record = data.records[id];
-				console.log(record);
-			}
+		  const res = await fetch(App.url('docs'));
+		  
+		  const data = await res.json();
+		  
+		  ul = document.createElement('ul');
+
+		  for(id in data.records){
+		   this.docsBind(data.records[id],ul);
+		  }
+
+		  console.log(ul);
 
 		} catch (e) {
 	
-			console.error("Request error",e); 
+		  console.error("Request error",e); 
 
 		}
 	}
