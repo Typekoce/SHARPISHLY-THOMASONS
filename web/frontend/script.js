@@ -237,6 +237,8 @@ const Controller = {
             html = html.replace('', itemsHtml || '<p class="text-muted small">No active jobs.</p>');
         }
 
+	//TODO: The html variable is being overwritten & assigned the whole document page
+
         target.innerHTML = `<div class="fade-in">${html}</div>`;
         
         // Final Event Binding
