@@ -18,7 +18,7 @@ const App = {
     crm() { Model.currentPage = 'home'; Controller.render(); },
     cyberdeck() { Model.currentPage = 'llm'; Controller.render(); },
     url (url) {
-	return 'http://192.168.0.22/php/' + url ;
+	return window.location.href + '/php/' + url ;
     }
 };
 
