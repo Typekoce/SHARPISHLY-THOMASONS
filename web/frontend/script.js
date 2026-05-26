@@ -19,7 +19,10 @@ const App = {
     cyberdeck() { Model.currentPage = 'llm'; Controller.render(); },
     url (url) {
 	return window.location.href + '/php/' + url ;
-    }
+    },
+   getApp(){
+	return document.getElementById('app');
+   },
 };
 
 const Model = {
@@ -175,23 +178,40 @@ const Controller = {
         ul.appendChild(li);
    },
 
+   agentBind(record,ul){
+
+console.log(record.title);
+     li = document.createElement('li');
+     li.innerHTML = record.title;
+     li.setAttribute('style','cursor:pointer;border:1px dashed #ccc;');
+     li.onclick = function(){alert('boobies')};
+     ul.appendChild(li);
+   },
+
    async agent(page){
     if(page === 'agent') {
+
       try {
 
             const res = await fetch(App.url('agent'));
 
             const data = await res.json();
-console.log(data);
+
             ul = document.createElement('ul');
 
-            for(id in data.records){
+            for(id in data){
 
-		
+		this.agentBind(data[id],ul);
 
             }
 
-            // console.log(ul)
+	    console.log(ul);
+
+            app = App.getApp();
+
+	    app.innerHTML = "";
+
+            app.appendChild(ul);
 
       } catch (e) {
 
