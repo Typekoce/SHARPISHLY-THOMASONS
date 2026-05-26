@@ -168,6 +168,14 @@ const Controller = {
 	ul.appendChild(li);
    },
 
+   docsBindAnswer(record,ul){
+        console.log(record);
+        li = document.createElement('li');
+        li.innerHTML = '<b>Sharpishly</b>:&nbsp;' + record.answer;
+        ul.appendChild(li);
+   },
+
+
    async docs(page) {
 	if(page === 'docs') {
 
@@ -179,7 +187,11 @@ const Controller = {
 		  ul = document.createElement('ul');
 
 		  for(id in data.records){
+
 		   this.docsBindMessage(data.records[id],ul);
+
+	           this.docsBindAnswer(data.records[id],ul);
+
 		  }
 
 		  console.log(ul);
