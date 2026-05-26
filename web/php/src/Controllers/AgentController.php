@@ -16,4 +16,20 @@ class AgentController extends BaseController {
 		$this->json($rs);
 	}
 
+	public function save(){
+		
+	   $data = [];
+
+	    $conditions = array(
+                'title'     => 'Business Funding',
+                'message' => 'List all business funding sources',
+                'created_at'=> date('Y-m-d H:i:s')
+            );
+
+	    $data['id'] = $this->db->save('agent', $conditions);
+
+	    $this->json($data);
+
+	}
+
 }// end of class

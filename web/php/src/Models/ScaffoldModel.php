@@ -118,7 +118,19 @@ class ScaffoldModel extends BaseModel
                 'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
                 'pref'  => 'VARCHAR(255) DEFAULT NULL',
                 'content' => 'LONGTEXT NULL DEFAULT NULL',
+            ],
+
+           'agent' => [
+                'id'         => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'title'      => 'VARCHAR(225)',
+                'message'    => 'VARCHAR(225)',
+                'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+                'pref' 	     => 'VARCHAR(255) DEFAULT NULL',
+                'content'    => 'LONGTEXT NULL DEFAULT NULL',
+		'status'     => 'VARCHAR(225)'
             ]
+
+
         ];
     }
 }
