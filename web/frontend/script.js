@@ -163,7 +163,7 @@ const Controller = {
 
    docsBind(record,ul){
 	li = document.createElement('li');
-	li.innerHTML = '<b>You</b>' + record.message;
+	li.innerHTML = '<b>You</b>:&nbsp;' + record.message;
 	ul.appendChild(li);
    },
 
@@ -183,6 +183,12 @@ const Controller = {
 		  }
 
 		  console.log(ul);
+
+		  app = document.getElementById('app');
+
+		  app.innerHTML = '';
+
+		  app.appendChild(ul);
 
 		} catch (e) {
 	
