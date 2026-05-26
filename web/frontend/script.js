@@ -184,7 +184,10 @@ console.log(record.title);
      li = document.createElement('li');
      li.innerHTML = record.title;
      li.setAttribute('style','cursor:pointer;border:1px dashed #ccc;');
-     li.onclick = function(){alert('boobies')};
+     li.setAttribute('id',record.id);
+     li.onclick = function(e){
+	console.log({foo:'bar','this':this,'event':e});
+     };
      ul.appendChild(li);
    },
 
