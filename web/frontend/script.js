@@ -23,6 +23,9 @@ const App = {
    getApp(){
 	return document.getElementById('app');
    },
+   item(e){
+     return document.createElement(e);
+   }
 };
 
 const Model = {
@@ -178,11 +181,38 @@ const Controller = {
         ul.appendChild(li);
    },
 
-   agentBind(record,ul){
+   agentTable(title){
+     tbl = App.item('table');
+     tbl.setAttribute('style','border:1px dashed #ccc;padding-top:10px;padding-bottom:10px;width:100%;');
+     heading = App.item('tr');
+     agent = App.item('td');
+     agent.setAttribute('colspan',3);
+     agent.innerHTML = title;
+     heading.appendChild(agent);
+     tbl.appendChild(heading);
 
-console.log(record.title);
+     actions = App.item('tr');
+     run  = App.item('td');
+     run.innerHTML = "RUN";
+
+     add = App.item('td');
+     add.innerHTML = "ADD";
+
+     files = App.item('td');
+     files.innerHTML = "FILES";
+
+     actions.appendChild(run);
+     actions.appendChild(add);
+     actions.appendChild(files);
+
+     tbl.appendChild(actions);
+
+     return tbl;
+   },
+   agentBind(record,ul){
      li = document.createElement('li');
-     li.innerHTML = record.title;
+     tbl = this.agentTable(record.title);
+     li.appendChild(tbl);
      li.setAttribute('style','cursor:pointer;border:1px dashed #ccc;');
      li.setAttribute('id',record.id);
      li.onclick = function(e){
