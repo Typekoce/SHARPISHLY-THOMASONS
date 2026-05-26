@@ -175,6 +175,29 @@ const Controller = {
         ul.appendChild(li);
    },
 
+   async agent(page){
+    if(page === 'agent') {
+      try {
+
+            const res = await fetch(App.url('agent'));
+
+            const data = await res.json();
+console.log(data);
+            ul = document.createElement('ul');
+
+            for(id in data.records){
+
+		
+
+            }
+
+            // console.log(ul)
+
+      } catch (e) {
+
+      }
+    }
+   },
 
    async docs(page) {
 	if(page === 'docs') {
@@ -238,6 +261,9 @@ const Controller = {
 
         // Docs rendering
 	this.docs(Model.currentPage);
+
+	// Agent rendering
+	this.agent(Model.currentPage);
 
         // Queue rendering
         if (Model.currentPage === 'llm') {

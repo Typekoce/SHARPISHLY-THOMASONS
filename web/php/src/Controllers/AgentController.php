@@ -4,10 +4,12 @@ namespace App\Controllers;
 
 class AgentController extends BaseController {
 
+	public $tbl = 'agent';
+
 	public function index(){
 		//TODO: Move functionality to AgentModel. Display all agent task
 		$conditions = array(
-			'tbl'	=> 'agents',
+			'tbl'	=> $this->tbl,
 			'order'	=> array('id'	=> 'DESC'),
 		);
 
@@ -26,7 +28,7 @@ class AgentController extends BaseController {
                 'created_at'=> date('Y-m-d H:i:s')
             );
 
-	    $data['id'] = $this->db->save('agent', $conditions);
+	    $data['id'] = $this->db->save($this->tbl, $conditions);
 
 	    $this->json($data);
 
