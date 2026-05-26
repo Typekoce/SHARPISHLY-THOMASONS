@@ -161,7 +161,8 @@ const Controller = {
         this.render();
     },
 
-   docsBind(record,ul){
+   docsBindMessage(record,ul){
+	console.log(record);
 	li = document.createElement('li');
 	li.innerHTML = '<b>You</b>:&nbsp;' + record.message;
 	ul.appendChild(li);
@@ -169,7 +170,6 @@ const Controller = {
 
    async docs(page) {
 	if(page === 'docs') {
-		alert('this is the fucking docs page!!!!');
 
 		try {
 		  const res = await fetch(App.url('docs'));
@@ -179,7 +179,7 @@ const Controller = {
 		  ul = document.createElement('ul');
 
 		  for(id in data.records){
-		   this.docsBind(data.records[id],ul);
+		   this.docsBindMessage(data.records[id],ul);
 		  }
 
 		  console.log(ul);
