@@ -10,6 +10,8 @@ class EmailsController extends BaseController {
 
 	public function test(){
 
+		$data =array('id'=>'');
+
 		$conditions = array(
 			'tbl'		=> 'emails',
 			'email' 	=> 'paul+test@sharpishly.com',
@@ -18,9 +20,17 @@ class EmailsController extends BaseController {
 			'status'	=> 'waiting'
 		);
 
-		$rs = $this->db->save('emails',$conditions);
+		$id = $this->db->save('emails',$conditions);
 
-		$this->json(['id'=>$rs]);
+		$data['id'] = $id;
+
+		$data = $data + $conditions;
+
+		$this->json($data);
+
+	}
+
+	public function job(){
 
 	}
 
