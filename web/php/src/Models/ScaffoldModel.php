@@ -43,6 +43,7 @@ class ScaffoldModel extends BaseModel
                 'batch'          => 'INT DEFAULT 1',
                 'pref'  => 'VARCHAR(255) DEFAULT NULL',
                 'content' => 'LONGTEXT NULL DEFAULT NULL',
+		'status'	=> 'VARCHAR(255)',
             ],
 
             'users' => [
@@ -52,6 +53,7 @@ class ScaffoldModel extends BaseModel
                 'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
                 'pref'  => 'VARCHAR(255) DEFAULT NULL',
                 'content' => 'LONGTEXT NULL DEFAULT NULL',
+                'status'        => 'VARCHAR(255)',
             ],
 
             'documents' => [
@@ -87,6 +89,7 @@ class ScaffoldModel extends BaseModel
                 'created_at'  => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
                 'pref'  => 'VARCHAR(255) DEFAULT NULL',
                 'content' => 'LONGTEXT NULL DEFAULT NULL',
+                'status'        => 'VARCHAR(255)',
             ],
 
             'knowledge_chunks' => [
@@ -99,6 +102,7 @@ class ScaffoldModel extends BaseModel
                 'version_id'      => 'VARCHAR(50)',
                 'pref'  => 'VARCHAR(255) DEFAULT NULL',
                 'content' => 'LONGTEXT NULL DEFAULT NULL',
+                'status'        => 'VARCHAR(255)',
             ],
 
             'logs' => [
@@ -109,6 +113,7 @@ class ScaffoldModel extends BaseModel
                 'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
                 'pref'  => 'VARCHAR(255) DEFAULT NULL',
                 'content' => 'LONGTEXT NULL DEFAULT NULL',
+                'status'        => 'VARCHAR(255)',
             ],
 
 	   'queries' => [
@@ -118,6 +123,7 @@ class ScaffoldModel extends BaseModel
                 'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
                 'pref'  => 'VARCHAR(255) DEFAULT NULL',
                 'content' => 'LONGTEXT NULL DEFAULT NULL',
+                'status'        => 'VARCHAR(255)',
             ],
 
            'agent' => [
@@ -128,6 +134,17 @@ class ScaffoldModel extends BaseModel
                 'pref' 	     => 'VARCHAR(255) DEFAULT NULL',
                 'content'    => 'LONGTEXT NULL DEFAULT NULL',
 		'status'     => 'VARCHAR(225)'
+            ],
+
+           'emails' => [
+                'id'         => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'title'      => 'VARCHAR(225)',
+                'message'    => 'VARCHAR(225)',
+		'email'	     => 'VARCHAR(225)',
+                'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+                'pref'       => 'VARCHAR(255) DEFAULT NULL',
+                'content'    => 'LONGTEXT NULL DEFAULT NULL',
+                'status'     => 'VARCHAR(225)'
             ]
 
 
