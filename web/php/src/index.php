@@ -26,7 +26,8 @@ $requestUri = $_SERVER['REQUEST_URI'] ?? '/';
 $uriPath = parse_url($requestUri, PHP_URL_PATH) ?? '/';
 
 $parts = explode('/', trim($uriPath, '/'));
-
+//echo "<pre>";
+//print_r($parts);
 // 4. Strip prefixes (/php/ or /api/)
 if (isset($parts[0]) && ($parts[0] === 'php' || $parts[0] === 'api')) {
     array_shift($parts);
@@ -45,6 +46,7 @@ if (isset($aliases[$slug])) {
     $methodName     = $parts[1] ?? 'index';
     $params         = array_slice($parts, 2);
 }
+//TODO: Enable URL parameters
 
 $className = "App\\Controllers\\{$controllerBase}Controller";
 
