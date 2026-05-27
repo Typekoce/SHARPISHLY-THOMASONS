@@ -202,4 +202,9 @@ abstract class BaseController
         print_r($debug);
         echo "</pre>";
     }
-}
+
+   public function now(){
+    return date('Y-m-d h:m:s');
+   }
+
+}// end of class
