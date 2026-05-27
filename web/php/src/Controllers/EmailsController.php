@@ -26,12 +26,16 @@ class EmailsController extends BaseController {
 
 		$data = $data + $conditions;
 
+		$data = $this->job($data);
+
 		$this->json($data);
 
 	}
 
-	public function job(){
-
+	public function job($data){
+	 $this->dBug($file = $this->loc->storage('agents/emails/waiting/job_' . $data['id'] . '.json'));
+	 die();
+	 return $data;
 	}
 
 }// end of class
