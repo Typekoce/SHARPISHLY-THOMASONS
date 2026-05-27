@@ -12,6 +12,14 @@ class EmailController extends BaseController {
 
 			$this->dBug($job);
 
+			$res = mail($job->email,'Subject:test',$job->message);
+
+			$this->dBug($res);
+
+			// Change status of record if sent
+
+			// Move or delete job from agents/emails/waiting folder
+
 		} else {
 			echo $file . " does not exists";
 		}
