@@ -3,8 +3,23 @@
 namespace App\Controllers;
 
 class EmailController extends BaseController {
+	
+	public $tbl = 'emails';
 
 	public function index($id = ''){
+		
+		$data = array('id' => $id);
+
+		$waiting = $this->waiting($id);
+
+		if(isset($waiting[0]['status']) && $waiting[0]['status']==='waiting'){
+		//TODO: Additional processing here 
+		} else {
+
+			$data['message'] = 'record already processed';
+			$this->json($data);
+
+		}
 
 		if(file_exists($file = $this->loc->storage('agents/emails/waiting/job_' . $id . '.json'))){
 
@@ -14,8 +29,7 @@ class EmailController extends BaseController {
 
 			$res = mail($job->email,'Subject:test',$job->message);
 
-			$this->dBug($res);
-
+			$this->db->update($this->tbl, ['status' => 'completed'], ['id' => $id]);
 			// Change status of record if sent
 
 			// Move or delete job from agents/emails/waiting folder
@@ -26,4 +40,17 @@ class EmailController extends BaseController {
 
 	}
 
+
+	public function waiting($id){
+
+		$conditions = array(
+			'tbl'	=> $this->tbl,
+			'where'	=> array(
+				'id' =>$id,
+				'status' => 'waiting'
+			)
+		);
+
+		return $this->db->find($conditions);
+	}
 }
