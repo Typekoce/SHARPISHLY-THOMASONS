@@ -254,6 +254,7 @@ const Controller = {
    async emails(page){
 	if(page === 'emails'){
 		alert('Get ready you mothers!');
+
 	}
    },
    async docs(page) {
