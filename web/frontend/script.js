@@ -251,7 +251,11 @@ const Controller = {
       }
     }
    },
-
+   async emails(page){
+	if(page === 'emails'){
+		alert('Get ready you mothers!');
+	}
+   },
    async docs(page) {
 	if(page === 'docs') {
 
@@ -311,6 +315,8 @@ const Controller = {
             link.classList.toggle('active', link.dataset.page === Model.currentPage);
         });
 
+	// Emails page
+	this.emails(Model.currentPage);
 
         // Docs rendering
 	this.docs(Model.currentPage);
