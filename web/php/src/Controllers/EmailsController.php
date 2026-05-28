@@ -33,10 +33,13 @@ class EmailsController extends BaseController {
 	}
 
 	public function job($data){
-	 $this->dBug($file = $this->loc->storage('agents/emails/waiting/job_' . $data['id'] . '.json'));
+
+	 $file = $this->loc->storage('agents/emails/waiting/job_' . $data['id'] . '.json');
+
          file_put_contents($file,json_encode($data));
-	 die();
+
 	 return $data;
+
 	}
 
 }// end of class
