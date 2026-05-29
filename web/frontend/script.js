@@ -84,16 +84,26 @@ const Controller = {
             history.scrollTop = history.scrollHeight;
         };
     },
-    eForm(form){
+    eFields(fields){
+	post = {};
+	for(field in fields){
+	  input = document.getElementById(field).value;
+	  post[field] = input;
+	}
+        return post;
+
+    },
+    eForm(form,fields){
+/**
 	fields = {
 	 'email':{},
 	 'message':{},
 	 'subject':{}
 	};
-
+**/
 	for(field in fields){
-	 console.log(field);
 	 input = App.item('input');
+	 input.setAttribute('id',field);
 	 label = App.item('label');
 	 label.innerHTML = field;
 	 row = App.item('div');
@@ -102,11 +112,41 @@ const Controller = {
 	 form.appendChild(row);
 	}
 
-	console.log(fields);
     },
     async bindEmails() {
+        fields = {
+         'email':{},
+         'message':{},
+         'subject':{}
+        };
+
         const form = document.getElementById('form');
-	this.eForm(form);
+	this.eForm(form,fields);
+
+	row = App.item('div');
+	btn = App.item('div');
+	btn.setAttribute('style','cursor:pointer;border:1px dashed #ccc;');
+	btn.innerHTML="save";
+
+	row.appendChild(btn);
+	form.appendChild(row);
+
+        btn.onclick = async () => {
+	post =JSON.stringify( this.eFields(fields));
+
+
+        try {
+          const res = await fetch(App.url('emails/test/' + post));
+          const data = await res.json();
+	  console.log(data);
+          //history.innerHTML += `<p><strong>Bot:</strong> ${data.answer || data.message}</p>`;
+        } catch (e) {
+          //history.innerHTML += `<p class="text-danger">Error: Service unavailable</p>`;
+        }
+
+
+
+	};
 	console.log(form);
 /**
 	const btn = document.getElementById('rag-send');

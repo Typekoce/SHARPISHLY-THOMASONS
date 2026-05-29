@@ -8,12 +8,11 @@ class EmailsController extends BaseController {
 
 	}
 
-	public function test(){
-
+	public function test($post = ''){
+		$this->json(['post'=>$post]);die();
 		$data =array('id'=>'');
 
 		$conditions = array(
-			'tbl'		=> 'emails',
 			'email' 	=> 'paul+test@sharpishly.com',
 			'message'	=> 'Hello World',
 			'created_at'	=> $this->now(),
