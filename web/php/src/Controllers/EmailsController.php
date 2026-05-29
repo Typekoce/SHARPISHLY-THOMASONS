@@ -9,15 +9,21 @@ class EmailsController extends BaseController {
 	}
 
 	public function test($post = ''){
-		$this->json(['post'=>$post]);die();
 		$data =array('id'=>'');
-
+/**
 		$conditions = array(
 			'email' 	=> 'paul+test@sharpishly.com',
 			'message'	=> 'Hello World',
 			'created_at'	=> $this->now(),
 			'status'	=> 'waiting'
 		);
+**/
+
+		$conditions = json_decode($post);
+
+		$conditions['status'] = 'waiting';
+
+		$conditions['created_at'] = $this->now();
 
 		$id = $this->db->save('emails',$conditions);
 
