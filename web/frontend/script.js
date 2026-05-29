@@ -84,10 +84,31 @@ const Controller = {
             history.scrollTop = history.scrollHeight;
         };
     },
+    eForm(form){
+	fields = {
+	 'email':{},
+	 'message':{},
+	 'subject':{}
+	};
 
+	for(field in fields){
+	 console.log(field);
+	 input = App.item('input');
+	 label = App.item('label');
+	 label.innerHTML = field;
+	 row = App.item('div');
+	 row.appendChild(label);
+	 row.appendChild(input);
+	 form.appendChild(row);
+	}
+
+	console.log(fields);
+    },
     async bindEmails() {
         const form = document.getElementById('form');
+	this.eForm(form);
 	console.log(form);
+/**
 	const btn = document.getElementById('rag-send');
         const input = document.getElementById('rag-input');
         const history = document.getElementById('chat-history');
@@ -112,7 +133,9 @@ const Controller = {
             }
             history.scrollTop = history.scrollHeight;
         };
-    },
+**/   
+
+ },
 
 
     // Crucial: Async init enforces synchronous bootstrapping execution order
