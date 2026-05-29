@@ -25,6 +25,14 @@ const App = {
    },
    item(e){
      return document.createElement(e);
+   },
+   flash(msg){
+    flash = document.getElementById('flash');
+    alert = App.item('div');
+    style = 'width:100%;padding-top:10px;padding-bottom:10px;background-color:#ccc;text-align:center';
+    alert.setAttribute('style',style);
+    alert.innerHTML = msg;
+    flash.appendChild(alert)
    }
 };
 
@@ -180,6 +188,7 @@ const Controller = {
 
     // Crucial: Async init enforces synchronous bootstrapping execution order
     async init() {
+	App.flash('Upgrade to <b>Pro</b> version to unlock all features');
         const host = window.location.hostname;
         const sub = host.split('.')[0];
 
