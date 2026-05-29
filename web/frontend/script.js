@@ -397,8 +397,10 @@ const Controller = {
           item = App.item('div');
 	  item.innerHTML = field;
           item.setAttribute('id',field);
-	  item.onclick = async (e) => {
-		console.log({'this':this,'e':e});
+	  style = 'cursor:pointer;padding:10px;text-align:center;float:left;border:1px dashed #ccc;';
+          item.setAttribute('style',style);
+	  item.onclick = async () => {
+		console.log({'field':field,'item':document.getElementById(field)});
 	  };
 	  menu.appendChild(item);
         }
