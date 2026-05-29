@@ -85,6 +85,36 @@ const Controller = {
         };
     },
 
+    async bindEmails() {
+        const form = document.getElementById('form');
+	console.log(form);
+	const btn = document.getElementById('rag-send');
+        const input = document.getElementById('rag-input');
+        const history = document.getElementById('chat-history');
+
+        if (!btn) return;
+
+        btn.onclick = async () => {
+            //TODO: Add autocomplete drop down
+            this.getQueries(input);
+            const query = input.value.trim();
+            if (!query) return;
+
+            history.innerHTML += `<p><strong>You:</strong> ${query}</p>`;
+            input.value = '';
+
+            try {
+                const res = await fetch(App.url('rag/chat/?query=${encodeURIComponent(query)}'));
+                const data = await res.json();
+                history.innerHTML += `<p><strong>Bot:</strong> ${data.answer || data.message}</p>`;
+            } catch (e) {
+                history.innerHTML += `<p class="text-danger">Error: Service unavailable</p>`;
+            }
+            history.scrollTop = history.scrollHeight;
+        };
+    },
+
+
     // Crucial: Async init enforces synchronous bootstrapping execution order
     async init() {
         const host = window.location.hostname;
@@ -251,7 +281,7 @@ const Controller = {
       }
     }
    },
-   async emails(page){
+   async old_emails(page){
 	if(page === 'emails'){
 		alert('Get ready you mothers!');
 
@@ -317,7 +347,7 @@ const Controller = {
         });
 
 	// Emails page
-	this.emails(Model.currentPage);
+	//this.emails(Model.currentPage);
 
         // Docs rendering
 	this.docs(Model.currentPage);
@@ -348,6 +378,8 @@ const Controller = {
         // Final Event Binding
         this.bindEvents();
         if (Model.currentPage === 'rag') this.bindRag();
+
+	if (Model.currentPage === 'emails') this.bindEmails();
     }
 };
 
