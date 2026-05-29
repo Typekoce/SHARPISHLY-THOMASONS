@@ -29,7 +29,7 @@ const App = {
    flash(msg){
     flash = document.getElementById('flash');
     alert = App.item('div');
-    style = 'width:100%;margin-bottom:10px;padding-top:10px;padding-bottom:10px;background-color:#ccc;text-align:center';
+    style = 'width:100%;border-radius:16px;margin-bottom:10px;padding-top:10px;padding-bottom:10px;background-color:#ccc;text-align:center';
     alert.setAttribute('style',style);
     alert.innerHTML = msg;
     flash.appendChild(alert)
@@ -315,7 +315,7 @@ const Controller = {
      li = document.createElement('li');
      tbl = this.agentTable(record.title);
      li.appendChild(tbl);
-     li.setAttribute('style','cursor:pointer;border:1px dashed #ccc;');
+     li.setAttribute('style','cursor:pointer;border:1px dashed #ccc;list-style-type:none;');
      li.setAttribute('id',record.id);
      li.onclick = function(e){
 	console.log({foo:'bar','this':this,'event':e});
@@ -323,7 +323,7 @@ const Controller = {
      ul.appendChild(li);
    },
 
-   async agent(page){
+   async old_agent(page){
     if(page === 'agent') {
 
       try {
@@ -392,6 +392,26 @@ const Controller = {
 		}
 	}
     },
+    menuFields(fields,menu){
+        for(field in fields){
+          item = App.item('div');
+	  item.innerHTML = field;
+	  menu.appendChild(item);
+        }
+        return menu;
+    },
+   async bindAgents(){
+
+        fields = {
+         'email':{},
+         'message':{},
+         'subject':{}
+        };
+
+	menu = document.getElementById('menu');
+	this.menuFields(fields,menu);
+	console.log(menu);
+   },
 
     async render() {
         const target = document.getElementById('app');
@@ -425,7 +445,7 @@ const Controller = {
 	this.docs(Model.currentPage);
 
 	// Agent rendering
-	this.agent(Model.currentPage);
+//	this.agent(Model.currentPage);
 
         // Queue rendering
         if (Model.currentPage === 'llm') {
@@ -452,6 +472,8 @@ const Controller = {
         if (Model.currentPage === 'rag') this.bindRag();
 
 	if (Model.currentPage === 'emails') this.bindEmails();
+
+	if (Model.currentPage === 'agent') this.bindAgents();
     }
 };
 
