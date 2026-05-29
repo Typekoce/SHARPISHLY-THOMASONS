@@ -29,7 +29,7 @@ const App = {
    flash(msg){
     flash = document.getElementById('flash');
     alert = App.item('div');
-    style = 'width:100%;padding-top:10px;padding-bottom:10px;background-color:#ccc;text-align:center';
+    style = 'width:100%;margin-bottom:10px;padding-top:10px;padding-bottom:10px;background-color:#ccc;text-align:center';
     alert.setAttribute('style',style);
     alert.innerHTML = msg;
     flash.appendChild(alert)
@@ -146,10 +146,10 @@ const Controller = {
         try {
           const res = await fetch(App.url('emails/test/' + post));
           const data = await res.json();
-	  console.log(data);
-          //history.innerHTML += `<p><strong>Bot:</strong> ${data.answer || data.message}</p>`;
+	  console.log(data.id);
+	  App.flash('Success id:' + data.id + ' created');
         } catch (e) {
-          //history.innerHTML += `<p class="text-danger">Error: Service unavailable</p>`;
+	  App.flash('Error');
         }
 
 
