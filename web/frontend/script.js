@@ -401,6 +401,14 @@ const Controller = {
           item.setAttribute('style',style);
 	  item.onclick = async () => {
 		console.log({'field':field,'item':document.getElementById(field)});
+
+		form = document.getElementById('form');
+
+		if(field === 'delete'){
+		  agent = App.item('div');
+		  agent.innerHTML = "Create a new agent to do the tasks you avoid";
+		  form.appendChild(agent);
+		}
 	  };
 	  menu.appendChild(item);
         }
@@ -409,9 +417,10 @@ const Controller = {
    async bindAgents(){
 
         fields = {
-         'email':{},
-         'message':{},
-         'subject':{}
+         'create':{},
+         'read':{},
+         'update':{},
+	 'delete':{}
         };
 
 	menu = document.getElementById('menu');
