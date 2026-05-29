@@ -392,10 +392,14 @@ const Controller = {
 		}
 	}
     },
-    menuFields(fields,menu){
+    async menuFields(fields,menu){
         for(field in fields){
           item = App.item('div');
 	  item.innerHTML = field;
+          item.setAttribute('id',field);
+	  item.onclick = async (e) => {
+		console.log({'this':this,'e':e});
+	  };
 	  menu.appendChild(item);
         }
         return menu;
