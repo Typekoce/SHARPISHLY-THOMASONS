@@ -67,6 +67,7 @@ const Controller = {
     },
 
     async bindRag() {
+	App.flash('Upgrade to access larger LLM this will improve responses');
         const btn = document.getElementById('rag-send');
         const input = document.getElementById('rag-input');
         const history = document.getElementById('chat-history');
