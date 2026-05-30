@@ -150,6 +150,12 @@ const Controller = {
             item.setAttribute('style', 'cursor:pointer;padding:10px;text-align:center;float:left;border:1px dashed #ccc;');
             item.onclick = async () => {
                 let form = document.getElementById('form');
+
+		// New condition to trigger createAgent
+                if (form && field === 'create') {
+                    this.createAgent(form);
+                }
+
                 if (form && field === 'delete') {
                     let agent = App.item('div');
                     agent.innerHTML = "Create a new agent to do the tasks you avoid";
@@ -159,7 +165,34 @@ const Controller = {
             menu.appendChild(item);
         }
     },
+    // Triggered by the 'create' menu item
+    createAgent(form) {
+        // 1. Clear existing form content
+        form.innerHTML = '';
+        
+        // 2. Define fields for the agent creation
+        const fields = { 
+            'agent_name': {}, 
+            'description': {}, 
+            'role': {} 
+        };
+        
+        // 3. Populate form using your existing helper
+        this.createAgentForm(form, fields);
+        
+        // 4. Add a submit button
+        const btn = App.item('div');
+        btn.style.cssText = 'cursor:pointer;border:1px dashed #ccc; margin-top: 10px; padding: 5px;';
+        btn.innerHTML = "Save Agent";
+        btn.onclick = () => alert("Submitting agent...");
+        form.appendChild(btn);
+    },
 
+    // Handles looping through fields and injecting them into the form
+    createAgentForm(form, fields) {
+        // Reuse your existing logic, or use eForm if it matches perfectly
+        this.eForm(form, fields);
+    },    
     async init() {
         const host = window.location.hostname;
         const sub = host.split('.')[0];
