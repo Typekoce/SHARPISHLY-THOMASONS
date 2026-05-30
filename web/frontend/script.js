@@ -311,3 +311,10 @@ const Controller = {
 };
 
 document.addEventListener('DOMContentLoaded', () => Controller.init());
+// Add this to your init() or at the bottom of script.js
+document.addEventListener('click', (e) => {
+    // Handle Navbar Toggler
+    if (e.target.matches('.navbar-toggler')) {
+        document.querySelector('.nav-menu').classList.toggle('show');
+    }
+});
