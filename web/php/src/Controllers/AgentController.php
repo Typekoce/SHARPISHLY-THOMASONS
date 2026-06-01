@@ -4,7 +4,7 @@ namespace App\Controllers;
 
 class AgentController extends BaseController {
 
-	public $tbl = 'agent';
+	public $tbl = 'agents';
 
 	public function index(){
 		//TODO: Move functionality to AgentModel. Display all agent task
@@ -17,6 +17,28 @@ class AgentController extends BaseController {
 
 		$this->json($rs);
 	}
+
+        public function test($post = ''){
+                $data =array('id'=>'');
+
+                $conditions = json_decode($post);
+
+                $conditions['status'] = 'waiting';
+
+                $conditions['created_at'] = $this->now();
+
+                $id = $this->db->save($this->tbl,$conditions);
+
+                $data['id'] = $id;
+
+                $data = $data + $conditions;
+
+                //TODO: Create jobs for Agents
+        //        $data = $this->job($data);
+
+                $this->json($data);
+
+
 
 	public function save(){
 		

@@ -184,7 +184,21 @@ const Controller = {
         const btn = App.item('div');
         btn.style.cssText = 'cursor:pointer;border:1px dashed #ccc; margin-top: 10px; padding: 5px;';
         btn.innerHTML = "Save Agent";
-        btn.onclick = () => alert("Submitting agent...");
+	// 5. Post form data
+        btn.onclick = async () => {
+            const postData = this.eFields(fields);
+            try {
+                const res = await fetch(App.url('emails/test/'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(postData)
+                });
+                const data = await res.json();
+                App.flash('Success id:' + data.id + ' created');
+            } catch (e) { App.flash('Error'); }
+        };
+
+	//
         form.appendChild(btn);
     },
 
