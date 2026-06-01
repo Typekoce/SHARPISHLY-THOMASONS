@@ -93,14 +93,38 @@ body { font-family: sans-serif; margin: 0; line-height: 1.5; }
 }
 
 
-/* Lightweight replacement for Bootstrap's Collapse JS */
-document.addEventListener('click', (e) => {
-    const toggle = e.target.closest('[data-bs-toggle="collapse"]');
-    if (toggle) {
-        const targetSelector = toggle.getAttribute('data-bs-target');
-        const target = document.querySelector(targetSelector);
-        if (target) {
-            target.classList.toggle('show');
-        }
-    }
-});
+/* Agent Dashboard Table Styles */
+.agent-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+    background: #fff;
+}
+
+.agent-table th, .agent-table td {
+    padding: 0.75rem;
+    border-bottom: 1px solid #dee2e6;
+    text-align: left;
+}
+
+.agent-table button {
+    margin-right: 5px;
+    padding: 0.25rem 0.5rem;
+    cursor: pointer;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+}
+
+.agent-table button:hover { background: #e9ecef; }
+
+.badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+}
+
+.badge.running { background: #d1e7dd; color: #0f5132; }
+.badge.stopped { background: #f8d7da; color: #842029; }
+

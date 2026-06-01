@@ -142,6 +142,41 @@ const Controller = {
         if (menu) this.menuFields(fields, menu);
     },
 
+
+// Add to Controller object
+async displayAgentRecords(form) {
+    form.innerHTML = '<h3>Active Agents</h3>';
+    
+    // Fetch existing agents
+    try {
+        const res = await fetch(App.url('agent/index')); // Assumes your AgentController exists
+        const agents = await res.json();
+        console.log(agents);
+        const table = App.item('table');
+        table.className = 'agent-table';
+        table.innerHTML = `<thead><tr><th>Name</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead>`;
+        
+        const tbody = App.item('tbody');
+        agents.forEach(agent => {
+            const tr = App.item('tr');
+            tr.innerHTML = `
+                <td>${agent.agent_name}</td>
+                <td>${agent.role}</td>
+                <td><span class="badge ${agent.status}">${agent.status}</span></td>
+                <td>
+                    <button onclick="Controller.updateAgent('${agent.id}')">Edit</button>
+                    <button onclick="Controller.toggleAgent('${agent.id}')">Start/Stop</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+        table.appendChild(tbody);
+        form.appendChild(table);
+    } catch (e) {
+        form.innerHTML += '<p>No agents found or error loading.</p>';
+    }
+},
+
     async menuFields(fields, menu) {
         for (let field in fields) {
             let item = App.item('div');
@@ -161,6 +196,11 @@ const Controller = {
                     agent.innerHTML = "Create a new agent to do the tasks you avoid";
                     form.appendChild(agent);
                 }
+
+		if (form && field === 'read') { // Display agent list
+        		this.displayAgentRecords(form);
+		}
+
             };
             menu.appendChild(item);
         }
@@ -188,7 +228,7 @@ const Controller = {
         btn.onclick = async () => {
             const postData = this.eFields(fields);
             try {
-                const res = await fetch(App.url('emails/test/'), {
+                const res = await fetch(App.url('agent/test/'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(postData)
@@ -330,5 +370,18 @@ document.addEventListener('click', (e) => {
     // Handle Navbar Toggler
     if (e.target.matches('.navbar-toggler')) {
         document.querySelector('.nav-menu').classList.toggle('show');
+    }
+});
+
+
+/* Lightweight replacement for Bootstrap's Collapse JS */
+document.addEventListener('click', (e) => {
+    const toggle = e.target.closest('[data-bs-toggle="collapse"]');
+    if (toggle) {
+        const targetSelector = toggle.getAttribute('data-bs-target');
+        const target = document.querySelector(targetSelector);
+        if (target) {
+            target.classList.toggle('show');
+        }
     }
 });
