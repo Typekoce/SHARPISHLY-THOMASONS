@@ -177,7 +177,7 @@ const Controller = {
     },
 
     async bindAgents() {
-        const fields = { 'create': {}, 'read': {}, 'update': {}, 'delete': {} };
+        const fields = { 'create': {}, 'read': {}};
         const menu = document.getElementById('menu');
         if (menu) this.menuFields(fields, menu);
     },
@@ -195,22 +195,6 @@ async displayAgentRecords(form) {
         const table = App.item('table');
         table.className = 'agent-table';
         table.innerHTML = `<thead><tr><th>Name</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead>`;
-        /**
-        const tbody = App.item('tbody');
-        agents.forEach(agent => {
-            const tr = App.item('tr');
-            const fields = { 'start': {}, 'stop': {}, 'edit': {} };
-	    //select = App.selectList(fields,'foo');
-            select = 'hello';
-            tr.innerHTML = `
-                <td>${agent.agent_name}</td>
-                <td>${agent.role}</td>
-                <td><span class="badge ${agent.status}">${agent.status}</span></td>
-                <td>${select}</td>
-            `;
-            tbody.appendChild(tr);
-        });
-     **/
 const tbody = App.item('tbody');
 
 agents.forEach(agent => {
@@ -220,7 +204,8 @@ agents.forEach(agent => {
     const actions = [
         {id: 'start', name: 'Start'},
         {id: 'stop', name: 'Stop'},
-        {id: 'edit', name: 'Edit'}
+        {id: 'edit', name: 'Edit'},
+	{id: 'delete',name: 'Delete'},
     ];
 
     // Build standard cells using template literals for safe, static content

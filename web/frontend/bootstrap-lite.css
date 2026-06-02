@@ -83,3 +83,70 @@ h1 {
 	float: left;
 	width: 100%;
 }
+
+
+/* --- Enhanced Agent Table Styles --- */
+.agent-table {
+    width: 100%;
+    border-collapse: separate; /* Required for border-radius */
+    border-spacing: 0;
+    margin: 1.5rem 0;
+    background: #fff;
+    border: 1px solid var(--gray);
+    border-radius: 0.75rem;
+    overflow: hidden; /* Clips the table corners */
+}
+
+.agent-table thead {
+    background: var(--light);
+    border-bottom: 2px solid var(--gray);
+}
+
+.agent-table th {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #6c757d;
+    padding: 1rem;
+}
+
+.agent-table td {
+    padding: 1rem;
+    vertical-align: middle;
+    border-top: 1px solid #f1f3f5;
+}
+
+/* Row hover effect for interactivity */
+.agent-table tbody tr:hover {
+    background-color: #f8f9fa;
+    transition: background 0.2s ease;
+}
+
+/* Dropdown styling */
+.agent-selector {
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--gray);
+    border-radius: 0.4rem;
+    background-color: #fff;
+    cursor: pointer;
+    font-size: 0.85rem;
+    outline: none;
+}
+
+.agent-selector:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.1);
+}
+
+/* Improved Badges */
+.badge {
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.badge.waiting {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeeba;
+}
