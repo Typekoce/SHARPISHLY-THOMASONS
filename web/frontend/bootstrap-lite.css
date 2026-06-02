@@ -1,160 +1,58 @@
-/* bootstrap-lite.css - Full functional grid, nav, and components */
-:root { --primary: #0d6efd; --danger: #dc3545; --gray: #dee2e6; }
-* { box-sizing: border-box; }
-body { font-family: sans-serif; margin: 0; line-height: 1.5; }
+/* bootstrap-lite.css - Refactored */
+:root {
+    --primary: #0d6efd;
+    --danger: #dc3545;
+    --gray: #dee2e6;
+    --dark: #212529;
+    --light: #f8f9fa;
+}
 
-/* Grid */
+* { box-sizing: border-box; }
+body { font-family: sans-serif; margin: 0; line-height: 1.5; background: #f8f9fa; }
+
+/* --- Grid System --- */
 .container { max-width: 1140px; margin: 0 auto; padding: 0 15px; }
 .row { display: flex; flex-wrap: wrap; margin: 0 -15px; }
 .col { flex: 1; padding: 0 15px; }
 
-/* Navbar */
-.navbar { display: flex; align-items: center; justify-content: space-between; padding: 10px; background: #f8f9fa; }
-.nav-menu { display: flex; list-style: none; }
-.nav-link { padding: 10px; text-decoration: none; color: #000; cursor: pointer; }
-.nav-link.active { font-weight: bold; }
+/* --- Navbar --- */
+.navbar { display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 1rem; background: var(--dark); color: #fff; }
+.navbar-brand { font-size: 1.25rem; color: #fff; text-decoration: none; font-weight: bold; }
+.navbar-nav { display: flex; list-style: none; margin: 0; padding: 0; text-transform: uppercase; font-size: 0.85rem; }
+.nav-link { padding: 0.5rem 1rem; color: rgba(255,255,255,.75); text-decoration: none; cursor: pointer; }
+.nav-link.active { color: #fff; font-weight: bold; }
+.navbar-toggler { display: none; cursor: pointer; }
 
-/* Mobile Collapse (Burger) */
-.navbar-toggler { display: none; background: none; border: 1px solid #ccc; padding: 5px; cursor: pointer; }
 @media (max-width: 768px) {
     .navbar-toggler { display: block; }
     .nav-menu { display: none; flex-direction: column; width: 100%; }
     .nav-menu.show { display: flex; }
 }
 
-/* Components */
-.alert { padding: 15px; margin-bottom: 20px; border: 1px solid transparent; border-radius: 4px; }
-.alert-danger { background: #f8d7da; color: #842029; }
-.dropzone { border: 2px dashed var(--gray); padding: 2rem; text-align: center; border-radius: 1rem; }
-
-/* Utilities */
-.fade-in { animation: fadeIn 0.3s forwards; }
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-
-/* Add these to bootstrap-lite.css to support your existing HTML */
-.navbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; padding: 0.5rem 1rem; }
-.navbar-nav { display: flex; flex-direction: row; list-style: none; margin: 0; padding: 0; }
-.nav-link { padding: 0.5rem 1rem; display: block; color: rgba(0,0,0,.55); text-decoration: none; }
-.navbar-brand { font-size: 1.25rem; text-decoration: none; color: #000; }
-.ms-auto { margin-left: auto; }
-
-
-/* --- Form Elements --- */
-#form {
-    max-width: 600px;
-    margin: 0 auto;
-    padding: 2rem;
-    background: #fff;
-    border-radius: 0.5rem;
-    box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
-}
-
-#form div {
-    margin-bottom: 1.5rem;
-}
-
-#form label {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-weight: 600;
-    font-size: 0.9rem;
-    text-transform: uppercase;
-    color: #495057;
-}
-
-#form input {
-    display: block;
-    width: 100%;
-    padding: 0.375rem 0.75rem;
-    font-size: 1rem;
-    line-height: 1.5;
-    color: #212529;
-    background-color: #fff;
-    border: 1px solid #ced4da;
-    border-radius: 0.375rem;
-    transition: border-color .15s ease-in-out, box-shadow .15s ease-in-out;
-}
-
-#form input:focus {
-    border-color: var(--primary);
-    outline: 0;
-    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-}
-
-/* Style for your custom 'save' button wrapper */
-#form div:last-child {
-    text-align: center;
-    padding: 0.75rem;
-    border: 1px dashed var(--gray) !important;
-    border-radius: 0.375rem;
-    font-weight: bold;
-    color: var(--primary);
-}
-
-
-/* Agent Dashboard Table Styles */
-.agent-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 1rem;
-    background: #fff;
-}
-
-.agent-table th, .agent-table td {
-    padding: 0.75rem;
-    border-bottom: 1px solid #dee2e6;
-    text-align: left;
-}
-
-.agent-table button {
-    margin-right: 5px;
-    padding: 0.25rem 0.5rem;
-    cursor: pointer;
-    background: #f8f9fa;
-    border: 1px solid #dee2e6;
-    border-radius: 4px;
-}
-
-.agent-table button:hover { background: #e9ecef; }
-
-.badge {
-    padding: 0.25rem 0.5rem;
-    border-radius: 12px;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-}
-
+/* --- Components --- */
+.card { background: #fff; border-radius: 0.5rem; border: 1px solid var(--gray); box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+.badge { padding: 0.25rem 0.5rem; border-radius: 12px; font-size: 0.75rem; text-transform: uppercase; }
 .badge.running { background: #d1e7dd; color: #0f5132; }
 .badge.stopped { background: #f8d7da; color: #842029; }
 
-/* --- Scoped Docs History Styling --- */
-#docs {
-    list-style: none;
-    padding: 0;
-    margin-top: 1.5rem;
-}
+/* --- Forms --- */
+#form { max-width: 600px; margin: 0 auto; padding: 2rem; background: #fff; border-radius: 0.5rem; box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075); }
+#form div { margin-bottom: 1.5rem; }
+#form label { display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; color: #495057; }
+#form input { display: block; width: 100%; padding: 0.375rem 0.75rem; border: 1px solid #ced4da; border-radius: 0.375rem; }
+#form input:focus { border-color: var(--primary); outline: 0; box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25); }
 
-#docs li {
-    padding: 1rem;
-    margin-bottom: 0.75rem;
-    border-radius: 0.5rem;
-    background: #ffffff;
-    border: 1px solid #e9ecef;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-}
+/* --- Tables & Lists --- */
+.table { width: 100%; border-collapse: collapse; }
+.table td, .table th { padding: 0.75rem; border-bottom: 1px solid var(--gray); text-align: left; }
+#docs { list-style: none; padding: 0; margin-top: 1.5rem; }
+#docs li { padding: 1rem; margin-bottom: 0.75rem; border-radius: 0.5rem; border: 1px solid #e9ecef; }
+#docs li b { display: block; color: #6c757d; text-transform: uppercase; font-size: 0.65rem; margin-bottom: 0.25rem; }
 
-/* Subtle styling for the conversation flow */
-#docs li b {
-    display: block;
-    color: #6c757d;
-    text-transform: uppercase;
-    font-size: 0.65rem;
-    letter-spacing: 0.05rem;
-    margin-bottom: 0.25rem;
-}
-
-/* Alternating background for better readability */
-#docs li:nth-child(odd) {
-    background: #fdfdfd;
-}
+/* --- Dropzone & Utilities --- */
+#dropzone { border: 2px dashed var(--gray); padding: 2rem; text-align: center; border-radius: 1rem; cursor: pointer; transition: 0.2s; }
+#dropzone:hover { border-color: var(--primary); background: #f0f7ff; }
+.browse-hint { color: #868e96; font-size: 0.85rem; margin-top: 0.5rem; text-decoration: underline; }
+.d-none { display: none !important; }
+.fade-in { animation: fadeIn 0.3s forwards; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
