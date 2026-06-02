@@ -355,6 +355,7 @@ async displayAgentRecords(form) {
             const data = await res.json();
             const target = document.getElementById('app');
             let ul = document.createElement('ul');
+	    ul.setAttribute('id','docs');
             for (let id in data.records) {
                 this.docsBindMessage(data.records[id], ul);
                 this.docsBindAnswer(data.records[id], ul);

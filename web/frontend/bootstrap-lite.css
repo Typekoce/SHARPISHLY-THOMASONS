@@ -128,3 +128,33 @@ body { font-family: sans-serif; margin: 0; line-height: 1.5; }
 .badge.running { background: #d1e7dd; color: #0f5132; }
 .badge.stopped { background: #f8d7da; color: #842029; }
 
+/* --- Scoped Docs History Styling --- */
+#docs {
+    list-style: none;
+    padding: 0;
+    margin-top: 1.5rem;
+}
+
+#docs li {
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    border-radius: 0.5rem;
+    background: #ffffff;
+    border: 1px solid #e9ecef;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+/* Subtle styling for the conversation flow */
+#docs li b {
+    display: block;
+    color: #6c757d;
+    text-transform: uppercase;
+    font-size: 0.65rem;
+    letter-spacing: 0.05rem;
+    margin-bottom: 0.25rem;
+}
+
+/* Alternating background for better readability */
+#docs li:nth-child(odd) {
+    background: #fdfdfd;
+}
