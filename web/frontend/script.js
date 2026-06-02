@@ -177,7 +177,42 @@ async displayAgentRecords(form) {
     }
 },
 
-    async menuFields(fields, menu) {
+async menuFields(fields, menu) {
+    for (let field in fields) {
+        let item = App.item('div');
+        item.innerHTML = field;
+        item.id = field;
+        item.classList.add('menu-item'); // Use the CSS class
+        
+        item.onclick = async () => {
+            let form = document.getElementById('form');
+            if (!form) return;
+
+            // Clear current form if necessary or reset state
+            this.handleMenuClick(field, form);
+        };
+        menu.appendChild(item);
+    }
+},
+
+// Controller method to handle the logic switch
+handleMenuClick(field, form) {
+    switch(field) {
+        case 'create':
+            this.createAgent(form);
+            break;
+        case 'read':
+            this.displayAgentRecords(form);
+            break;
+        case 'delete':
+            let msg = App.item('div');
+            msg.innerHTML = "Create a new agent to do the tasks you avoid";
+            form.appendChild(msg);
+            break;
+    }
+},
+
+    async old_menuFields(fields, menu) {
         for (let field in fields) {
             let item = App.item('div');
             item.innerHTML = field;
