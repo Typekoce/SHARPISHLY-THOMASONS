@@ -20,26 +20,7 @@ class AgentController extends BaseController {
 
 
 public function test($post = ''){
-    // 1. If $post is empty, try to get the raw body
-    if (empty($post)) {
-        $post = file_get_contents('php://input');
-    }
-
-    // 2. Debugging: Log what is actually arriving
-    if (empty($post)) {
-        $this->json(['error' => 'No data received']);
-        return;
-    }
-
-    $data = array('id' => '');
-    $conditions = json_decode($post, true);
-
-    // 3. Ensure JSON decoded correctly
-    if (!$conditions) {
-        $this->json(['error' => 'Invalid JSON']);
-        return;
-    }
-
+    $conditions = $this->request($post);
     $conditions['status'] = 'waiting';
     $conditions['created_at'] = $this->now();
 

@@ -104,7 +104,7 @@ echo -e "\n=== Installing Python Dependencies ==="
 [ ! -d "$VENV" ] && python3 -m venv "$VENV"
 "$VENV/bin/pip" install --upgrade pip --quiet
 # Added 'requests' for LLM generation connectivity
-"$VENV/bin/pip" install requests chromadb ollama --quiet
+"$VENV/bin/pip" install requests chromadb ollama watchdog --quiet
 
 # ===================== OLLAMA SETUP =====================
 echo -e "\n=== Setting up Ollama ==="

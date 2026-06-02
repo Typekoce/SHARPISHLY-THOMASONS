@@ -207,4 +207,58 @@ abstract class BaseController
     return date('Y-m-d h:m:s');
    }
 
+  /**
+  * Request method
+  **/
+  public function old_request($post){
+
+   // 1. If $post is empty, try to get the raw body
+    if (empty($post)) {
+        $post = file_get_contents('php://input');
+    }
+
+    // 2. Debugging: Log what is actually arriving
+    if (empty($post)) {
+        $this->json(['error' => 'No data received']);
+        return;
+    }
+
+    $data = array('id' => '');
+    $conditions = json_decode($post, true);
+
+    // 3. Ensure JSON decoded correctly
+    if (!$conditions) {
+        $this->json(['error' => 'Invalid JSON']);
+        return;
+    }
+    return $conditions;
+
+  }
+
+
+/**
+ * Unified Request Handler
+ */
+public function request($post) {
+    // 1. Handle raw input if not provided
+    if (empty($post)) {
+        $post = file_get_contents('php://input');
+    }
+
+    if (empty($post)) {
+        $this->json(['error' => 'No data received']);
+        return null;
+    }
+
+    // 2. Decode and validate
+    $conditions = json_decode($post, true);
+
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        $this->json(['error' => 'Invalid JSON: ' . json_last_error_msg()]);
+        return null;
+    }
+
+    return $conditions;
+}
+
 }// end of class

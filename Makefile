@@ -11,34 +11,48 @@ help: ## Show this help message
 
 # --- Database & Migrations ---
 .PHONY: migrate
-migrate: ## [1/4] Run PHP database migrations via entry point
+migrate: ## [1/5] Run PHP database migrations via entry point
 	@echo "🗄️ Running Database Migrations..."
 	@curl -s -i http://$(DOMAIN)/php/scaffold/migrate | grep "HTTP/1.1"
 
 # --- Monitoring ---
 .PHONY: logs
-#logs: ## [2/4] Tail Nginx and Project logs
-#	@tail -f $(STORAGE_PATH)/logs/*.log /var/log/nginx/sharpishly_access.log
-#.PHONY: logs
-logs: ## [2/4] Tail Nginx and Project logs
-	@tail -f $(STORAGE_PATH)/logs/*.log $(STORAGE_PATH)/log/*.log /var/log/nginx/sharpishly_access.log
-# --- Neural Worker (NATS) ---
-.PHONY: run-worker
-run-worker: ## [3/4] Start the NATS-Lite Neural Worker (Python)
+logs: ## [2/5] Tail Nginx and Project logs
+	@tail -f $(STORAGE_PATH)/logs/*.log /var/log/nginx/sharpishly_access.log
+
+# --- Neural Workers (Python) ---
+.PHONY: run-worker run-email-worker run-rag
+run-worker: ## [3/5] Start the NATS-Lite Neural Worker
 	@echo "🚀 Starting Neural Worker..."
 	@export PYTHONPATH=$(ROOT_DIR)/pymvc; $(PYTHON) -m app.nats_worker
 
-# --- Testing & Inspection ---
-.PHONY: test-job check-ingest
-test-job: ## [4/4] Create a test job via PHP endpoint
-	@curl -i http://$(DOMAIN)/php/job/create
+# ===================== EMAIL WORKER =====================
+.PHONY: run-email-worker
+run-email-worker: ## [3/5] Start the Email Job Watcher Worker
+	@echo "🚀 Starting Email Worker..."
+	@if [ -f venv/bin/python ]; then \
+		echo "→ Launching with venv..."; \
+		nohup ./venv/bin/python pymvc/app/email_worker.py > storage/logs/email_worker.log 2>&1 & \
+		echo "✅ Email worker started in background. Check storage/logs/email_worker.log"; \
+	else \
+		echo "❌ Virtual environment not found at venv/. Run ./install.sh first."; \
+		exit 1; \
+	fi
 
-check-ingest: ## Inspect the NATS ingest folder for pending jobs
-	@ls -l $(STORAGE_PATH)/uploads/nats/ingest/
 
-# --- Neural Path (RAG) ---
-.PHONY: run-rag
-run-rag: ## [NEW] Start the RAG Microservice (Python)
+
+run-rag: ## [3/5] Start the RAG Microservice
 	@echo "🧠 Starting RAG Microservice on port 8765..."
 	@export PYTHONPATH=$(ROOT_DIR)/pymvc; nohup $(PYTHON) -m app.rag_service > $(STORAGE_PATH)/logs/rag_service.log 2>&1 &
 	@echo "🚀 RAG service running in background. Check $(STORAGE_PATH)/logs/rag_service.log for output."
+
+# --- Testing & Inspection ---
+.PHONY: test-job check-ingest check-email-queue
+test-job: ## [4/5] Create a test job via PHP endpoint
+	@curl -i http://$(DOMAIN)/php/job/create
+
+check-ingest: ## Inspect the NATS ingest folder
+	@ls -l $(STORAGE_PATH)/uploads/nats/ingest/
+
+check-email-queue: ## Inspect the Email waiting folder
+	@ls -l $(STORAGE_PATH)/agents/emails/waiting/
