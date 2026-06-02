@@ -20,7 +20,13 @@ const App = {
     },
     crm() { Model.currentPage = 'home'; Controller.render(); },
     cyberdeck() { Model.currentPage = 'llm'; Controller.render(); },
-    url(url) { return window.location.href + '/php/' + url; },
+url(path) { 
+    // Ensure the path does not start with a / to avoid double slashes
+    const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+    return `${window.location.origin}/php/${cleanPath}`; 
+},
+
+   old_url(url) { return window.location.href + '/php/' + url; },
     getApp() { return document.getElementById('app'); },
     item(e) { return document.createElement(e); },
     flash(msg) {
