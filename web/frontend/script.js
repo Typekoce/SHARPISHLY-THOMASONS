@@ -20,12 +20,46 @@ const App = {
     },
     crm() { Model.currentPage = 'home'; Controller.render(); },
     cyberdeck() { Model.currentPage = 'llm'; Controller.render(); },
-url(path) { 
-    // Ensure the path does not start with a / to avoid double slashes
-    const cleanPath = path.startsWith('/') ? path.substring(1) : path;
-    return `${window.location.origin}/php/${cleanPath}`; 
-},
+    url(path) { 
+    	// Ensure the path does not start with a / to avoid double slashes
+    	const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+    	return `${window.location.origin}/php/${cleanPath}`; 
+    },
+    selectList(fields, callback) {
+    const select = document.createElement('select');
+    select.className = 'agent-selector'; // For CSS styling
 
+    // Add a default placeholder
+    const defaultOption = document.createElement('option');
+    defaultOption.text = 'Select an agent...';
+    defaultOption.value = '';
+    select.appendChild(defaultOption);
+
+    // Build the fields
+    fields.forEach(field => {
+        const option = document.createElement('option');
+        option.value = field.id;
+        option.text = field.name;
+        select.appendChild(option);
+    });
+
+    // Use onchange for select elements
+    select.onchange = function(e) {
+        if (this.value) {
+            callback(this.value);
+        }
+    };
+
+    return select;
+},
+    old_selectList(fields){
+	for(field in fields){
+		option = document.createElement('option');
+		option.onclick = function(){
+		// TODO: Enable action
+                };
+	}
+    },
    old_url(url) { return window.location.href + '/php/' + url; },
     getApp() { return document.getElementById('app'); },
     item(e) { return document.createElement(e); },
@@ -161,21 +195,53 @@ async displayAgentRecords(form) {
         const table = App.item('table');
         table.className = 'agent-table';
         table.innerHTML = `<thead><tr><th>Name</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead>`;
-        
+        /**
         const tbody = App.item('tbody');
         agents.forEach(agent => {
             const tr = App.item('tr');
+            const fields = { 'start': {}, 'stop': {}, 'edit': {} };
+	    //select = App.selectList(fields,'foo');
+            select = 'hello';
             tr.innerHTML = `
                 <td>${agent.agent_name}</td>
                 <td>${agent.role}</td>
                 <td><span class="badge ${agent.status}">${agent.status}</span></td>
-                <td>
-                    <button onclick="Controller.updateAgent('${agent.id}')">Edit</button>
-                    <button onclick="Controller.toggleAgent('${agent.id}')">Start/Stop</button>
-                </td>
+                <td>${select}</td>
             `;
             tbody.appendChild(tr);
         });
+     **/
+const tbody = App.item('tbody');
+
+agents.forEach(agent => {
+    const tr = App.item('tr');
+    
+    // Define your actions
+    const actions = [
+        {id: 'start', name: 'Start'},
+        {id: 'stop', name: 'Stop'},
+        {id: 'edit', name: 'Edit'}
+    ];
+
+    // Build standard cells using template literals for safe, static content
+    tr.innerHTML = `
+        <td>${agent.agent_name}</td>
+        <td>${agent.role}</td>
+        <td><span class="badge ${agent.status}">${agent.status}</span></td>
+    `;
+
+    // Create the select cell
+    const actionTd = document.createElement('td');
+    const select = App.selectList(actions, (actionId) => {
+        console.log(`Triggering ${actionId} for agent ${agent.id}`);
+        // TODO: App.request('POST', `/php/agent/${actionId}/${agent.id}`)
+    });
+    
+    actionTd.appendChild(select);
+    tr.appendChild(actionTd);
+    
+    tbody.appendChild(tr);
+});
         table.appendChild(tbody);
         form.appendChild(table);
     } catch (e) {
