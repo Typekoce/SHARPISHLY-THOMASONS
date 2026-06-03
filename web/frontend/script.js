@@ -186,7 +186,40 @@ const Controller = {
         }
     },
 
-    async bindEmails() {
+
+async bindEmails() {
+    const fields = { 'to': {}, 'subject': {}, 'body': {} };
+    const form = document.getElementById('form');
+    if (!form) return;
+    this.eForm(form, fields);
+
+    const btn = App.item('div');
+    btn.className = 'btn btn-outline-primary mt-2';
+    btn.innerHTML = "Queue Email Task";
+    form.appendChild(btn);
+
+    btn.onclick = async () => {
+        const taskData = this.eFields(fields);
+        taskData.id = Date.now(); 
+        
+        try {
+            const res = await fetch(App.url('emails/queue/'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(taskData)
+            });
+            const result = await res.json();
+            if (result.status === 'success') {
+                App.flash("Email Task Queued: " + result.id);
+                form.reset(); // Clear form on success
+            }
+        } catch (e) { 
+            App.flash("Critical Error: Persistence failed"); 
+        }
+    };
+},
+
+    async old_bindEmails() {
         const fields = { 'email': {}, 'message': {}, 'subject': {} };
         const form = document.getElementById('form');
         if (!form) return;
