@@ -73,6 +73,41 @@ const App = {
     }
 };
 
+
+/**
+ * View: Global App State
+ */
+const view = {
+    neuralPipeline() {
+        const container = document.getElementById('neural-pipeline');
+        if (!container) return;
+
+        // Clear existing content
+        container.innerHTML = '';
+
+        // Create the wrapper
+        const np = App.item('div');
+        np.className = 'pipeline-list';
+
+        // Map your Model.queue to UI elements
+        Model.queue.forEach(item => {
+            const row = App.item('div');
+            row.className = 'card mb-2 p-2 small border-0 shadow-sm';
+            row.innerHTML = `
+                <div class="d-flex justify-content-between">
+                    <strong>${item.name}</strong>
+                    <span class="text-primary">${item.status}</span>
+                </div>
+            `;
+            np.appendChild(row);
+        });
+
+        // Append to the target
+        container.appendChild(np);
+    }
+};
+
+
 /**
  * Model: Global App State
  */
@@ -424,7 +459,12 @@ handleMenuClick(field, form) {
             Model.queue.push({ name: f.name, status: 'processing', progress: 25 });
         });
         this.render();
-        try {
+    
+
+	// Call the view update
+    	view.neuralPipeline();
+
+       try {
             const res = await fetch(App.url('job/create'), { method: 'POST', body: formData });
             Model.queue.forEach(item => { item.status = 'queued'; item.progress = 50; });
             this.render();
