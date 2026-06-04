@@ -10,22 +10,19 @@ class EmailsController extends BaseController {
 
 
 public function queue($id = '') {
+
     $data = $this->request(null);
 
     if (!$data) return;
 
     $data['id'] = $id;
 
-//    $dir = $this->loc('storage/tasks/pending/email');
-//    $filePath = "$dir/$id.json";
 
+    // Use the Location service's storage method.
+    // This returns the full path and handles recursive directory creation for you.
+    $dir = $this->loc->storage('tasks/pending/email/');
+    $filePath = $dir . $id . '.json';
 
-// Hardcode the base path to bypass the method call
-    $basePath = '/home/seaview/Documents/SHARPISHLY-THOMASONS';
-    $dir = $basePath . '/storage/tasks/pending/email';
-    $filePath = "$dir/$id.json";
-
-    
     // Attempt the write
     if (file_put_contents($filePath, json_encode($data), LOCK_EX)) {
         // Return success and finish
