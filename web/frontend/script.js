@@ -51,16 +51,7 @@ const App = {
     };
 
     return select;
-},
-    old_selectList(fields){
-	for(field in fields){
-		option = document.createElement('option');
-		option.onclick = function(){
-		// TODO: Enable action
-                };
-	}
     },
-   old_url(url) { return window.location.href + '/php/' + url; },
     getApp() { return document.getElementById('app'); },
     item(e) { return document.createElement(e); },
     flash(msg) {
@@ -72,6 +63,49 @@ const App = {
         flash.appendChild(alert);
     }
 };
+
+
+
+// Add this helper to App
+App.addAgentActions = function(form) {
+    // Only proceed if we are in agent context
+    const agentId = document.getElementById('agent_id');
+    if (!agentId || !agentId.value) return;
+
+    const actions = [
+        "Deploy latest container", "Rotate SSH keys", "Scale worker nodes", 
+        "Execute maintenance script", "Clear orphaned containers", 
+        "Backup database volume", "Audit security logs", "Restart Nginx", 
+        "Purge temporary files", "Verify integrity"
+    ];
+
+    const label = App.item('label');
+    label.innerHTML = "Agent Task Actions";
+    form.appendChild(label);
+
+    const select = document.createElement('select');
+    select.className = 'form-control mb-2';
+    select.innerHTML = '<option value="">-- Choose an action --</option>';
+
+    actions.forEach(action => {
+        const opt = document.createElement('option');
+        opt.value = action;
+        opt.text = action;
+        select.appendChild(opt);
+    });
+
+    select.onchange = (e) => {
+        if (e.target.value) {
+            const body = document.getElementById('body');
+            body.value += (body.value ? "\n" : "") + `Action: ${e.target.value}`;
+        }
+    };
+    form.appendChild(select);
+};
+
+
+
+
 
 
 App.agentEmailForm = function(agent) {
@@ -157,6 +191,75 @@ const PageRegistry = {
 };
 
 /**
+ * Home Controller
+ */
+const HomeController = {};
+
+/**
+ * Rag Controller
+ */
+const RagController = {};
+
+/**
+ * Llm Controller
+ */
+const LlmController = {};
+
+
+/**
+ * Docs Controller
+ */
+const DocsController = {};
+
+/**
+ * Agent Controller
+ */
+/**
+ * Agent Controller
+ */
+const AgentController = {
+    contacts: function(form) {
+        const container = App.item('div');
+        container.id = 'agent-contacts-container';
+        container.className = 'mt-3 p-2 border';
+        
+        // 1. Add Title first
+        const title = App.item('h5');
+        title.innerHTML = 'Available Contacts';
+        container.appendChild(title);
+
+        // 2. Populate contacts inside the container
+        this.address(container);
+        
+        form.appendChild(container);
+        return container;
+    },
+
+    address: function(container) {
+        const contacts = [
+            { name: "Admin", email: "admin@system.local" },
+            { name: "DevOps", email: "devops@system.local" }
+        ];
+
+        contacts.forEach(c => {
+            const btn = App.item('button');
+            btn.className = 'btn btn-sm btn-secondary m-1';
+            btn.innerHTML = c.name;
+            
+            // Set the 'to' field when clicked
+            btn.onclick = (e) => {
+                e.preventDefault();
+                const toField = document.getElementById('to');
+                if (toField) toField.value = c.email;
+            };
+            
+            container.appendChild(btn);
+        });
+    }
+};
+
+
+/**
  * Controller: Orchestrates UI logic, data fetching, and event binding
  */
 const Controller = {
@@ -222,6 +325,10 @@ async bindEmails() {
     if (!form) return;
     this.eForm(form, fields);
 
+    AgentController.contacts(form);
+
+    App.addAgentActions(form);
+
     const btn = App.item('div');
     btn.className = 'btn btn-outline-primary mt-2';
     btn.innerHTML = "Queue Email Task";
@@ -246,31 +353,6 @@ async bindEmails() {
             App.flash("Critical Error: Persistence failed"); 
         }
     };
-},
-
-    async old_bindEmails() {
-        const fields = { 'email': {}, 'message': {}, 'subject': {} };
-        const form = document.getElementById('form');
-        if (!form) return;
-        this.eForm(form, fields);
-
-        const btn = App.item('div');
-        btn.style.cssText = 'cursor:pointer;border:1px dashed #ccc;';
-        btn.innerHTML = "save";
-        form.appendChild(btn);
-
-        btn.onclick = async () => {
-            const postData = this.eFields(fields);
-            try {
-                const res = await fetch(App.url('emails/test/'), {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(postData)
-                });
-                const data = await res.json();
-                App.flash('Success id:' + data.id + ' created');
-            } catch (e) { App.flash('Error'); }
-        };
     },
 
     async bindAgents() {
@@ -373,34 +455,6 @@ handleMenuClick(field, form) {
     }
 },
 
-    async old_menuFields(fields, menu) {
-        for (let field in fields) {
-            let item = App.item('div');
-            item.innerHTML = field;
-            item.setAttribute('id', field);
-            item.setAttribute('style', 'cursor:pointer;padding:10px;text-align:center;float:left;border:1px dashed #ccc;');
-            item.onclick = async () => {
-                let form = document.getElementById('form');
-
-		// New condition to trigger createAgent
-                if (form && field === 'create') {
-                    this.createAgent(form);
-                }
-
-                if (form && field === 'delete') {
-                    let agent = App.item('div');
-                    agent.innerHTML = "Create a new agent to do the tasks you avoid";
-                    form.appendChild(agent);
-                }
-
-		if (form && field === 'read') { // Display agent list
-        		this.displayAgentRecords(form);
-		}
-
-            };
-            menu.appendChild(item);
-        }
-    },
     // Triggered by the 'create' menu item
     createAgent(form) {
         // 1. Clear existing form content
