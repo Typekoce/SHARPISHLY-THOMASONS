@@ -74,6 +74,35 @@ const App = {
 };
 
 
+App.agentEmailForm = function(agent) {
+    // 1. Navigate to the email page
+    Controller.navigate('emails');
+
+    // 2. Wait for the form to be rendered by the router
+    setTimeout(() => {
+        const form = document.getElementById('form');
+        const subject = document.getElementById('subject');
+
+        if (subject) {
+            subject.value = `Task for: ${agent.agent_name}`;
+        }
+
+        // 3. Add hidden agent context to associate the task
+        const hidden = document.createElement('input');
+        hidden.type = 'hidden';
+        hidden.id = 'agent_id';
+        hidden.value = agent.id;
+        form.appendChild(hidden);
+
+        // 4. Inject agent-specific form options/metadata
+        const info = document.createElement('div');
+        info.className = 'mt-2 p-2 border bg-light';
+        info.innerHTML = `<strong>Agent Context:</strong> ${agent.role} active.`;
+        form.appendChild(info);
+
+        App.flash(`Agent ${agent.agent_name} loaded into email form.`);
+    }, 100);
+};
 /**
  * View: Global App State
  */
@@ -273,6 +302,7 @@ agents.forEach(agent => {
         {id: 'start', name: 'Start'},
         {id: 'stop', name: 'Stop'},
         {id: 'edit', name: 'Edit'},
+        {id: 'email', name: 'Email'},
 	{id: 'delete',name: 'Delete'},
     ];
 
@@ -286,8 +316,14 @@ agents.forEach(agent => {
     // Create the select cell
     const actionTd = document.createElement('td');
     const select = App.selectList(actions, (actionId) => {
-        console.log(`Triggering ${actionId} for agent ${agent.id}`);
-        // TODO: App.request('POST', `/php/agent/${actionId}/${agent.id}`)
+// Check if the selected action is 'email'
+    if (actionId === 'email') {
+        // Execute the form creation method
+        App.agentEmailForm(agent);
+    } else {
+        // Handle other actions (start, stop, etc.)
+        console.log(`Action ${actionId} selected for agent ${agent.agent_name}`);
+    }
     });
     
     actionTd.appendChild(select);
