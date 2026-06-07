@@ -187,7 +187,8 @@ const PageRegistry = {
     'rag': () => Controller.bindRag(),
     'emails': () => Controller.bindEmails(),
     'agent': () => AgentController.bindAgents(),
-    'docs': () => Controller.docs('docs')
+    'docs': () => Controller.docs('docs'),
+    'tiktok': () => TiktokController.bindPosts(),
 };
 
 /**
@@ -212,12 +213,59 @@ const LlmController = {};
 const DocsController = {};
 
 /**
- * Agent Controller
+ * Tiktok Controller
  */
+const TiktokController = {
+    async bindPosts() {
+        const btn = document.getElementById('tiktok-submit');
+        const contentInput = document.getElementById('tiktok-content');
+
+        if (!btn || !contentInput) {
+            console.error('TikTok view elements missing from template');
+            return;
+        }
+
+        btn.onclick = () => {
+            AgentController.tiktokPost(contentInput.value);
+        };
+    }
+};
+
 /**
  * Agent Controller
  */
 const AgentController = {
+    // Add to your existing AgentController object
+tiktokPost: function(content) {
+    if (!content.trim()) {
+        App.flash('Please enter some content first.');
+        return;
+    }
+
+    const dialog = App.item('div');
+    dialog.className = 'border p-3 mt-3 bg-warning';
+    dialog.innerHTML = `
+        <h5>Confirm TikTok Post</h5>
+        <p>Posting: <em>${content}</em></p>
+        <button id="tiktok-confirm" type="button" class="btn btn-dark">Confirm & Post</button>
+    `;
+    
+    // Mount within the app container for consistent styling
+    const host = document.getElementById('app') || document.body;
+    host.appendChild(dialog);
+
+    document.getElementById('tiktok-confirm').onclick = () => {
+        // Dummy API Response Logic
+        const mockResponse = { status: 'success', id: 'tt_' + Math.random().toString(36).substr(2, 9) };
+        
+        App.flash('TikTok post queued: ' + mockResponse.id);
+        dialog.remove();
+        
+        // Clear input after success
+        const contentInput = document.getElementById('tiktok-content');
+        if (contentInput) contentInput.value = '';
+    };
+},
     async bindAgents() {
         const fields = { 'create': {}, 'read': {}};
         const menu = document.getElementById('menu');
@@ -439,14 +487,18 @@ agents.forEach(agent => {
     // Create the select cell
     const actionTd = document.createElement('td');
     const select = App.selectList(actions, (actionId) => {
-// Check if the selected action is 'email'
-    if (actionId === 'email') {
+    // Check if the selected action is 'tiktok'
+    if (actionId === 'tiktok') {
+        // Navigate to the tiktok page, which triggers PageRegistry['tiktok']
+        Controller.navigate('tiktok');
+    } else if (actionId === 'email') {
         // Execute the form creation method
         App.agentEmailForm(agent);
     } else {
         // Handle other actions (start, stop, etc.)
         console.log(`Action ${actionId} selected for agent ${agent.agent_name}`);
     }
+
     });
     
     actionTd.appendChild(select);
