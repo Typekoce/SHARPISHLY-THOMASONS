@@ -1,5 +1,28 @@
-<div id="tiktok-container" class="p-4">
-    <h3>Post to TikTok</h3>
-    <textarea id="tiktok-content" class="form-control" placeholder="Enter your TikTok story..."></textarea>
-    <button id="tiktok-submit" class="btn btn-warning mt-2">Preview TikTok</button>
+<div class="container fade-in" id="tiktok">
+    <div class="row">
+        <div class="col">
+            <div class="card p-4 mt-4">
+                <h3 class="mb-4">TikTok Broadcast</h3>
+                
+                <div id="tiktok-container">
+
+                    <div class="row">
+                        <label for="tiktok-content">What’s the story for the feed?</label>
+                    </div>
+                    <div class="row">
+                        <input type="file" id="video"/>
+                    </div>
+                    <div class="row">
+                     <textarea id="tiktok-content" class="form-control mb-3" rows="4" placeholder="" style="min-height: 120px;"></textarea>
+                    </div>
+                    <div class="row">
+                    <button id="tiktok-submit" class="btn btn-outline-primary mt-2" style="width: 100%;">
+                        Queue to TikTok
+                    </button>                        
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
 </div>

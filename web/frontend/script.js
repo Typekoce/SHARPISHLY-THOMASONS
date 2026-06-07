@@ -213,19 +213,21 @@ const LlmController = {};
 const DocsController = {};
 
 /**
- * Tiktok Controller
+ * TikTok Controller: UX Enhanced
  */
 const TiktokController = {
     async bindPosts() {
+        // App.loadView (if needed) - assumes HTML is already injected
         const btn = document.getElementById('tiktok-submit');
         const contentInput = document.getElementById('tiktok-content');
 
-        if (!btn || !contentInput) {
-            console.error('TikTok view elements missing from template');
-            return;
-        }
+        if (!btn || !contentInput) return;
 
-        btn.onclick = () => {
+        btn.onclick = (e) => {
+            // Visual feedback: brief pulse
+            btn.style.opacity = '0.5';
+            setTimeout(() => btn.style.opacity = '1', 200);
+
             AgentController.tiktokPost(contentInput.value);
         };
     }
@@ -358,6 +360,35 @@ emailQueue: function(toInput, subjectInput, bodyInput) {
         });
     };
 }
+};
+
+AgentController.tiktokPost = function(content) {
+    if (!content.trim()) {
+        App.flash('The feed is empty! Give us something viral.');
+        return;
+    }
+
+    const dialog = App.item('div');
+    dialog.className = 'card mt-4 p-4 border-2 border-danger'; // High-visibility border
+    dialog.innerHTML = `
+        <h5 style="color: #dc3545;">⚠️ Broadcast Authorization</h5>
+        <p>You are about to launch this content to TikTok:</p>
+        <div class="p-3 bg-light border mb-3"><em>"${content}"</em></div>
+        <button id="tiktok-confirm" class="btn btn-outline-primary mt-2" style="width: 100%;">
+            CONFIRM & LAUNCH
+        </button>
+    `;
+    
+    const host = document.getElementById('app');
+    host.appendChild(dialog);
+
+    document.getElementById('tiktok-confirm').onclick = () => {
+        const mockResponse = { status: 'success', id: 'viral_' + Math.random().toString(36).substr(2, 5) };
+        
+        App.flash('🚀 Posted to TikTok: ' + mockResponse.id);
+        dialog.remove();
+        document.getElementById('tiktok-content').value = '';
+    };
 };
 
 

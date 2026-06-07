@@ -167,3 +167,62 @@ h1 {
     color: #856404;
     border: 1px solid #ffeeba;
 }
+
+/* --- Tiktok --- */
+
+
+
+/* --- TikTok Container Containment --- */
+#tiktok {
+    width: 100%;
+    max-width: 600px; /* Force a reasonable width */
+    margin: 0 auto;
+}
+
+#tiktok .card {
+    display: block;
+    width: 100%;
+    padding: 1.5rem; /* Internal padding */
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    box-sizing: border-box; /* Essential: keeps padding inside the width */
+}
+
+/* Force every direct child of the card to behave */
+#tiktok .card > * {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Cleanup Grid issues */
+#tiktok .row {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0; /* Remove negative margins causing expansion */
+    width: 100%;
+}
+
+#tiktok .col {
+    width: 100%;
+    padding: 0; /* Remove padding from columns inside the card */
+}
+
+/* Input/Textarea cleanup */
+#tiktok textarea, 
+#tiktok input[type="file"] {
+    display: block;
+    width: 100%; /* Fill the card, not overflow it */
+    padding: 0.75rem;
+    margin-bottom: 1rem;
+    border: 1px solid #ced4da;
+    border-radius: 0.375rem;
+    box-sizing: border-box; /* Prevent padding/border from adding to width */
+}
+
+#tiktok #tiktok-submit {
+    width: 100%;
+    margin: 0;
+    padding: 0.75rem;
+    box-sizing: border-box;
+}
