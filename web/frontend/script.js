@@ -186,7 +186,7 @@ const Model = {
 const PageRegistry = {
     'rag': () => Controller.bindRag(),
     'emails': () => Controller.bindEmails(),
-    'agent': () => Controller.bindAgents(),
+    'agent': () => AgentController.bindAgents(),
     'docs': () => Controller.docs('docs')
 };
 
@@ -218,6 +218,11 @@ const DocsController = {};
  * Agent Controller
  */
 const AgentController = {
+    async bindAgents() {
+        const fields = { 'create': {}, 'read': {}};
+        const menu = document.getElementById('menu');
+        if (menu) Controller.menuFields(fields, menu);
+    },
     contacts: function(form) {
         const container = App.item('div');
         container.id = 'agent-contacts-container';
@@ -394,11 +399,7 @@ const Controller = {
         };
     },
 
-    async bindAgents() {
-        const fields = { 'create': {}, 'read': {}};
-        const menu = document.getElementById('menu');
-        if (menu) this.menuFields(fields, menu);
-    },
+
 
 
 // Add to Controller object
@@ -424,7 +425,8 @@ agents.forEach(agent => {
         {id: 'stop', name: 'Stop'},
         {id: 'edit', name: 'Edit'},
         {id: 'email', name: 'Email'},
-	{id: 'delete',name: 'Delete'},
+        {id: 'tiktok', name: 'Tiktok'},
+	    {id: 'delete',name: 'Delete'},
     ];
 
     // Build standard cells using template literals for safe, static content
