@@ -174,53 +174,35 @@ tiktokPost: function(content) {
         });
     },
 
+// model.js - Reverted to clean state
 emailQueue: function(toInput, subjectInput, bodyInput) {
-    const data = {
+    const payload = {
         to: toInput.value,
         subject: subjectInput.value,
         body: bodyInput.value
     };
 
-    const dialog = App.item('div');
-    dialog.id = 'agent-dialog';
-    dialog.className = 'border p-3 mt-3 bg-light';
-    dialog.innerHTML = `
-        <h5>Agent Action Required</h5>
-        <p>Review email to: <strong>${data.to}</strong></p>
-        <button id="agent-confirm" class="btn btn-outline-primary mt-2">Approve & Send</button>
-    `;
-
-    const form = document.getElementById('form');
-    form.appendChild(dialog);
-
-    document.getElementById('agent-confirm').onclick = (e) => {
-        e.preventDefault();
-        dialog.remove();
-
-        const formData = new FormData();
-        formData.append('to', data.to);
-        formData.append('subject', data.subject);
-        formData.append('body', data.body);
-
-        fetch('/php/emails/queue/', {
-            method: 'POST',
-            body: formData
-        })
-        .then(res => res.json())
-        .then(result => {
-            if (result.status === 'success') {
-                App.flash('Agent-approved email queued: ' + result.id);
-                toInput.value = '';
-                subjectInput.value = '';
-                bodyInput.value = '';
-            } else {
-                App.flash('Queue failed: ' + result.message);
-            }
-        })
-        .catch(err => {
-            App.flash('Queue error: ' + err.message);
-        });
-    };
+    fetch('/php/emails/queue/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+    })
+    .then(res => res.json())
+    .then(result => {
+        if (result.status === 'success') {
+            App.flash('Email queued successfully.');
+            toInput.value = '';
+            subjectInput.value = '';
+            bodyInput.value = '';
+        } else {
+            App.flash('Queue failed: ' + result.message);
+        }
+    })
+    .catch(err => {
+        App.flash('Queue error: ' + err.message);
+    });
 }
 };
 

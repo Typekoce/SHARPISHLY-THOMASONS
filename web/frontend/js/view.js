@@ -59,31 +59,31 @@ const Controller = {
     },
 
     async bindEmails() {
-        const fields = { 'to': {}, 'subject': {}, 'body': {} };
-        const form = document.getElementById('form');
-        if (!form) return;
-        this.eForm(form, fields);
+    const fields = { 'to': {}, 'subject': {}, 'body': {} };
+    const form = document.getElementById('form');
+    if (!form) return;
+    
+    // Clear the form and re-render only the fields
+    form.innerHTML = '';
+    this.eForm(form, fields);
 
-        AgentController.contacts(form);
-        App.addAgentActions(form);
+    const btn = App.item('button');
+    btn.type = 'button';
+    btn.className = 'btn btn-outline-primary mt-2';
+    btn.innerHTML = "Queue Email Task";
+    form.appendChild(btn);
 
-        const btn = App.item('button');
-        btn.type = 'button'; // Prevent default form submission
-        btn.className = 'btn btn-outline-primary mt-2';
-        btn.innerHTML = "Queue Email Task";
-        form.appendChild(btn);
-
-        btn.onclick = (e) => {
-            e.preventDefault();
-            
-            // Pass inputs directly to the AgentController gatekeeper
-            const toInput = document.getElementById('to');
-            const subjectInput = document.getElementById('subject');
-            const bodyInput = document.getElementById('body');
-            
-            AgentController.emailQueue(toInput, subjectInput, bodyInput);
-        };
-    },
+    btn.onclick = (e) => {
+        e.preventDefault();
+        
+        const toInput = document.getElementById('to');
+        const subjectInput = document.getElementById('subject');
+        const bodyInput = document.getElementById('body');
+        
+        // Use the reverted, clean emailQueue
+        AgentController.emailQueue(toInput, subjectInput, bodyInput);
+    };
+},
 
 
 
