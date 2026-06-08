@@ -22,4 +22,5 @@ class SocialsController extends BaseController {
             'videos' => array()
         );
     }
-}
+
+}// end of class
