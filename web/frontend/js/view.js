@@ -131,7 +131,8 @@ agents.forEach(agent => {
         Controller.navigate('tiktok');
     } else if (actionId === 'email') {
         // Execute the form creation method
-        App.agentEmailForm(agent);
+        //App.agentEmailForm(agent);
+        Controller.navigate('agentemail');
     } else {
         // Handle other actions (start, stop, etc.)
         console.log(`Action ${actionId} selected for agent ${agent.agent_name}`);

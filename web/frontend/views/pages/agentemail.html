@@ -1,0 +1,47 @@
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card agent-terminal-card text-white border-0 shadow-lg">
+                <div class="card-body">
+                    <div class="terminal-header">
+                        <h5 class="text-uppercase text-muted small tracking-widest mb-0">Agent Terminal</h5>
+                    </div>
+                    <div id="agent-context-display" class="my-3 p-3 data-stream">
+                        <small>Loading Agent Data...</small>
+                    </div>
+                    <hr class="border-secondary">
+                    <h5 class="text-uppercase text-muted small tracking-widest">Contact Matrix</h5>
+                    <div id="contact-pool" class="d-flex flex-wrap gap-2 mt-2">
+                        </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="card shadow-sm border-0 agent-terminal-card">
+                <div class="card-header terminal-header text-white">
+                    <h4 class="mb-0">Broadcast Authorization</h4>
+                </div>
+                <div class="card-body">
+                    <form id="agent-email-form">
+                        <div class="mb-3">
+                            <label class="form-label font-weight-bold">Target Vector</label>
+                            <input type="text" id="to" class="form-control form-control-lg vector-input" placeholder="recipient@system.local">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Subject</label>
+                            <input type="text" id="subject" class="form-control vector-input">
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label">Message Payload</label>
+                            <textarea id="body" class="form-control vector-input" rows="6" placeholder="Execute transmission sequence..."></textarea>
+                        </div>
+                        <button type="button" id="queue-agent-email" class="btn transmission-btn w-100 py-3 text-uppercase font-weight-bold text-white">
+                            Initialize Transmission
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

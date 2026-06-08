@@ -51,6 +51,7 @@ const PageRegistry = {
     'agent': () => AgentController.bindAgents(),
     'docs': () => Controller.docs('docs'),
     'tiktok': () => TiktokController.bindPosts(),
+    'agentemail': () => AgentController.bindAgentEmailTerminal(), // New entry
 };
 
 /**
@@ -203,7 +204,28 @@ emailQueue: function(toInput, subjectInput, bodyInput) {
     .catch(err => {
         App.flash('Queue error: ' + err.message);
     });
-}
+},
+// model.js -> AgentController
+bindAgentEmailTerminal: function() {
+    const pool = document.getElementById('contact-pool');
+    if (!pool) return;
+
+    // Standard contacts
+    const contacts = [
+        { name: "Admin", email: "admin@system.local" },
+        { name: "DevOps", email: "devops@system.local" }
+    ];
+
+    contacts.forEach(c => {
+        const btn = App.item('button');
+        btn.className = 'btn btn-outline-secondary btn-sm';
+        btn.innerHTML = c.name;
+        btn.onclick = () => {
+            document.getElementById('to').value = c.email;
+        };
+        pool.appendChild(btn);
+    });
+},
 };
 
 AgentController.tiktokPost = function(content) {
@@ -234,4 +256,6 @@ AgentController.tiktokPost = function(content) {
         document.getElementById('tiktok-content').value = '';
     };
 };
+
+
 
