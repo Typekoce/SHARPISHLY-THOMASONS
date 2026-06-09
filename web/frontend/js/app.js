@@ -61,7 +61,8 @@ const App = {
         alert.style.cssText = 'width:100%;border-radius:16px;margin-bottom:10px;padding-top:10px;padding-bottom:10px;background-color:#ccc;text-align:center';
         alert.innerHTML = msg;
         flash.appendChild(alert);
-    }
+    },
+    getItem(e){return document.getElementById(e)},
 };
 
 
@@ -131,4 +132,30 @@ App.agentEmailForm = function(agent) {
 
         App.flash(`Agent ${agent.agent_name} loaded into email form.`);
     }, 100);
+};
+App.eForm = function(form, schema) {
+    form.innerHTML = '';
+    Object.keys(schema).forEach(key => {
+        const field = schema[key];
+        const id = field.id || key;
+        const type = field.type || 'text';
+        
+        // Create element: Textarea if defined, else input
+        const el = App.item(type === 'textarea' ? 'textarea' : 'input');
+        el.id = id;
+        el.className = 'form-control';
+        
+        if (field.placeholder) el.placeholder = field.placeholder;
+        if (type !== 'textarea') el.type = type;
+
+        const label = App.item('label');
+        label.className = 'form-label fw-bold';
+        label.textContent = key.charAt(0).toUpperCase() + key.slice(1);
+        
+        const row = App.item('div');
+        row.className = 'mb-3';
+        row.appendChild(label);
+        row.appendChild(el);
+        form.appendChild(row);
+    });
 };
