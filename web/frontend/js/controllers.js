@@ -77,7 +77,18 @@ tiktokPost: function(content) {
         if (contentInput) contentInput.value = '';
     };
 },
+// Note the 'async' keyword here
+async bindAgentsDefault(){
+    const form = App.getItem('form');
+    
+    // Await the result so it resolves to the actual HTML string
+    const html = await App.loadTemplate('views/pages/welcome.html', {'foo':'bar'});
+    
+    // Now you have the string, not the Promise
+    form.innerHTML = html;
+},
     async bindAgents() {
+        this.bindAgentsDefault();
         const fields = { 'create': {}, 'read': {}};
         const menu = document.getElementById('menu');
         if (menu) Controller.menuFields(fields, menu);
@@ -328,9 +339,9 @@ async displayAgentRecords(form) {
         const table = App.item('table');
         table.className = 'agent-table';
         table.innerHTML = `<thead><tr><th>Name</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead>`;
-const tbody = App.item('tbody');
+        const tbody = App.item('tbody');
 
-agents.forEach(agent => {
+        agents.forEach(agent => {
     const tr = App.item('tr');
     
     // Define your actions

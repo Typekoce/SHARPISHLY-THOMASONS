@@ -1,0 +1,40 @@
+<div class="welcome-container p-4">
+    <h1 class="mb-4">System Overview</h1>
+    
+    <div class="card p-4 mb-4">
+        <h3>1. The Core Agent Interface</h3>
+        <p>The <strong>Agent Page</strong> serves as the central orchestration hub. It provides the UI shell for managing agent lifecycles, monitoring status (running/stopped), and triggering operational tasks.</p>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card p-3 mb-3">
+                <h5>Operational Workflows</h5>
+                <ul>
+                    <li><strong>Emails:</strong> Asynchronous queuing via our <code>EmailsController</code>.</li>
+                    <li><strong>Social Media:</strong> Integrated pipeline for handling external APIs (e.g., TikTok).</li>
+                    <li><strong>Data Handling:</strong> CSV ingestion and CV parsing tools.</li>
+                </ul>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card p-3 mb-3">
+                <h5>Automation Features</h5>
+                <ul>
+                    <li><strong>Application Forms:</strong> Schema-based, automated form completion.</li>
+                    <li><strong>Task Queuing:</strong> Nats-based messaging for decoupled task execution.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="card p-4">
+        <h3>2. Advanced Capabilities: The RAG Build</h3>
+        <p>Building upon the Agent interface, the <strong>RAG (Retrieval-Augmented Generation)</strong> layer allows agents to move beyond static logic. It integrates your stored data with LLM inference:</p>
+        <ol>
+            <li><strong>Contextual Retrieval:</strong> Instead of simple hard-coded responses, the agent queries local knowledge bases (stored docs/CVs).</li>
+            <li><strong>Intelligent Completion:</strong> Form completion logic is augmented by the RAG layer, allowing agents to "read" requirements and "write" context-aware applications.</li>
+            <li><strong>Dynamic Synthesis:</strong> Social media and email tasks leverage RAG to maintain tone, reference historical CSV/data points, and remain relevant to the specific recipient.</li>
+        </ol>
+    </div>
+</div>

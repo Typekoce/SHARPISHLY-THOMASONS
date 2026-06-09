@@ -1,0 +1,6 @@
+/* Ensure the page content doesn't bleed to the edges */
+.welcome-container {
+    padding: 2rem;
+    max-width: 900px;
+    margin: 0 auto;
+}
