@@ -60,14 +60,6 @@ public function old_queue() {
 
 	public function test($post = ''){
 		$data =array('id'=>'');
-/**
-		$conditions = array(
-			'email' 	=> 'paul+test@sharpishly.com',
-			'message'	=> 'Hello World',
-			'created_at'	=> $this->now(),
-			'status'	=> 'waiting'
-		);
-**/
 
 		$conditions = json_decode($post);
 
