@@ -2,12 +2,16 @@
 
 namespace App\Controllers;
 
-class FacebookController {
-    private $token = 'USER_TOKEN_FROM_DATABASE';
+use App\Models\FacebookModel;
 
+class FacebookController extends BaseController{
+
+    // In FacebookController.php
     public function get() {
-        $res = FacebookModel::request('me', $this->token, ['fields' => 'id,name']);
-        echo json_encode($res);
+        $token = 'YOUR_ACTUAL_TOKEN_HERE';
+        $facebook = new FacebookModel();
+        $res = $facebook->request("https://graph.facebook.com/v20.0/me?fields=id,name", $token);
+        $this->json($res); // This ensures you see the response in your browser/console
     }
 
     public function post() {
@@ -22,7 +26,7 @@ class FacebookController {
             'message' => 'Clean MVC implementation'
         ], true);
 
-        echo json_encode($res);
+        $this->json($res);
     }
 
     public function callback() {

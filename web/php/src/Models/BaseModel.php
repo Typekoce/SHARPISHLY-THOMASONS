@@ -17,6 +17,16 @@ class BaseModel {
         $this->db = new Db($config, $logger);
     }
 
+    // In BaseModel.php (The "Pipe")
+    public function request(string $url, string $token): array {
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . $token]);
+        
+        $response = curl_exec($ch);
+        return json_decode($response, true);
+    }
+
     /**
      * Unified HTTP Execution for Social APIs
      */

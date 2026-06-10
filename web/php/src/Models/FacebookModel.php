@@ -2,9 +2,14 @@
 
 namespace App\Models;
 
-namespace App\Models;
-
 class FacebookModel extends BaseModel {
+
+    // In FacebookModel.php
+    public function fetchMe() {
+        return $this->request("https://graph.facebook.com/v20.0/me", "YOUR_TOKEN");
+    }
+
+
 
     /**
      * Example: Fetching user info and saving a log to MariaDB
