@@ -4,55 +4,60 @@ namespace App\Controllers;
 
 class AgentController extends BaseController {
 
-	public $tbl = 'agents';
+        public $tbl = 'agents';
 
-	public function index(){
-		//TODO: Move functionality to AgentModel. Display all agent task
-		$conditions = array(
-			'tbl'	=> $this->tbl,
-			'order'	=> array('id'	=> 'DESC'),
-		);
+        public $auto = "python3 pymvc/app/form_automation.py ";
 
-		$rs = $this->db->find($conditions);
+        public function index(){
+                //TODO: Move functionality to AgentModel. Display all agent task
+                $conditions = array(
+                        'tbl'	=> $this->tbl,
+                        'order'	=> array('id'	=> 'DESC'),
+                );
 
-		$this->json($rs);
-	}
+                $rs = $this->db->find($conditions);
+
+                $this->json($rs);
+        }
+
+        public function fillForm($agentId, $formUrl, $developerId) {
+        if (!filter_var($formUrl, FILTER_VALIDATE_URL)) {
+                $this->json(['error' => 'Invalid form URL']);
+                return;
+        }
+
+        try {
+                // Fetch developer data using your existing Db service pattern
+                //TODO: db->find-one() does not exist use $conditions where instead
+                $data = $this->db->find_one('developers', $developerId);
+                
+                if (!$data) {
+                $this->json(['error' => 'Developer not found']);
+                return;
+                }
+
+                $payload = [
+                'target_url' => $formUrl,
+                'mode'       => 'draft',
+                'field_map'  => [
+                        '#name'       => $data['full_name'],
+                        '#email'      => $data['email'],
+                        '#experience' => $data['years_exp']
+                ]
+                ];
+
+                // Execute automation
+                $result = shell_exec($this->auto . escapeshellarg(json_encode($payload)));
+                
+                $this->json(['status' => 'success', 'output' => $result]);
+
+        } catch (\Exception $e) {
+                $this->json(['error' => $e->getMessage()]);
+        }
+        }
 
 
-public function test($post = ''){
-    $conditions = $this->request($post);
-    $conditions['status'] = 'waiting';
-    $conditions['created_at'] = $this->now();
 
-    // 4. Ensure $this->tbl is set (it is, but double check your DB save method)
-    $id = $this->db->save($this->tbl, $conditions);
 
-    $data['id'] = $id;
-    $data = array_merge($data, $conditions);
-
-    $this->json($data);
-}
-
-        public function old_test($post = ''){
-                $data =array('id'=>'');
-
-                $conditions = json_decode($post,true);
-
-                $conditions['status'] = 'waiting';
-
-                $conditions['created_at'] = $this->now();
-
-                $id = $this->db->save($this->tbl,$conditions);
-
-                $data['id'] = $id;
-
-                $data = $data + $conditions;
-
-                //TODO: Create jobs for Agents
-        //        $data = $this->job($data);
-
-                $this->json($data);
-
-	}
 
 }// end of class
