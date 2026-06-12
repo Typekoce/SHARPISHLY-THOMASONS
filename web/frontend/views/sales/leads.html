@@ -1,0 +1,28 @@
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card p-3 shadow-sm">
+                <h5>Add New Lead / Feedback</h5>
+                <form id="leadForm">
+                    <div class="mb-3">
+                        <label>Source</label>
+                        <select class="form-select" name="source">
+                            <option value="customer">Customer Referral</option>
+                            <option value="public">Public Inquiry</option>
+                            <option value="cold">Cold Outreach</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <textarea class="form-control" placeholder="Notes/Recommendation details..."></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">Save Lead</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div id="leads-feed" class="list-group">
+                </div>
+        </div>
+    </div>
+</div>
