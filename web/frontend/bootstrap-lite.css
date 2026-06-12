@@ -279,4 +279,37 @@ h1 {
     padding: 2rem;
     max-width: 900px;
     margin: 0 auto;
+}/** lead form styling **/
+#leadForm {
+    background-color: #ffffff;
+    padding: 1.5rem;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+#leadForm .form-label {
+    margin-bottom: 0.5rem;
+    color: #495057;
+    font-size: 0.9rem;
+}
+
+#leadForm .form-control, 
+#leadForm .form-select {
+    display: block;
+    width: 100%;
+    padding: 0.375rem 0.75rem;
+    font-size: 1rem;
+    line-height: 1.5;
+    color: #212529;
+    background-color: #fff;
+    border: 1px solid #ced4da;
+    border-radius: 0.25rem;
+    margin-bottom: 1rem;
+}
+
+#leadForm .btn {
+    width: 100%;
+    padding: 0.5rem;
+    font-weight: bold;
 }

@@ -19,6 +19,7 @@ const PageRegistry = {
     'docs': () => Controller.docs('docs'),
     'tiktok': () => TiktokController.bindPosts(),
     'agentemail': () => AgentController.bindAgentEmail(), // New entry
+    'sales': () => SalesController.bindSales(), // Add this
 };
 
 

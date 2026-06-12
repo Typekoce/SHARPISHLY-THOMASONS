@@ -22,6 +22,66 @@ const LlmController = {};
 const DocsController = {};
 
 /**
+ * Sales Controller
+ */
+const SalesController = {
+    async bindSales() {
+        // 1. Load the page shell into the app container
+        const target = document.getElementById('app');
+        target.innerHTML = await App.loadTemplate('/views/sales/index.html');
+
+        // 2. Now that the HTML is in the DOM, fetch and render the data
+        const salesContainer = document.getElementById('sales-list');
+        try {
+            const res = await fetch(App.url('/views/sales/leads')); 
+            const sales = await res.json();
+            
+            salesContainer.innerHTML = sales.map(s => `
+                <tr>
+                    <td>${s.company}</td>
+                    <td>${s.tier}</td>
+                    <td>${s.status}</td>
+                    <td><button class="btn btn-sm btn-outline-info">Edit</button></td>
+                </tr>
+            `).join('');
+        } catch (e) {
+            salesContainer.innerHTML = '<tr><td colspan="4">Error loading data.</td></tr>';
+        }
+    }
+};
+
+/**
+ * Leads Controller: Manages lead intake and feedback
+ */
+const LeadsController = {
+    async loadLeads() {
+        const feed = document.getElementById('leads-feed');
+        if (!feed) return;
+        try {
+            const res = await fetch(App.url('lead/index'));
+            const data = await res.json();
+            feed.innerHTML = data.map(l => `
+                <div class="list-group-item">
+                    <strong>${l.name || 'Anonymous'}</strong>: ${l.notes}
+                </div>
+            `).join('');
+        } catch (e) {
+            feed.innerHTML = '<div class="text-danger">Error loading leads.</div>';
+        }
+    },
+
+    async saveLead(formData) {
+        const payload = Object.fromEntries(formData);
+        await fetch(App.url('lead/log'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        this.loadLeads(); // Refresh after save
+    }
+};
+
+/**
  * TikTok Controller: UX Enhanced
  */
 const TiktokController = {
@@ -47,7 +107,7 @@ const TiktokController = {
  */
 const AgentController = {
     // Add to your existing AgentController object
-tiktokPost: function(content) {
+    tiktokPost: function(content) {
     if (!content.trim()) {
         App.flash('Please enter some content first.');
         return;

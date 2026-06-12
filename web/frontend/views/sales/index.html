@@ -1,19 +1,37 @@
 <div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Sales Contracts</h2>
-        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newSaleModal">+ New Sale</button>
+    <div class="row">
+        <div class="col-md-4">
+            <form id="leadForm">
+                <div id="lead-fields">
+                    <div class="mb-3">
+                        <table class="table">
+                            <thead><tr><th>Company</th><th>Tier</th><th>Status</th></tr></thead>
+                            <tbody id="sales-list"></tbody>
+                        </table>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Company</label>
+                        <input name="company" class="form-control" placeholder="Acme Corp" type="text">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Source</label>
+                        <select name="source" class="form-select">
+                            <option value="public">Public</option>
+                            <option value="referral">Referral</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Notes</label>
+                        <textarea name="notes" class="form-control" placeholder="Feedback..."></textarea>
+                    </div>
+                </div>
+                <div id="submit-button" class="mt-3">
+                    <button id="save-lead-btn" type="button" class="btn btn-primary w-100">Record Lead</button>
+                </div>
+            </form>
+            
+            <div id="leads-feed" class="mt-4">
+                </div>
+        </div>
     </div>
-
-    <table class="table table-hover shadow-sm bg-white rounded">
-        <thead class="table-light">
-            <tr>
-                <th>Company</th>
-                <th>Service Tier</th>
-                <th>Status</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody id="sales-list">
-            </tbody>
-    </table>
 </div>
