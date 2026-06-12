@@ -2,7 +2,7 @@
 
 namespace App\Controllers;
 
-class FormAutomationController {
+class FormAutomationController extends BaseController{
     // Stage 1: Prep the form
     public function submitDraft($data) {
         $jobId = $this->db->createJob($data, 'pending_review');
