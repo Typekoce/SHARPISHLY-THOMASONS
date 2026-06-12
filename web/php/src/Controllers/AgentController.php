@@ -4,60 +4,55 @@ namespace App\Controllers;
 
 class AgentController extends BaseController {
 
-        public $tbl = 'agents';
+    public $tbl = 'agents';
+    public $auto = "python3 pymvc/app/form_automation.py ";
 
-        public $auto = "python3 pymvc/app/form_automation.py ";
+    public function index() {
+        // Reuse find() pattern
+        $conditions = [
+            'tbl'   => $this->tbl,
+            'order' => ['id' => 'DESC'],
+        ];
+        $this->json($this->db->find($conditions));
+    }
 
-        public function index(){
-                //TODO: Move functionality to AgentModel. Display all agent task
-                $conditions = array(
-                        'tbl'	=> $this->tbl,
-                        'order'	=> array('id'	=> 'DESC'),
-                );
-
-                $rs = $this->db->find($conditions);
-
-                $this->json($rs);
+    public function fillForm($agentId, $formUrl, $developerId) {
+        // 1. Validate Input
+        if (!filter_var($formUrl, FILTER_VALIDATE_URL)) {
+            return $this->json(['error' => 'Invalid form URL']);
         }
 
-        public function fillForm($agentId, $formUrl, $developerId) {
-        if (!filter_var($formUrl, FILTER_VALIDATE_URL)) {
-                $this->json(['error' => 'Invalid form URL']);
-                return;
+        // 2. Fetch developer using existing where pattern
+        $conditions = [
+            'tbl'   => 'developers',
+            'where' => ['id' => $developerId]
+        ];
+        
+        $rs = $this->db->find($conditions);
+        $data = !empty($rs) ? $rs[0] : null;
+
+        if (!$data) {
+            return $this->json(['error' => 'Developer not found']);
         }
 
         try {
-                // Fetch developer data using your existing Db service pattern
-                //TODO: db->find-one() does not exist use $conditions where instead
-                $data = $this->db->find_one('developers', $developerId);
-                
-                if (!$data) {
-                $this->json(['error' => 'Developer not found']);
-                return;
-                }
-
-                $payload = [
+            // 3. Prepare Payload
+            $payload = [
                 'target_url' => $formUrl,
                 'mode'       => 'draft',
                 'field_map'  => [
-                        '#name'       => $data['full_name'],
-                        '#email'      => $data['email'],
-                        '#experience' => $data['years_exp']
+                    '#name'       => $data['full_name'],
+                    '#email'      => $data['email'],
+                    '#experience' => $data['years_exp']
                 ]
-                ];
+            ];
 
-                // Execute automation
-                $result = shell_exec($this->auto . escapeshellarg(json_encode($payload)));
-                
-                $this->json(['status' => 'success', 'output' => $result]);
-
+            // 4. Execute
+            $result = shell_exec($this->auto . escapeshellarg(json_encode($payload)));
+            
+            $this->json(['status' => 'success', 'output' => $result]);
         } catch (\Exception $e) {
-                $this->json(['error' => $e->getMessage()]);
+            $this->json(['error' => $e->getMessage()]);
         }
-        }
-
-
-
-
-
-}// end of class
+    }
+}
