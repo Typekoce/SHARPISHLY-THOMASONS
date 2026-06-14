@@ -5,11 +5,9 @@ namespace App\Models;
 class IngestionModel extends BaseModel
 {
     /**
-     * Fetches URL content and parses specific elements
-     * @param string $url
-     * @return array
+     * Fetches raw HTML content from a URL
      */
-    public function fetchAndParse(string $url): array
+    public function fetchRaw(string $url): string|false
     {
         $opts = [
             "http" => [
@@ -17,27 +15,30 @@ class IngestionModel extends BaseModel
                 "header" => "User-Agent: Mozilla/5.0 (compatible; IngestionBot/1.0)\r\n"
             ]
         ];
+        return file_get_contents($url, false, stream_context_create($opts));
+    }
 
-        $context = stream_context_create($opts);
-        $html = file_get_contents($url, false, $context);
-
-        if ($html === false) {
-            return ['error' => 'Failed to retrieve content'];
-        }
-
-        $dom = new \DOMDocument();
-        libxml_use_internal_errors(true);
-        $dom->loadHTML($html);
-        libxml_clear_errors();
-
+    /**
+     * Injects data into DOM nodes by name or id
+     * @param \DOMDocument $dom
+     * @param array $data
+     * @return \DOMDocument
+     */
+    public function populateForm(\DOMDocument $dom, array $data): \DOMDocument
+    {
         $xpath = new \DOMXPath($dom);
-
-        $titleNode = $dom->getElementsByTagName('title')->item(0);
-        $descriptionNode = $xpath->query("//meta[@name='description']/@content")->item(0);
-
-        return [
-            'title' => $titleNode ? $titleNode->nodeValue : '',
-            'description' => $descriptionNode ? $descriptionNode->nodeValue : '',
-        ];
+        foreach ($data as $name => $value) {
+            $query = sprintf("//input[@name='%s' or @id='%s']", addslashes($name), addslashes($name));
+            $nodes = $xpath->query($query);
+            
+            if ($nodes === false || $nodes->length === 0) {
+                continue;
+            }
+            
+            foreach ($nodes as $node) {
+                $node->setAttribute('value', $value);
+            }
+        }
+        return $dom;
     }
 }
