@@ -774,16 +774,34 @@ handleMenuClick(field, form) {
             Model.queue.push({ name: f.name, status: 'processing', progress: 25 });
         });
         this.render();
-    
 
-	// Call the view update
-    	view.neuralPipeline();
+        // Call the view update
+        view.neuralPipeline();
 
-       try {
+        try {
             const res = await fetch(App.url('job/create'), { method: 'POST', body: formData });
-            Model.queue.forEach(item => { item.status = 'queued'; item.progress = 50; });
-            this.render();
-        } catch (e) { console.error("Upload failed"); }
+            const result = await res.json(); // Capture the server response
+
+            if (result.status === 'success') {
+                Model.queue.forEach(item => { item.status = 'queued'; item.progress = 50; });
+                this.render();
+
+                // Hook into the JobProgressController for background monitoring
+                JobProgressController.monitor(
+                    result.job_id, 
+                    (data) => {
+                        App.flash("Pipeline Complete: " + data.message);
+                        // Optional: Trigger a UI refresh to show the file as "processed"
+                    },
+                    (err) => {
+                        App.flash("Pipeline Error: " + err.message);
+                    }
+                );
+            }
+        } catch (e) { 
+            console.error("Upload failed", e);
+            App.flash("Upload failed: Check network connection.");
+        }
     },
 
     docsBindMessage(record, ul) {
@@ -811,7 +829,38 @@ handleMenuClick(field, form) {
         } catch (e) { }
     }
 };
-/** model.js */
+const JobProgressController = {
+    monitor: function(jobId, onComplete, onError) {
+        const interval = setInterval(async () => {
+            try {
+                const response = await fetch(`/php/job/status/${jobId}`);
+                const data = await response.json();
+                
+                // 1. Update the UI directly
+                const pipelineDiv = document.getElementById('neural-pipeline');
+                if (pipelineDiv) {
+                    pipelineDiv.innerHTML = `
+                        <div class="alert alert-info">
+                            Job #${jobId} status: <strong>${data.state}</strong>
+                        </div>
+                    `;
+                }
+
+                // 2. Lifecycle management
+                if (data.state === 'completed') {
+                    clearInterval(interval);
+                    onComplete(data);
+                } else if (data.state === 'failed') {
+                    clearInterval(interval);
+                    onError(data);
+                }
+            } catch (error) {
+                console.error("Polling error:", error);
+                clearInterval(interval);
+            }
+        }, 2000);
+    }
+};/** model.js */
 
 /**
  * Model: Global App State

@@ -280,4 +280,37 @@ class JobController extends BaseController
         
         return $this->json(['status' => 'success', 'payload' => $job['payload']]);
     }
+
+    /**
+     * GET /php/job/status?id={id}
+     * Returns JSON status for a specific job.
+     */
+    public function status($jobId = '')
+    {
+        //$jobId = (int)($_GET['id'] ?? 0);
+        
+        if ($jobId <= 0) {
+            return $this->json(['status' => 'error', 'message' => 'Invalid job ID'], 400);
+        }
+
+        // Use your existing DB wrapper (no raw SQL)
+        $conditions = [
+            'tbl'   => 'jobs',
+            'where' => ['id' => $jobId],
+            'limit' => 1
+        ];
+
+        $jobResult = $this->db->find($conditions);
+        $job = $jobResult[0] ?? null;
+
+        if (!$job) {
+            return $this->json(['status' => 'error', 'message' => 'Job not found'], 404);
+        }
+
+        return $this->json([
+            'status'  => 'success',
+            'job_id'  => $job['id'],
+            'state'   => $job['status'] ?? 'pending'
+        ]);
+    }
 }

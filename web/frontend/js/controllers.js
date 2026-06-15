@@ -613,16 +613,34 @@ handleMenuClick(field, form) {
             Model.queue.push({ name: f.name, status: 'processing', progress: 25 });
         });
         this.render();
-    
 
-	// Call the view update
-    	view.neuralPipeline();
+        // Call the view update
+        view.neuralPipeline();
 
-       try {
+        try {
             const res = await fetch(App.url('job/create'), { method: 'POST', body: formData });
-            Model.queue.forEach(item => { item.status = 'queued'; item.progress = 50; });
-            this.render();
-        } catch (e) { console.error("Upload failed"); }
+            const result = await res.json(); // Capture the server response
+
+            if (result.status === 'success') {
+                Model.queue.forEach(item => { item.status = 'queued'; item.progress = 50; });
+                this.render();
+
+                // Hook into the JobProgressController for background monitoring
+                JobProgressController.monitor(
+                    result.job_id, 
+                    (data) => {
+                        App.flash("Pipeline Complete: " + data.message);
+                        // Optional: Trigger a UI refresh to show the file as "processed"
+                    },
+                    (err) => {
+                        App.flash("Pipeline Error: " + err.message);
+                    }
+                );
+            }
+        } catch (e) { 
+            console.error("Upload failed", e);
+            App.flash("Upload failed: Check network connection.");
+        }
     },
 
     docsBindMessage(record, ul) {
