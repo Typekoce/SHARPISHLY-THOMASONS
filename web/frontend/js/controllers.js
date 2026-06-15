@@ -540,6 +540,9 @@ handleMenuClick(field, form) {
             }
         } catch (e) { console.error("Layout Engine init failed:", e); }
 
+        // Trigger cookie consent immediately after init
+        this.showCookieConsent();
+
         if (sub === 'crm') App.crm();
         else if (sub === 'cyberdeck') App.cyberdeck();
         else this.navigate('home');
@@ -548,6 +551,27 @@ handleMenuClick(field, form) {
             const page = e.target.closest('[data-page]')?.dataset.page;
             if (page) { e.preventDefault(); this.navigate(page); }
         });
+    },
+
+    showCookieConsent() {
+        app.modal.open(`
+            <h3>Cookie Policy</h3>
+            <p>We use cookies to enhance your neural-pipeline experience. Do you accept our terms?</p>
+            <div style="display:flex; gap:10px; justify-content:end; margin-top:20px;">
+                <button id="btn-reject" class="btn btn-outline-secondary">Reject</button>
+                <button id="btn-accept" class="btn btn-primary">Accept</button>
+            </div>
+        `, { closeOnBackdrop: false, closeOnEscape: false });
+
+        document.getElementById('btn-accept').onclick = () => {
+            console.log("Cookies accepted");
+            app.modal.close();
+        };
+
+        document.getElementById('btn-reject').onclick = () => {
+            console.log("Cookies rejected");
+            app.modal.close();
+        };
     },
 
     async render() {

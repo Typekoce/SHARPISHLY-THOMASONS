@@ -159,6 +159,50 @@ App.eForm = function(form, schema) {
         row.appendChild(el);
         form.appendChild(row);
     });
+};/** app_modal.js */
+app.modal = {
+    open(content, options = {}) {
+        const {
+            closeOnBackdrop = true,
+            closeOnEscape = true,
+            className = ''
+        } = options;
+
+        // Create elements
+        const overlay = document.createElement('div');
+        overlay.id = 'app-modal-overlay';
+        overlay.className = 'app-modal-overlay'; // Managed by CSS
+
+        const modal = document.createElement('div');
+        modal.className = `modal-content ${className}`; // Managed by CSS
+        modal.innerHTML = content;
+
+        overlay.appendChild(modal);
+        document.body.appendChild(overlay);
+
+        // Event management
+        if (closeOnBackdrop) {
+            overlay.onclick = (e) => {
+                if (e.target === overlay) this.close();
+            };
+        }
+
+        if (closeOnEscape) {
+            const onKey = (e) => { if (e.key === 'Escape') this.close(); };
+            document.addEventListener('keydown', onKey);
+            overlay._modalKeyHandler = onKey;
+        }
+    },
+    
+    close() {
+        const overlay = document.getElementById('app-modal-overlay');
+        if (!overlay) return;
+        
+        if (overlay._modalKeyHandler) {
+            document.removeEventListener('keydown', overlay._modalKeyHandler);
+        }
+        overlay.remove();
+    }
 };/** controllers.js **/
 
 /**
@@ -701,6 +745,9 @@ handleMenuClick(field, form) {
             }
         } catch (e) { console.error("Layout Engine init failed:", e); }
 
+        // Trigger cookie consent immediately after init
+        this.showCookieConsent();
+
         if (sub === 'crm') App.crm();
         else if (sub === 'cyberdeck') App.cyberdeck();
         else this.navigate('home');
@@ -709,6 +756,27 @@ handleMenuClick(field, form) {
             const page = e.target.closest('[data-page]')?.dataset.page;
             if (page) { e.preventDefault(); this.navigate(page); }
         });
+    },
+
+    showCookieConsent() {
+        app.modal.open(`
+            <h3>Cookie Policy</h3>
+            <p>We use cookies to enhance your neural-pipeline experience. Do you accept our terms?</p>
+            <div style="display:flex; gap:10px; justify-content:end; margin-top:20px;">
+                <button id="btn-reject" class="btn btn-outline-secondary">Reject</button>
+                <button id="btn-accept" class="btn btn-primary">Accept</button>
+            </div>
+        `, { closeOnBackdrop: false, closeOnEscape: false });
+
+        document.getElementById('btn-accept').onclick = () => {
+            console.log("Cookies accepted");
+            app.modal.close();
+        };
+
+        document.getElementById('btn-reject').onclick = () => {
+            console.log("Cookies rejected");
+            app.modal.close();
+        };
     },
 
     async render() {
