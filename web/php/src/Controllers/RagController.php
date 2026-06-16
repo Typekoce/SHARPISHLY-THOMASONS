@@ -20,32 +20,45 @@ class RagController extends BaseController {
 
     /**
      * Handles the chat request from the frontend.
-     * 
-     * @param string $chat The user query
+     * * @param string $chat The user query
      */
     public function chat($chat = '') {
-        // If chat parameter is empty, check for query string via GET
-        $query = !empty($chat) ? $chat : ($_GET['query'] ?? '');
+        $query = !empty($chat) ? $chat : ($this->request('query') ?? '');
 
         if (empty($query)) {
             return $this->json(['status' => 'error', 'message' => 'No query provided'], 400);
         }
 
-	//$this->query($query);
-
-        // Prepare request to the Python microservice
-        $url = self::RAG_SERVICE_URL . '?query=' . urlencode($query);
+        $payload = json_encode(['query' => $query]);
         
-        $ch = curl_init($url);
+        // FIX: Assign the result of the respond method to $response
+        $response = $this->respond($payload);
+        
+        // Verify we got valid data before calling query() or json_decode()
+        if (!$response) {
+             return $this->json(['status' => 'error', 'message' => 'Service failed'], 500);
+        }
+
+        $this->query($query, $response);
+
+        return $this->json(json_decode($response, true));
+    }
+
+    public function respond($payload){
+        // 3. Send as POST request (aligns with what your Python service expects)
+        $ch = curl_init(self::RAG_SERVICE_URL);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 15); // Consistent with service timeout
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
         
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $error = curl_error($ch);
         curl_close($ch);
 
-        // Handle service communication errors
+        // 4. Handle service communication errors
         if ($httpCode !== 200) {
             return $this->json([
                 'status' => 'error', 
@@ -54,10 +67,7 @@ class RagController extends BaseController {
             ], 500);
         }
 
-	$this->query($query,$response);
-
-        // Return the JSON response from the Python service
-        return $this->json(json_decode($response, true));
+        return $response;
     }
 
     /**
