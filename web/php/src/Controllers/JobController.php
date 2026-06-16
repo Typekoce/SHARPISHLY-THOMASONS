@@ -93,13 +93,19 @@ class JobController extends BaseController
             'data'      => $payload
         ];
 
-        // Switch to parent array structures cleanly
-        $paths = $this->baseUpload();
-        $directory = $paths['nats_ingest_dir'] ?: $this->location->storage('uploads/nats/ingest/');
+        // Force the path to the ingest directory used by the worker
+        // This ensures the PHP producer and Python consumer share the same "door"
+        $directory = $this->location->storage('uploads/nats/ingest/');
+        
+        // Ensure the directory exists before writing
+        if (!is_dir($directory)) {
+            mkdir($directory, 0755, true);
+        }
         
         $finalPath = rtrim($directory, '/') . "/job_{$jobId}.json";
         $tempPath  = "{$finalPath}.tmp";
         
+        // Atomic write: write to .tmp then rename to avoid worker picking up partial files
         file_put_contents($tempPath, json_encode($handshake, JSON_PRETTY_PRINT), LOCK_EX);
         
         return rename($tempPath, $finalPath);

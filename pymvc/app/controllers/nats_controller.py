@@ -9,20 +9,30 @@ class NatsController:
         """Guarantees directory layouts exist securely."""
         for folder in ['ingest', 'process', 'fail']:
             os.makedirs(os.path.join(base_dir, folder), exist_ok=True)
-
+            
     @staticmethod
     def consume():
         """
         Scans the NATS ingest directory for pending job handshakes.
         Moves valid items to 'process' atomically to prevent race conditions.
         """
+        # Ensure base path aligns with storage/uploads/nats
         base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../storage/uploads/nats'))
         NatsController._ensure_dirs(base_dir)
         
         ingest_dir = os.path.join(base_dir, 'ingest')
         process_dir = os.path.join(base_dir, 'process')
 
-        for filename in os.listdir(ingest_dir):
+        # DEBUG: Verify directory status
+        if not os.path.exists(ingest_dir):
+            print(f"⚠️ Ingest directory missing: {ingest_dir}")
+            return None
+
+        files = os.listdir(ingest_dir)
+        # Optional: Uncomment the next line to see exactly what the worker sees
+        # print(f"DEBUG: Worker scanning {ingest_dir}. Found: {files}")
+
+        for filename in files:
             if filename.endswith('.json') and not filename.endswith('.tmp'):
                 ingest_path = os.path.join(ingest_dir, filename)
                 process_path = os.path.join(process_dir, filename)
@@ -37,12 +47,13 @@ class NatsController:
                     job_data = job_wrapper.get('data', {})
                     job_data['job_id'] = job_wrapper.get('job_id')
                     
+                    print(f"📦 Successfully claimed handshake: {filename}")
                     return job_data, process_path
                 except Exception as e:
                     print(f"⚠️ Failed to safely consume handshake message packet: {e}")
                     continue
         return None
-
+        
     @staticmethod
     def update_php(job_id: int, status: str, chunks: list = None):
         """
