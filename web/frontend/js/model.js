@@ -13,7 +13,7 @@ const Model = {
  * Registry: Maps page IDs to their specific initialization functions
  */
 const PageRegistry = {
-    'rag': () => Controller.bindRag(),
+    'rag': () => RagController.bindRag(),
     'emails': () => Controller.bindEmails(),
     'agent': () => AgentController.bindAgents(),
     'docs': () => Controller.docs('docs'),

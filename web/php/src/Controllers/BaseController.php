@@ -236,29 +236,51 @@ abstract class BaseController
   }
 
 
-/**
- * Unified Request Handler
- */
-public function request($post) {
-    // 1. Handle raw input if not provided
-    if (empty($post)) {
-        $post = file_get_contents('php://input');
+    /**
+     * Unified Request Handler
+     * Place this in your BaseController
+     */
+    public function request($key = null) {
+        // 1. Check for JSON input
+        $raw = file_get_contents('php://input');
+        $decoded = json_decode($raw, true);
+
+        // 2. If valid JSON, use it; otherwise, fall back to $_REQUEST
+        $data = (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) 
+                ? $decoded 
+                : $_REQUEST;
+
+        // 3. Return specific key or entire dataset
+        if ($key) {
+            return $data[$key] ?? null;
+        }
+        return $data;
     }
 
-    if (empty($post)) {
-        $this->json(['error' => 'No data received']);
-        return null;
+    /**
+     * Unified Service Gateway
+     * Supports GET/POST and dynamic URL routing.
+     */
+    public function respond($payload = null, string $url = null, string $method = 'POST') 
+    {
+        $targetUrl = $url ?? self::RAG_SERVICE_URL; // Fallback to class const if no URL provided
+        $ch = curl_init($targetUrl);
+        
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+
+        if ($method === 'POST') {
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+        }
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
+        curl_close($ch);
+
+        return ($httpCode === 200) ? $response : false;
     }
-
-    // 2. Decode and validate
-    $conditions = json_decode($post, true);
-
-    if (json_last_error() !== JSON_ERROR_NONE) {
-        $this->json(['error' => 'Invalid JSON: ' . json_last_error_msg()]);
-        return null;
-    }
-
-    return $conditions;
-}
 
 }// end of class

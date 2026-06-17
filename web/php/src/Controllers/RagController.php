@@ -23,7 +23,9 @@ class RagController extends BaseController {
      * * @param string $chat The user query
      */
     public function chat($chat = '') {
-        $query = !empty($chat) ? $chat : ($this->request('query') ?? '');
+        // Use the centralized request helper.
+        // It should be responsible for looking in $chat, then $_POST, then php://input.
+        $query = $chat ?: $this->request('query');
 
         if (empty($query)) {
             return $this->json(['status' => 'error', 'message' => 'No query provided'], 400);
@@ -31,44 +33,25 @@ class RagController extends BaseController {
 
         $payload = json_encode(['query' => $query]);
         
-        // FIX: Assign the result of the respond method to $response
+        // Respond handles the CURL communication
         $response = $this->respond($payload);
         
-        // Verify we got valid data before calling query() or json_decode()
         if (!$response) {
-             return $this->json(['status' => 'error', 'message' => 'Service failed'], 500);
+             return $this->json(['status' => 'error', 'message' => 'Service unreachable'], 500);
+        }
+
+        // Decode here to check validity before logging
+        $data = json_decode($response, true);
+        if ($data === null) {
+            return $this->json(['status' => 'error', 'message' => 'Invalid JSON from RAG service'], 502);
         }
 
         $this->query($query, $response);
 
-        return $this->json(json_decode($response, true));
+        return $this->json($data);
     }
 
-    public function respond($payload){
-        // 3. Send as POST request (aligns with what your Python service expects)
-        $ch = curl_init(self::RAG_SERVICE_URL);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-        
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $error = curl_error($ch);
-        curl_close($ch);
 
-        // 4. Handle service communication errors
-        if ($httpCode !== 200) {
-            return $this->json([
-                'status' => 'error', 
-                'message' => 'RAG service unreachable',
-                'debug' => $error
-            ], 500);
-        }
-
-        return $response;
-    }
 
     /**
     * Save queries

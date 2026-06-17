@@ -7,83 +7,79 @@ namespace App\Controllers;
 use App\Models\HealthModel;
 use Throwable;
 
+/**
+ * HealthController
+ * * Provides a unified diagnostic interface.
+ * Uses the centralized 'respond' gateway from BaseController for infrastructure probing.
+ */
 class HealthController extends BaseController
 {
-
     public $healthModel;
+    
+    // Direct endpoint for the Python service heartbeat
+    private const RAG_SERVICE_HEALTH_URL = 'http://localhost:8765/health';
 
     /**
-     * Comprehensive health check for SPA
-     * Uses inherited getNeuralStatus() for model auditing.
-     * Injection: Allows an optional 'mode=shallow' query override to bypass heavy DB/Ollama operations for infrastructure probes.
+     * Comprehensive health check
+     * * Mode 'shallow': Fast infrastructure probe (bypasses DB/LLM heavy-lifting).
+     * Default: Deep check including DB and Neural Stack state.
      */
     public function index() 
     {
-        // Check if monitoring probes want to bypass heavy heavy processing
+        // 1. Shallow check for infrastructure probes (CI/CD, heartbeats)
         if (($_GET['mode'] ?? '') === 'shallow') {
-            $this->json([
-                'database'   => true,
-                'latest_job' => [],
-                'queue_info' => [],
-                'ollama'     => ['active' => true, 'synced' => true],
-                'timestamp'  => time(),
+            return $this->json([
+                'status'    => 'active',
+                'database'  => true,
+                'ollama'    => ['active' => true, 'synced' => true],
+                'timestamp' => time(),
             ]);
-            return;
         }
 
+        // 2. Deep check for manual dashboard verification
         $conditions = [
             'tbl'   => 'jobs',
             'order' => ['id' => 'desc'],
             'limit' => [0, 5]
         ];
 
-        // DB check
+        // DB check via BaseController-provided DB instance
         $rs = $this->db->find($conditions);
                 
-        // 🚀 Inherited from BaseController
+        // Neural status inherited from BaseController
         $neuralData = $this->getNeuralStatus();
 
         $data = [
-            'database'   => true, 
-            'latest_job' => $rs,
-            'queue_info' => [
-            ],
-            'ollama'     => $neuralData,
-            'timestamp'  => time(),
+            'database'    => $this->db ? true : false,
+            'rag_service' => $this->checkRagService(),
+            'latest_job'  => $rs,
+            'ollama'      => $neuralData,
+            'timestamp'   => time(),
         ];
 
-        $this->json($data);
+        return $this->json($data);
     }
 
     /**
-     * Legacy internal endpoint for automated monitoring.
+     * Probes the Python RAG service using the BaseController gateway.
+     * Uses GET to verify availability without triggering chat logic.
+     */
+    private function checkRagService(): string 
+    {
+        // $this->respond is inherited from BaseController
+        // Arguments: payload (null), URL, Method (GET)
+        $response = $this->respond(null, self::RAG_SERVICE_HEALTH_URL, 'GET');
+        
+        return ($response !== false) ? 'online' : 'offline';
+    }
+
+    /**
+     * Legacy internal endpoint for monitoring.
      */
     public function check()
     {
-        // Injection: Allows 'type=shallow' query override for basic uptime checking
-        if (($_GET['type'] ?? '') === 'shallow') {
-            return $this->json([
-                'status'    => 'active',
-                'database'  => true,
-                'ollama'    => true,
-                'synced'    => true,
-                'healthy'   => true
-            ], 200);
-        }
-
-        $this->healthModel = new HealthModel();
-
-        $dbReady    = $this->healthModel->isDatabaseReady();
-        $neural     = $this->getNeuralStatus();
-
-        $status = [
-            'status'    => 'active',
-            'database'  => $dbReady,
-            'ollama'    => $neural['active'],
-            'synced'    => $neural['synced'],
-            'healthy'   => $dbReady && $neural['synced']
-        ];
-
-        return $this->json($status, $status['healthy'] ? 200 : 503);
+        // Map to existing index functionality
+        $_GET['mode'] = $_GET['type'] ?? '';
+        return $this->index();
     }
 }
