@@ -23,6 +23,7 @@ abstract class BaseController
     public $logger;
     protected $model;
     public $session;
+    protected const RAG_SERVICE_URL = 'http://localhost:8765/rag/ask';
 
 
     /**
