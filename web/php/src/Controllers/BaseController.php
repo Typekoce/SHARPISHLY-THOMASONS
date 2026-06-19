@@ -242,14 +242,42 @@ abstract class BaseController
      * Place this in your BaseController
      */
     public function request($key = null) {
+
+        // Log requests
+        $postData = json_encode($_POST);
+        $getData = json_encode($_GET);
+        
+    
         // 1. Check for JSON input
         $raw = file_get_contents('php://input');
         $decoded = json_decode($raw, true);
+
+        $request = "POST REQUEST METHOD: " . 
+        $postData . 
+        " | GET REQUEST METHOD: " . 
+        $getData . 
+        "php://input" . $raw .
+        "DECODED:" .$decoded;
+
+        // ... after your existing decoding logic ...
+        $this->logger->log("DEBUG: Controller reached decoding success", 'INFO');
+
+        // 1. Verify access to the array key
+        if (!isset($decoded['query'])) {
+            $this->logger->log("DEBUG: 'query' key missing in array", 'ERROR');
+            return; // Or handle appropriately
+        }
+        $this->logger->log("DEBUG: Query key accessed successfully", 'INFO');
 
         // 2. If valid JSON, use it; otherwise, fall back to $_REQUEST
         $data = (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) 
                 ? $decoded 
                 : $_REQUEST;
+
+        $request .= " DATA: " . json_encode($data);
+
+        $this->logger->log($request, 'INFO');
+
 
         // 3. Return specific key or entire dataset
         if ($key) {

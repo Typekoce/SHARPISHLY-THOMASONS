@@ -3,7 +3,7 @@
 line='----------------------'
 
 echo $line"Clear terminal"
-clear
+#clear
 
 echo $line"Kill previous rag service"
 pkill -f app/rag_service.py

@@ -22,31 +22,34 @@ class RagController extends BaseController {
      * Handles the chat request from the frontend.
      * * @param string $chat The user query
      */
-    public function chat($chat = '') {
-        // Use the centralized request helper.
-        // It should be responsible for looking in $chat, then $_POST, then php://input.
+public function chat($chat = '') {
         $query = $chat ?: $this->request('query');
-
+        
         if (empty($query)) {
             return $this->json(['status' => 'error', 'message' => 'No query provided'], 400);
         }
 
         $payload = json_encode(['query' => $query]);
-        
-        // Respond handles the CURL communication
         $response = $this->respond($payload);
         
         if (!$response) {
              return $this->json(['status' => 'error', 'message' => 'Service unreachable'], 500);
         }
 
-        // Decode here to check validity before logging
         $data = json_decode($response, true);
         if ($data === null) {
             return $this->json(['status' => 'error', 'message' => 'Invalid JSON from RAG service'], 502);
         }
 
-        $this->query($query, $response);
+        // Defensive DB handling
+        try {
+            $this->logger->log("DEBUG: Calling query()", 'INFO');
+            $this->query($query, $response);
+        } catch (\Throwable $e) {
+            $this->logger->error("Database write failed: " . $e->getMessage());
+            // Return success anyway, as the RAG response was already fetched, 
+            // or return an error if DB storage is mandatory.
+        }
 
         return $this->json($data);
     }
