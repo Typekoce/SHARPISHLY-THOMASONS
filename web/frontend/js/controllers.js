@@ -113,6 +113,7 @@ const LeadsController = {
 
 
 
+
 /**
  * Controller: Orchestrates UI logic, data fetching, and event binding
  */
@@ -181,69 +182,7 @@ const Controller = {
 
 
 
-// Add to Controller object
-async displayAgentRecords(form) {
-    form.innerHTML = '<h3>Active Agents</h3>';
-    
-    // Fetch existing agents
-    try {
-        const res = await fetch(App.url('agent/index')); // Assumes your AgentController exists
-        const agents = await res.json();
-        console.log(agents);
-        const table = App.item('table');
-        table.className = 'agent-table';
-        table.innerHTML = `<thead><tr><th>Name</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead>`;
-        const tbody = App.item('tbody');
 
-        agents.forEach(agent => {
-    const tr = App.item('tr');
-    
-    // Define your actions
-    const actions = [
-        {id: 'start', name: 'Start'},
-        {id: 'stop', name: 'Stop'},
-        {id: 'edit', name: 'Edit'},
-        {id: 'email', name: 'Email'},
-        {id: 'tiktok', name: 'Tiktok'},
-	    {id: 'delete',name: 'Delete'},
-    ];
-
-    // Build standard cells using template literals for safe, static content
-    tr.innerHTML = `
-        <td>${agent.agent_name}</td>
-        <td>${agent.role}</td>
-        <td><span class="badge ${agent.status}">${agent.status}</span></td>
-    `;
-
-    // Create the select cell
-    const actionTd = document.createElement('td');
-    const select = App.selectList(actions, (actionId) => {
-    // Check if the selected action is 'tiktok'
-    if (actionId === 'tiktok') {
-        // Navigate to the tiktok page, which triggers PageRegistry['tiktok']
-        Controller.navigate('tiktok');
-    } else if (actionId === 'email') {
-        // Execute the form creation method
-        //App.agentEmailForm(agent);
-        Controller.navigate('agentemail');
-    } else {
-        // Handle other actions (start, stop, etc.)
-        console.log(`Action ${actionId} selected for agent ${agent.agent_name}`);
-    }
-
-    });
-    
-    actionTd.appendChild(select);
-    tr.appendChild(actionTd);
-    
-    tbody.appendChild(tr);
-});
-        table.appendChild(tbody);
-        form.appendChild(table);
-    } catch (e) {
-        form.innerHTML += '<p>No agents found or error loading.</p>';
-    }
-},
 
 async menuFields(fields, menu) {
     for (let field in fields) {
@@ -270,7 +209,7 @@ handleMenuClick(field, form) {
             this.createAgent(form);
             break;
         case 'read':
-            this.displayAgentRecords(form);
+            AgentController.displayAgentRecords(form);
             break;
         case 'delete':
             let msg = App.item('div');
