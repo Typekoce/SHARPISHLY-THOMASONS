@@ -13,6 +13,7 @@ cat web/frontend/js/app.js \
     web/frontend/js/app_spinner.js \
     web/frontend/js/app_modal.js \
     web/frontend/js/tiktok_controller.js \
+    web/frontend/js/agent_controller.js \
     web/frontend/js/controllers.js \
     web/frontend/js/job_progress_controller.js \
     web/frontend/js/model.js \
