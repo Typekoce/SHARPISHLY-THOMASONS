@@ -1,0 +1,14 @@
+#preview {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    border: 2px dashed #dee2e6;
+    border-radius: 0.5rem;
+    background-color: #f8f9fa;
+    min-height: 200px;
+    max-height: 600px;
+    overflow-y: auto; /* Allows scrolling for long pages */
+}
+
+#preview-box {
+    margin-top: 1rem;
+}

@@ -304,7 +304,7 @@ AgentController.autoForm = function() {
 
 // Ensure 'async' is present to use 'await'
 AgentController.formPreview = async function(url) {
-    const preview = app.getItem('preview');
+    const preview = document.getElementById('preview');
     if (!preview) return; // Guard clause
 
     app.spinner();

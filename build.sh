@@ -35,6 +35,7 @@ cat web/frontend/css/app.css \
     web/frontend/css/welcome.css \
     web/frontend/css/modal.css \
     web/frontend/css/spinner.css \
+    web/frontend/css/preview.css \
     web/frontend/css/autoform.css \
     web/frontend/css/leads.css >> $OUTPUT
 
