@@ -111,6 +111,7 @@ async bindAgentsDefault(){
             {id: 'stop', name: 'Stop'},
             {id: 'edit', name: 'Edit'},
             {id: 'email', name: 'Email'},
+            {id: 'autoform', name: 'Automatic Form Completion'},
             {id: 'tiktok', name: 'Tiktok'},
             {id: 'delete',name: 'Delete'},
         ];
@@ -125,14 +126,19 @@ async bindAgentsDefault(){
         // Create the select cell
         const actionTd = document.createElement('td');
         const select = App.selectList(actions, (actionId) => {
-        // Check if the selected action is 'tiktok'
-        if (actionId === 'tiktok') {
-            // Navigate to the tiktok page, which triggers PageRegistry['tiktok']
+
+        if (actionId === 'autoform') {
+
+            Controller.navigate('autoform');
+
+        } else  if (actionId === 'tiktok') {
+
             Controller.navigate('tiktok');
+
         } else if (actionId === 'email') {
-            // Execute the form creation method
-            //App.agentEmailForm(agent);
+
             Controller.navigate('agentemail');
+
         } else {
             // Handle other actions (start, stop, etc.)
             console.log(`Action ${actionId} selected for agent ${agent.agent_name}`);
@@ -256,4 +262,62 @@ AgentController.tiktokPost = function(content) {
         dialog.remove();
         document.getElementById('tiktok-content').value = '';
     };
+};
+
+AgentController.autoForm = function() {
+    const container = App.getItem('autoform-container');
+    container.innerHTML = '<h3>Automatic Form Completion</h3>';
+
+    // Create a form container
+    const form = App.item('div');
+    form.id = 'autoform-container';
+    container.appendChild(form);
+
+    // Schema for target platforms
+    const schema = {
+        'Job Source': { 'id': 'source', 'placeholder': 'e.g., jobs.com' },
+        'Role': { 'id': 'role', 'placeholder': 'Software Developer' },
+        'Experience': { 'id': 'exp', 'placeholder': 'Years of experience' }
+    };
+
+    // Use App.eForm to build the interface
+    App.eForm(form, schema);
+
+    // Add Submit Action
+    const btn = App.item('button');
+    btn.className = 'btn btn-primary mt-3';
+    btn.innerHTML = 'Execute Auto-Fill';
+    btn.onclick = () => {
+        const data = {
+            source: document.getElementById('source').value,
+            role: document.getElementById('role').value,
+            exp: document.getElementById('exp').value
+        };
+        App.flash('Initiating auto-form completion for ' + data.source);
+        console.log('Payload:', data);
+    };
+    
+    form.appendChild(btn);
+    const url = 'ingestion/save/?url=https://www.applybe.com/?a=145F80311.0';
+    AgentController.formPreview(url);
+};
+
+// Ensure 'async' is present to use 'await'
+AgentController.formPreview = async function(url) {
+    const preview = app.getItem('preview');
+    if (!preview) return; // Guard clause
+
+    app.spinner();
+    try {
+        const response = await fetch(App.url(url));
+        if (!response.ok) throw new Error('Failed to fetch preview');
+        
+        const html = await response.text();
+        preview.innerHTML = html;
+    } catch (e) {
+        // Corrected from e.getMessage() to e.message
+        App.flash('Error: ' + e.message);
+    } finally {
+        app.clearSpinner();
+    }
 };
