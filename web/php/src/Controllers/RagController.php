@@ -30,7 +30,7 @@ public function chat($chat = '') {
         }
 
         $payload = json_encode(['query' => $query]);
-        $response = $this->respond($payload);
+        $response = $this->respond($payload,null,'GET');
         
         if (!$response) {
              return $this->json(['status' => 'error', 'message' => 'Service unreachable'], 500);

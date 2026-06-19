@@ -286,13 +286,9 @@ abstract class BaseController
         return $data;
     }
 
-    /**
-     * Unified Service Gateway
-     * Supports GET/POST and dynamic URL routing.
-     */
     public function respond($payload = null, string $url = null, string $method = 'POST') 
     {
-        $targetUrl = $url ?? self::RAG_SERVICE_URL; // Fallback to class const if no URL provided
+        $targetUrl = $url ?? self::RAG_SERVICE_URL;
         $ch = curl_init($targetUrl);
         
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -308,6 +304,11 @@ abstract class BaseController
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $error = curl_error($ch);
         curl_close($ch);
+
+        // Visibility patch: Log failure details to app.log for transport/protocol analysis
+        if ($httpCode !== 200 || !empty($error)) {
+            $this->logger->log("Respond Error: HTTP $httpCode | CURL Error: $error", 'ERROR');
+        }
 
         return ($httpCode === 200) ? $response : false;
     }
