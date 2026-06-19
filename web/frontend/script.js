@@ -159,6 +159,15 @@ App.eForm = function(form, schema) {
         row.appendChild(el);
         form.appendChild(row);
     });
+};/* app_spinner.js */
+app.spinner = function(){
+    const spinner = document.getElementById('spinner');
+    if (spinner) spinner.style.display = 'flex'; // Make it visible
+};
+
+app.clearSpinner = function(){
+    const spinner = document.getElementById('spinner');
+    if (spinner) spinner.style.display = 'none'; // Hide it again
 };/** app_modal.js */
 app.modal = {
     open(content, options = {}) {
@@ -225,6 +234,9 @@ const RagController = {
             if (!query) return;
             history.innerHTML += `<p><strong>You:</strong> ${query}</p>`;
             input.value = '';
+            
+            app.spinner(); // Minimal change: Start spinner
+            
             try {
                 const res = await fetch(App.url('rag/chat/'), {
                     method: 'POST',
@@ -233,6 +245,10 @@ const RagController = {
                 const data = await res.json();
                 history.innerHTML += `<p><strong>Bot:</strong> ${data.answer || data.message}</p>`;
             } catch (e) { history.innerHTML += `<p class="text-danger">Error: Service unavailable</p>`; }
+            finally {
+                app.clearSpinner(); // Minimal change: Stop spinner
+            }
+            
             history.scrollTop = history.scrollHeight;
         };
     },
@@ -758,6 +774,8 @@ handleMenuClick(field, form) {
             const page = e.target.closest('[data-page]')?.dataset.page;
             if (page) { e.preventDefault(); this.navigate(page); }
         });
+        app.spinner();
+        app.clearSpinner();
     },
 
     showCookieConsent() {
@@ -991,17 +1009,15 @@ const view = {
 
 
 document.addEventListener('DOMContentLoaded', () => Controller.init());
-// Add this to your init() or at the bottom of script.js
+
+/* Lightweight replacement for Bootstrap's Collapse JS */
 document.addEventListener('click', (e) => {
+
     // Handle Navbar Toggler
     if (e.target.matches('.navbar-toggler')) {
         document.querySelector('.nav-menu').classList.toggle('show');
     }
-});
 
-
-/* Lightweight replacement for Bootstrap's Collapse JS */
-document.addEventListener('click', (e) => {
     const toggle = e.target.closest('[data-bs-toggle="collapse"]');
     if (toggle) {
         const targetSelector = toggle.getAttribute('data-bs-target');

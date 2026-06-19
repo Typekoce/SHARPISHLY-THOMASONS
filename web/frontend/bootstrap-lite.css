@@ -308,6 +308,37 @@ h1 {
 
 @media (max-width: 576px) {
     .modal-content { width: 95%; }
+}#spinner {
+    display: none;
+    position: fixed; /* Keeps it visible while user waits */
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 9999; /* Ensure it stays on top of all content */
+    
+    /* Styling the spinner element */
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    border-radius: 8px;
+    font-family: sans-serif;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Optional: Add a simple CSS spin animation if you add an icon */
+.spinner-icon {
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(255,255,255,0.3);
+    border-radius: 50%;
+    border-top-color: #fff;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
 }/** lead form styling **/
 #leadForm {
     background-color: #ffffff;
