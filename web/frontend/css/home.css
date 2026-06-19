@@ -1,0 +1,37 @@
+/* Container Spacing */
+#home {
+    padding-top: 3rem;
+    padding-bottom: 3rem;
+}
+
+/* Hover Lift Effect */
+.hover-lift {
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.hover-lift:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Typography Enhancements */
+#home h1 {
+    letter-spacing: -0.05rem;
+}
+
+#home .lead {
+    font-size: 1.25rem;
+}
+
+/* Card Styling */
+#home .card {
+    border-radius: 0.5rem;
+}
+
+#home .card h4 {
+    margin-bottom: 0.5rem;
+}
+
+#home .card p {
+    margin-bottom: 0;
+}
