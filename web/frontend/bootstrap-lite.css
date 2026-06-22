@@ -225,6 +225,7 @@ h1 {
 #home {
     padding-top: 3rem;
     padding-bottom: 3rem;
+    border: 1px dashed #ccc;;
 }
 
 /* Hover Lift Effect */
@@ -240,6 +241,7 @@ h1 {
 /* Typography Enhancements */
 #home h1 {
     letter-spacing: -0.05rem;
+    text-align: center;
 }
 
 #home .lead {
@@ -257,6 +259,15 @@ h1 {
 
 #home .card p {
     margin-bottom: 0;
+}
+
+#home .col-md-4
+ {
+    border: 1px dashed;
+    float: left;
+    padding: 10px;
+    width: 40%;
+    text-align: center;
 }/* --- tiktok.css --- */
 #tiktok {
     width: 100%;
