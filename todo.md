@@ -69,3 +69,10 @@ To integrate these features while maintaining your strict MVC and decoupled serv
 ### **Integration Workflow Diagram**
 
 **Which phase would you like to prioritize for the next coding session?** I recommend starting with the `IngestionClient` service in Phase 1, as it creates the essential communication bridge between your PHP Brain and the LLM Cognition layer.
+
+### Vector Storage Service
+# TODO List
+
+- [ ] Create `env.py` to centralize environment and path configurations for Python services.
+- [ ] Migrate `PERSIST_PATH` and `GLOBAL_COLLECTION` constants from `VectorStorageService.py` to `env.py`.
+- [ ] Test the RAG retrieval endpoint with the verified path to ensure context is correctly fetched.
