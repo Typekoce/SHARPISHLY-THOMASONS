@@ -40,11 +40,9 @@ run-email-worker: ## [3/5] Start the Email Job Watcher Worker
 	fi
 
 
-
-run-rag: ## [3/5] Start the RAG Microservice
-	@echo "🧠 Starting RAG Microservice on port 8765..."
-	@export PYTHONPATH=$(ROOT_DIR)/pymvc; nohup $(PYTHON) -m app.rag_service > $(STORAGE_PATH)/logs/rag_service.log 2>&1 &
-	@echo "🚀 RAG service running in background. Check $(STORAGE_PATH)/logs/rag_service.log for output."
+.PHONY: run-rag
+run-rag:
+	@./pymvc/app/rag_start.sh
 
 # --- Testing & Inspection ---
 .PHONY: test-job check-ingest check-email-queue
@@ -56,3 +54,9 @@ check-ingest: ## Inspect the NATS ingest folder
 
 check-email-queue: ## Inspect the Email waiting folder
 	@ls -l $(STORAGE_PATH)/agents/emails/waiting/
+
+# --- Reset Vector DB ---
+# Replace 'python3' with the path to your specific environment's python, 
+# for example: /home/seaview/Documents/SHARPISHLY-THOMASONS/venv/bin/python3
+reset-db:
+	@/usr/bin/python3 ./pymvc/app/reset_vector_db.py
