@@ -51,6 +51,39 @@ abstract class BaseController
 
     }
 
+    /**
+     * Safely executes diagnostic shell scripts.
+     * * @param string $scriptName The filename in the scripts/ directory.
+     * @return array A standardized JSON response.
+     */
+    protected function runDiagnosticScript(string $scriptName): array 
+    {
+        // 1. Strict Whitelist: Only permit specific, pre-vetted scripts.
+        $allowed = ['rag_check.sh', 'worker_check.sh', 'ollama_check.sh'];
+        
+        if (!in_array($scriptName, $allowed, true)) {
+            return ['status' => 'error', 'message' => 'Unauthorized script execution attempt.'];
+        }
+
+        // 2. Path Construction: Base directory enforced.
+        $scriptPath = "/home/seaview/Documents/SHARPISHLY-THOMASONS/pymvc/app/scripts/" . $scriptName;
+        
+        // 3. Execution: Use escapeshellarg to prevent injection, capture stdout.
+        $output = shell_exec("bash " . escapeshellarg($scriptPath));
+        
+        // 4. Parsing: Decode JSON or return a standard failure object.
+        $data = json_decode($output ?? '', true);
+        
+        if (is_array($data)) {
+            return $data;
+        }
+
+        return [
+            'status' => 'error', 
+            'message' => 'Diagnostic script returned malformed or empty output.'
+        ];
+    }
+
 
     /**
      * Centralized File Path Resolver for Ingestion Handshakes.

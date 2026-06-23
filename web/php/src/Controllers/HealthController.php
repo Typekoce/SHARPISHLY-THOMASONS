@@ -54,6 +54,9 @@ class HealthController extends BaseController
             'rag_service' => $this->checkRagService(),
             'latest_job'  => $rs,
             'ollama'      => $neuralData,
+            'rag_service' => $this->runDiagnosticScript('rag_check.sh'),
+            'worker'      => $this->runDiagnosticScript('worker_check.sh'),
+            'ollama'      => $this->runDiagnosticScript('ollama_check.sh'),
             'timestamp'   => time(),
         ];
 

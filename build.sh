@@ -16,6 +16,8 @@ cat web/frontend/js/app.js \
     web/frontend/js/agent_controller.js \
     web/frontend/js/controllers.js \
     web/frontend/js/job_progress_controller.js \
+    web/frontend/js/health_controller.js \
+     web/frontend/js/page_registry.js \
     web/frontend/js/model.js \
     web/frontend/js/view.js >> $OUTPUT
 
@@ -37,6 +39,7 @@ cat web/frontend/css/app.css \
     web/frontend/css/spinner.css \
     web/frontend/css/preview.css \
     web/frontend/css/autoform.css \
+    web/frontend/css/neural-pipeline.css \
     web/frontend/css/leads.css >> $OUTPUT
 
 echo "Successfully built $OUTPUT"

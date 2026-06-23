@@ -3,17 +3,25 @@
     <div class="card shadow-sm border-0 overflow-hidden">
         <table class="table mb-0">
             <tbody class="align-middle">
-                <tr class="p-4">
+                <tr>
                     <td class="p-4"><strong>MySQL Database</strong></td>
-                    <td class="text-end p-4">{{ health.database }}</td>
+                    <td class="text-end p-4"><span id="status-db" class="text-success">ONLINE</span></td>
+                </tr>
+                <tr>
+                    <td class="p-4"><strong>RAG Service</strong></td>
+                    <td class="text-end p-4"><span id="status-rag">CHECKING...</span></td>
                 </tr>
                 <tr>
                     <td class="p-4"><strong>NATS Message Broker</strong></td>
-                    <td class="text-end p-4">{{ health.nats }}</td>
+                    <td class="text-end p-4"><span id="status-nats">CHECKING...</span></td>
                 </tr>
                 <tr>
                     <td class="p-4"><strong>Ollama Neural Engine</strong></td>
-                    <td class="text-end p-4">{{ health.ollama.active }}</td>
+                    <td class="text-end p-4"><span id="status-ollama">CHECKING...</span></td>
+                </tr>
+                <tr>
+                    <td class="p-4"><strong>Loaded Models</strong></td>
+                    <td class="text-end p-4"><ul id="status-models" class="list-unstyled mb-0"></ul></td>
                 </tr>
             </tbody>
         </table>

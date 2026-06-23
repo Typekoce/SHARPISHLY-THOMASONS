@@ -19,7 +19,18 @@ class VectorStorageService:
                     model=VectorStorageService.MODEL_NAME,
                     input=text
                 )
-                embedding = response["embeddings"][0]
+                
+                # Dynamic mapping for object vs dict return shapes
+                if hasattr(response, "embeddings"):
+                    embeddings = response.embeddings
+                else:
+                    embeddings = response.get("embeddings") or response.get("embedding")
+
+                if not embeddings:
+                    raise ValueError(f"Ollama returned empty response: {response}")
+
+                # Normalize 2D batch array to 1D vector
+                embedding = embeddings[0] if isinstance(embeddings[0], list) else embeddings
                 
                 if len(embedding) != VectorStorageService.EXPECTED_DIM:
                     raise ValueError(f"Dimension mismatch: Expected {VectorStorageService.EXPECTED_DIM}, got {len(embedding)}")
@@ -109,6 +120,6 @@ class VectorStorageService:
     @staticmethod
     def finalize_handshake(job_id, collection_name, count):
         """Notifies PHP that the Neural Path is grounded."""
-        from app.controllers.nats_controller import NatsController
+        from app.controllers.message_broker_controller import MessageBrokerController
         status = f"completed:{collection_name}:{count}"
-        NatsController.update_php(job_id, status)
+        MessageBrokerController.update_php(job_id, status)
