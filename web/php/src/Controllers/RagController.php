@@ -18,11 +18,26 @@ class RagController extends BaseController {
         $this->view('rag_interface');
     }
 
+    public function rag($chat = '') {
+        // 1. Properly encode the query to handle spaces/symbols
+        $encodedQuery = urlencode($chat);
+        $url = "http://localhost:8765/rag/ask?query=" . $encodedQuery;
+
+        // 2. Fetch data and handle potential failure
+        $res = file_get_contents($url);
+        
+        // 3. Decode the JSON string into an array, or return empty array if failed
+        $data = json_decode($res, true) ?? [];
+
+        // 4. Pass the actual array $data, not the non-existent $rs
+        $this->json($data);
+    }
+
     /**
      * Handles the chat request from the frontend.
      * * @param string $chat The user query
      */
-public function chat($chat = '') {
+    public function chat($chat = '') {
         $query = $chat ?: $this->request('query');
         
         if (empty($query)) {
