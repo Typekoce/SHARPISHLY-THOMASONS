@@ -20,13 +20,23 @@ migrate: ## [1/5] Run PHP database migrations via entry point
 logs: ## [2/5] Tail Nginx and Project logs
 	@tail -f $(STORAGE_PATH)/logs/*.log /var/log/nginx/sharpishly_access.log
 
+# --- Ingestion Pipeline (New) ---
+.PHONY: ingest
+ingest: ## [New] Snapshot a form (Usage: make ingest URL=https://target.com)
+	@echo "📸 Snapshotting form from: $(URL)..."
+	@curl -i "http://$(DOMAIN)/php/ingestion/?query=$(URL)"
+
+.PHONY: vectorize
+vectorize: ## [New] Prepare snapshots for vector embedding
+	@echo "🧠 Vectorizing form snapshots..."
+	@$(PYTHON) ./pymvc/app/vectorize_form.py
+
 # --- Neural Workers (Python) ---
 .PHONY: run-worker run-email-worker run-rag
 run-worker: ## [3/5] Start the NATS-Lite Neural Worker
 	@echo "🚀 Starting Neural Worker..."
 	@export PYTHONPATH=$(ROOT_DIR)/pymvc; $(PYTHON) -m app.nats_worker
 
-# ===================== EMAIL WORKER =====================
 .PHONY: run-email-worker
 run-email-worker: ## [3/5] Start the Email Job Watcher Worker
 	@echo "🚀 Starting Email Worker..."
@@ -38,7 +48,6 @@ run-email-worker: ## [3/5] Start the Email Job Watcher Worker
 		echo "❌ Virtual environment not found at venv/. Run ./install.sh first."; \
 		exit 1; \
 	fi
-
 
 .PHONY: run-rag
 run-rag:
@@ -56,7 +65,5 @@ check-email-queue: ## Inspect the Email waiting folder
 	@ls -l $(STORAGE_PATH)/agents/emails/waiting/
 
 # --- Reset Vector DB ---
-# Replace 'python3' with the path to your specific environment's python, 
-# for example: /home/seaview/Documents/SHARPISHLY-THOMASONS/venv/bin/python3
-reset-db:
+reset-db: ## [5/5] Wipe vector store for fresh start
 	@/usr/bin/python3 ./pymvc/app/reset_vector_db.py
