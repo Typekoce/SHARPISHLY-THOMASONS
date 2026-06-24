@@ -6,24 +6,39 @@ use App\Models\IngestionModel;
 
 class IngestionController extends BaseController {
 
-    /**
-     * Get form field names so they can be mapped to $data array
-     */
-    public function index(){
+    public function index() {
+        // 1. Retrieve the URL directly from the query parameter
+        $url = $_GET['query'] ?? '';
 
-        // 1.  URL will be retrieved from db
-        $url = 'https://www.applybe.com/?a=145F80311.0';
+        if (empty($url)) {
+            return $this->json(['error' => 'No URL provided'], 400);
+        }
+        
+        $parser = new IngestionModel();
+        
+        // 1. Fetch raw data
+        $html = $parser->fetchRaw($url);
+        if (!$html) {
+            return $this->json(['status' => 'error', 'message' => 'Fetch failed'], 500);
+        }
 
-        // 2. get form contents
-        $contents = file_get_contents($url);
+        // 2. Define storage path using the Location service (DRY)
+        // The Location service handles the base path logic automatically.
+        $filename = 'form_' . date('Ymd_His') . '.html';
+        $path = $this->loc->storage('snapshots/' . $filename);
+        
+        // 3. Commit to storage
+        file_put_contents($path, $html);
 
-        // 3. add contents to storage
-        // file_put_contents()
+        // 4. Save form field names to DB (Placeholder)
+        // $this->saveFieldNamesToDb($html); 
 
-        // 4. save form field names to db
-
-        // 5. respond when completed
-
+        // 5. Respond
+        return $this->json([
+            'status' => 'success', 
+            'file' => $filename,
+            'message' => 'Form snapshotted and metadata logged'
+        ]);
     }
 
     public function setFields($data){
