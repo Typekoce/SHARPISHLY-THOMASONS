@@ -115,3 +115,36 @@ Here is your **one-page UK SME Launch Checklist**, structured to move from your 
 This approach replaces "feature bloat" with "trust signals." An SME owner might not care how your embedding dimension works (512 vs 768), but they care deeply about not being fined by the ICO and having an automation tool that actually finishes their paperwork correctly.
 
 Does this checklist feel like the right framework for your final stretch, or should we add a specific line item for the "automated incident capture" integration?
+
+### Integrate HealthController.chat()
+```
+// In HealthController.js
+async chat(userQuery) {
+    if (!userQuery) return;
+
+    // Use the specific endpoint confirmed by your terminal
+    const url = `http://localhost:8765/rag/ask?query=${encodeURIComponent(userQuery)}`;
+
+    app.spinner();
+
+    try {
+        const response = await fetch(url, {
+            method: 'GET', // Matches the do_GET implementation in rag_service.py
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (!response.ok) throw new Error(`Server returned ${response.status}`);
+        
+        const data = await response.json();
+        console.log("RAG Answer:", data.answer);
+        
+        // Handle your display logic here (e.g., app.updateChat(data.answer))
+
+    } catch (e) {
+        // Fixed the typo 'messga' -> 'message'
+        app.flash('Chat Error: ' + e.message);
+    } finally {
+        app.clearSpinner();
+    }
+}
+```

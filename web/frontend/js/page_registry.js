@@ -13,5 +13,6 @@ const PageRegistry = {
     'health': () => {
         HealthController.init();
         HealthController.get();
+        HealthController.chat('Hello');
     }
 };
