@@ -579,9 +579,10 @@ const RagController = {
             app.spinner(); // Minimal change: Start spinner
             
             try {
-                const res = await fetch(App.url('rag/chat/'), {
-                    method: 'POST',
-                    body: JSON.stringify({ query })
+                // Changed from POST/body to GET/URL query parameter
+                const url = App.url('rag/rag/') + encodeURIComponent(query);
+                const res = await fetch(url, {
+                    method: 'GET'
                 });
                 const data = await res.json();
                 history.innerHTML += `<p><strong>Bot:</strong> ${data.answer || data.message}</p>`;
@@ -1077,7 +1078,37 @@ const HealthController = {
     },
 
     worker(status) { /* Placeholder for worker-specific logic */ },
-    emails(status) { /* Placeholder for email-queue logic */ }
+    emails(status) { /* Placeholder for email-queue logic */ },
+    // chat test
+    async chat(userQuery) {
+    if (!userQuery) return;
+
+    // Use the specific endpoint confirmed by your terminal
+    const url = `http://localhost:8765/rag/ask?query=${encodeURIComponent(userQuery)}`;
+
+    app.spinner();
+
+    try {
+        const response = await fetch(url, {
+            method: 'GET', // Matches the do_GET implementation in rag_service.py
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (!response.ok) throw new Error(`Server returned ${response.status}`);
+        
+        const data = await response.json();
+        console.log("RAG Answer:", data.answer);
+        
+        // Handle your display logic here (e.g., app.updateChat(data.answer))
+
+    } catch (e) {
+        // Fixed the typo 'messga' -> 'message'
+        app.flash('Chat Error: ' + e.message);
+    } finally {
+        app.clearSpinner();
+    }
+}
+
 };/**
  * Registry: Maps page IDs to their specific initialization functions
  */
@@ -1093,6 +1124,7 @@ const PageRegistry = {
     'health': () => {
         HealthController.init();
         HealthController.get();
+        HealthController.chat('Hello');
     }
 };/** model.js */
 

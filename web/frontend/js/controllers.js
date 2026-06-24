@@ -24,9 +24,10 @@ const RagController = {
             app.spinner(); // Minimal change: Start spinner
             
             try {
-                const res = await fetch(App.url('rag/chat/'), {
-                    method: 'POST',
-                    body: JSON.stringify({ query })
+                // Changed from POST/body to GET/URL query parameter
+                const url = App.url('rag/rag/') + encodeURIComponent(query);
+                const res = await fetch(url, {
+                    method: 'GET'
                 });
                 const data = await res.json();
                 history.innerHTML += `<p><strong>Bot:</strong> ${data.answer || data.message}</p>`;
