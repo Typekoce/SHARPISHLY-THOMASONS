@@ -148,3 +148,12 @@ async chat(userQuery) {
     }
 }
 ```
+
+### Rag Controller
+
+/**
+ * TODO: RagController
+ * 1. Implement automated logging of successful RAG chat exchanges to the 'queries' table.
+ * 2. Ensure context-awareness by capturing both the 'query' and 'answer' in the database.
+ * 3. Simplify current defensive error handling to prevent 500-level crashes during minor service blips.
+ */
