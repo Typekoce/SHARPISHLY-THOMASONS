@@ -21,23 +21,41 @@ class IngestionController extends BaseController {
             return $this->json(['status' => 'error', 'message' => 'Fetch failed'], 500);
         }
 
-        $filename = 'form_' . date('Ymd_His') . '.html';
-        $path = $this->loc->storage('snapshots/' . $filename);
+        $ts = date('Ymd_His');
 
-        $html = $this->prepareFile($html);
+        // 1. Save Raw (Tier 1)
+        $rawSuccess = $this->snapshotsRaw($html, $ts);
         
-        // 3. Commit to storage
-        file_put_contents($path, $html);
+        // 2. Save Prepared (Tier 2)
+        $prepSuccess = $this->snapshots($html, $ts);
 
-        // 4. Save form field names to DB (Placeholder)
-        // $this->saveFieldNamesToDb($html); 
+        // 3. Partial Failure Handling
+        if (!$rawSuccess || !$prepSuccess) {
+            return $this->json([
+                'status' => 'partial_failure',
+                'raw_saved' => $rawSuccess,
+                'prep_saved' => $prepSuccess,
+                'message' => 'Ingestion completed with storage warnings'
+            ], 500);
+        }
 
-        // 5. Respond
         return $this->json([
             'status' => 'success', 
-            'file' => $filename,
-            'message' => 'Form snapshotted and metadata logged'
+            'timestamp' => $ts,
+            'message' => 'Raw and prepared snapshots saved successfully'
         ]);
+
+    }
+
+    public function snapshotsRaw($html, $ts) {
+        $path = $this->loc->storage("snapshots-raw/form_{$ts}.html");
+        return file_put_contents($path, $html) !== false;
+    }
+
+    public function snapshots($html, $ts) {
+        $path = $this->loc->storage("snapshots/form_{$ts}.html");
+        $cleaned = $this->prepareFile($html);
+        return file_put_contents($path, $cleaned) !== false;
     }
 
     public function prepareFile($html) {
