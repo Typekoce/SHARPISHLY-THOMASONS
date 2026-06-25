@@ -160,7 +160,31 @@ class ScaffoldModel extends BaseModel
                 'status'     => 'VARCHAR(225)'
             ],
 
+           'snapshots' => [
+                'id'         => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'title'      => 'VARCHAR(225)',
+                'agent_name' =>	'VARCHAR(225)',
+                'description' => 'VARCHAR(225)',
+                'role'	=> 'VARCHAR(225)',
+                'message'    => 'VARCHAR(225)',
+                'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+                'pref'       => 'VARCHAR(255) DEFAULT NULL',
+                'content'    => 'LONGTEXT NULL DEFAULT NULL',
+                'status'     => 'VARCHAR(225)'
+            ],
 
+           'snapshot' => [
+                'id'         => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'snapshots_id'      => 'VARCHAR(225)',
+                'title'      => 'VARCHAR(225)',
+                'description' => 'VARCHAR(225)',
+                'page' => 'VARCHAR(225)',
+                'message'    => 'VARCHAR(225)',
+                'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+                'pref'       => 'VARCHAR(255) DEFAULT NULL',
+                'content'    => 'LONGTEXT NULL DEFAULT NULL',
+                'status'     => 'VARCHAR(225)'
+            ],
 
         ];
     }
