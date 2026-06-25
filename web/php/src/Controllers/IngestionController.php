@@ -16,16 +16,15 @@ class IngestionController extends BaseController {
         
         $parser = new IngestionModel();
         
-        // 1. Fetch raw data
         $html = $parser->fetchRaw($url);
         if (!$html) {
             return $this->json(['status' => 'error', 'message' => 'Fetch failed'], 500);
         }
 
-        // 2. Define storage path using the Location service (DRY)
-        // The Location service handles the base path logic automatically.
         $filename = 'form_' . date('Ymd_His') . '.html';
         $path = $this->loc->storage('snapshots/' . $filename);
+
+        $html = $this->prepareFile($html);
         
         // 3. Commit to storage
         file_put_contents($path, $html);
@@ -39,6 +38,18 @@ class IngestionController extends BaseController {
             'file' => $filename,
             'message' => 'Form snapshotted and metadata logged'
         ]);
+    }
+
+    public function prepareFile($html) {
+        // Using PHP-compatible PCRE syntax (i = case insensitive, s = dot matches newline)
+        $patterns = [
+            '#<script\b[^>]*>.*?</script>#is',
+            '#<style\b[^>]*>.*?</style>#is',
+            '#<svg\b[^>]*>.*?</svg>#is',
+            '#<noscript\b[^>]*>.*?</noscript>#is',
+        ];
+        $cleaned = preg_replace($patterns, '', $html);
+        return trim($cleaned);
     }
 
     public function setFields($data){
