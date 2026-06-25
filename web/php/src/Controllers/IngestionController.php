@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Models\IngestionModel;
+use App\Models\SnapshotsModel;
 
 class IngestionController extends BaseController {
 
@@ -28,6 +29,22 @@ class IngestionController extends BaseController {
         
         // 2. Save Prepared (Tier 2)
         $prepSuccess = $this->snapshots($html, $ts);
+
+
+        $model = new SnapshotsModel();
+
+        // 1. Create the parent entry
+        $registryId = $model->setSnapshotRegistry([
+            'title' => 'Form Capture',
+            'status' => 'active'
+        ]);
+
+        // 2. Create the child entry linked to that ID
+        $model->setSnapshot([
+            'snapshots_id' => $registryId,
+            'title'        => 'Page 1',
+            'content'      => $html // The cleaned/raw HTML
+        ]);
 
         // 3. Partial Failure Handling
         if (!$rawSuccess || !$prepSuccess) {
