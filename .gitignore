@@ -45,3 +45,7 @@ bin/
 *.log
 storage/log/*.log
 EOF
+
+# --- secrets ---
+client_secret.json
+
