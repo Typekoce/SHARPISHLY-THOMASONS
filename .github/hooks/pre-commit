@@ -1,0 +1,15 @@
+#!/bin/bash
+# .git/hooks/pre-commit
+
+FORBIDDEN_PATTERNS=("client_secret.json" ".env" "*.pem" "*.key")
+
+for pattern in "${FORBIDDEN_PATTERNS[@]}"; do
+    # Search for files matching the patterns, excluding the .git directory
+    if find . -path "./.git" -prune -o -name "$pattern" -print | grep -q .; then
+        echo "❌ QUARANTINE TRIGGERED: Found forbidden pattern: $pattern"
+        echo "   Commit aborted for security reasons."
+        exit 1
+    fi
+done
+
+exit 0

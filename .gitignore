@@ -48,4 +48,4 @@ EOF
 
 # --- secrets ---
 client_secret.json
-
+storage/google/token.json
