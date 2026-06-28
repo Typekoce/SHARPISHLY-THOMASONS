@@ -112,6 +112,7 @@ async bindAgentsDefault(){
             {id: 'edit', name: 'Edit'},
             {id: 'email', name: 'Email'},
             {id: 'autoform', name: 'Automatic Form Completion'},
+            {id: 'snapshot', name: 'Take Snapshot'},
             {id: 'tiktok', name: 'Tiktok'},
             {id: 'delete',name: 'Delete'},
         ];
@@ -127,7 +128,10 @@ async bindAgentsDefault(){
         const actionTd = document.createElement('td');
         const select = App.selectList(actions, (actionId) => {
 
-        if (actionId === 'autoform') {
+        if (actionId === 'snapshot') {
+            // Trigger the creation form, perhaps passing the agent context
+            SnapshotsController.createForm(agent); 
+        } else if (actionId === 'autoform') {
 
             Controller.navigate('autoform');
 

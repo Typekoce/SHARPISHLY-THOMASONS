@@ -4,7 +4,8 @@ app.modal = {
         const {
             closeOnBackdrop = true,
             closeOnEscape = true,
-            className = ''
+            className = '',
+            id = ''
         } = options;
 
         // Create elements
@@ -15,6 +16,8 @@ app.modal = {
         const modal = document.createElement('div');
         modal.className = `modal-content ${className}`; // Managed by CSS
         modal.innerHTML = content;
+        if (id) modal.id = id;
+        
 
         overlay.appendChild(modal);
         document.body.appendChild(overlay);

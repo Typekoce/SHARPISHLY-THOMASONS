@@ -16,8 +16,7 @@ $aliases = [
     'job-status' => ['Upload', 'status'],
     'search'     => ['Search', 'query'],
     'chat'       => ['Chat', 'ask'],
-    'google-auth'     => ['Google', 'auth'],
-    'google-callback' => ['Google', 'callback'],
+    'google-auth' => ['Google', 'auth'],
     'chat-stream'=> ['Chat', 'stream'],
 ];
 
