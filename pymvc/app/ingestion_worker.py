@@ -6,7 +6,7 @@ import requests
 # Add the 'pymvc' directory to sys.path so 'app' is found
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.controllers.nats_controller import NatsController
+from app.controllers.nats_controller import IngestionController
 from app.utils.ChunkingService import ChunkingService
 from app.utils.VectorStorageService import VectorStorageService
 
@@ -16,7 +16,7 @@ def run_worker():
     while True:
         try:
             # 1. Consume an atomic file handshake from the filesystem
-            result = NatsController.consume()
+            result = IngestionController.consume()
             
             if result:
                 job_data, file_path = result
@@ -28,30 +28,30 @@ def run_worker():
 
                 if not text_content:
                     print(f"⚠️ No content found for Job #{job_id} via API. Skipping vectorization.")
-                    NatsController.update_php(job_id, 'failed')
-                    NatsController.fail_job(file_path)  # Isolate file to prevent re-picking
+                    IngestionController.update_php(job_id, 'failed')
+                    IngestionController.fail_job(file_path)  # Isolate file to prevent re-picking
                     continue
 
                 # 3. PROCEED: Valid content verified, transition state to processing in MariaDB
-                NatsController.update_php(job_id, 'processing')
+                IngestionController.update_php(job_id, 'processing')
 
                 # 4. Segment CSV rows using the correct ChunkingService signature
                 chunks = ChunkingService.create_chunks(text_content, job_id)
 
                 if not chunks:
                     print(f"⚠️ Chunking returned an empty set for Job #{job_id}. Aborting.")
-                    NatsController.update_php(job_id, 'failed')
-                    NatsController.fail_job(file_path)  # Isolate file from active process track
+                    IngestionController.update_php(job_id, 'failed')
+                    IngestionController.fail_job(file_path)  # Isolate file from active process track
                     continue
 
                 # 5. Persist chunks inside ChromaDB and compile array payload for MariaDB
                 collection_name, count, vector_chunks = VectorStorageService.store_chunks(job_id, chunks)
 
                 # 6. Push chunks to MariaDB via PHP PUT handler and mark 'completed'
-                NatsController.update_php(job_id, 'completed', chunks=vector_chunks)
+                IngestionController.update_php(job_id, 'completed', chunks=vector_chunks)
                 
                 # 7. Complete the NATS file handshake transaction safely
-                NatsController.acknowledge(file_path)
+                IngestionController.acknowledge(file_path)
                 print(f"✅ Job #{job_id} Completed and Acknowledged ({count} vectors mapped).")
                 
         except Exception as e:
@@ -64,7 +64,7 @@ def fetch_payload(job_id: int) -> str | None:
     Queries the PHP MVC framework to fetch the clean string data stored in MariaDB.
     """
     try:
-        url = f"http://sharpishly.dev/php/job/payload/{job_id}"
+        url = f"http://sharpishly.dev/php/ingestion/payload/{job_id}"
         response = requests.get(url, timeout=5)
         
         if response.status_code == 200:

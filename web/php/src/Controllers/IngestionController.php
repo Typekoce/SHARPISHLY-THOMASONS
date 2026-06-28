@@ -7,6 +7,8 @@ use App\Models\SnapshotsModel;
 
 class IngestionController extends BaseController {
 
+    public $tbl = 'forms';
+
     public function index() {
         // 1. Retrieve the URL directly from the query parameter
         $url = $_GET['query'] ?? '';
@@ -91,7 +93,7 @@ class IngestionController extends BaseController {
 
         // ask rag to find form fields and correctly map them to data array
         $conditions = array(
-            'tbl' => 'forms',
+            'tbl' => $this->forms,
             'where' => array('id' => 1)
         );
 
@@ -134,5 +136,29 @@ class IngestionController extends BaseController {
         header('Content-Type: text/html; charset=UTF-8');
         echo $dom->saveHTML();
         exit;
+    }
+
+    /**
+     * GET /php/job/payload/{id}
+     * Streams the raw BLOB data from MariaDB to the requester.
+     */
+    public function payload($id)
+    {
+        $conditions = [
+            'tbl'   => $this->forms,
+            'where' => ['id' => (int)$id]
+        ];
+
+        $jobResult = $this->db->find($conditions);
+        $job = $jobResult[0] ?? null; 
+
+        if (!$job || empty($job['payload'])) {
+            return $this->json([
+                'status'  => 'error',
+                'message' => 'Payload not found or empty'
+            ], 404);
+        }
+        
+        return $this->json(['status' => 'success', 'payload' => $job['payload']]);
     }
 }
