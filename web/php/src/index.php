@@ -16,8 +16,8 @@ $aliases = [
     'job-status' => ['Upload', 'status'],
     'search'     => ['Search', 'query'],
     'chat'       => ['Chat', 'ask'],
-    'google-auth' => ['Google', 'auth'],
-    'chat-stream'=> ['Chat', 'stream'],
+    // 'google-auth' => ['Google', 'auth'],
+    // 'chat-stream'=> ['Chat', 'stream'],
 ];
 
 // 3. Parse the URI (CLI-aware fallback)

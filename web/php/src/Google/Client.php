@@ -15,7 +15,7 @@ class Client
         // Initialize the Google Client
         // Note: We use environmental variables to load paths, 
 
-        $this->client = new \Google\Client();
+        $this->client = new Client();
         $this->client->setApplicationName('Sharpishly');
         $this->client->setAuthConfig(getenv('GOOGLE_CREDENTIALS_PATH'));
         $this->client->addScope(\Google\Service\Calendar::CALENDAR_READONLY);

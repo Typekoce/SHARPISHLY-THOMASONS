@@ -160,3 +160,22 @@ async chat(userQuery) {
 
  ### SSH KEY FOR BITBUCKET  
  * Push to bitbucket as well
+
+ ### Google response for health monitor
+
+ ```
+ seaview@seaview-Swift-SF113-31:~/Documents/SHARPISHLY-THOMASONS$ curl -i http://localhost/php/google/auth
+HTTP/1.1 500 Internal Server Error
+Server: nginx/1.24.0 (Ubuntu)
+Date: Mon, 29 Jun 2026 15:22:03 GMT
+Content-Type: text/html; charset=UTF-8
+Transfer-Encoding: chunked
+Connection: keep-alive
+Set-Cookie: PHPSESSID=07v1aoacl5p5qavc5etpf9og8t; path=/; HttpOnly
+Expires: Thu, 19 Nov 1981 08:52:00 GMT
+Cache-Control: no-store, no-cache, must-revalidate
+Pragma: no-cache
+
+seaview@seaview-Swift-SF113-31:~/Documents/SHARPISHLY-THOMASONS$ 
+
+ ```
