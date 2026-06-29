@@ -241,6 +241,12 @@ abstract class BaseController
     return date('Y-m-d h:m:s');
    }
 
+    // In BaseController.php
+    public function timestamp(): string
+    {
+        return date('Y-m-d H:i:s');
+    }
+
   /**
   * Request method
   **/

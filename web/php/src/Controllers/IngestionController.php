@@ -7,7 +7,7 @@ use App\Models\SnapshotsModel;
 
 class IngestionController extends BaseController {
 
-    public $tbl = 'forms';
+    public $tbl = 'snapshots';
 
     public function index() {
         // 1. Retrieve the URL directly from the query parameter
@@ -66,6 +66,75 @@ class IngestionController extends BaseController {
 
     }
 
+    /**
+     * Display all records, useful for debugging
+     */
+    public function records($id = ''){
+
+        $conditions = array(
+            'tbl' => $this->tbl,
+            // 'where' => array('id' => 1)
+        );
+
+        $res = $this->db->find($conditions);
+
+        $this->json($res);
+
+    }
+
+    /**
+     * Display all records, useful for debugging
+     */
+    public function test($id = ''){
+
+
+        //TODO: Dummy html for testing purposes
+
+        $html = "<form id='test'><input type='text' id='firstname' name='firstname'/></form>";
+
+        $ts = $this->timestamp();
+
+        // 1. Save Raw (Tier 1)
+        $rawSuccess = $this->snapshotsRaw($html, $ts);
+        
+        // 2. Save Prepared (Tier 2)
+        $prepSuccess = $this->snapshots($html, $ts);
+
+
+        $model = new SnapshotsModel();
+
+        // 1. Create the parent entry
+        $registryId = $model->setSnapshotRegistry([
+            'title' => 'Form Capture',
+            'status' => 'active'
+        ]);
+
+        // 2. Create the child entry linked to that ID
+        $model->setSnapshot([
+            'snapshots_id' => $registryId,
+            'title'        => 'Page 1',
+            'content'      => $html // The cleaned/raw HTML
+        ]);
+
+        // 3. Partial Failure Handling
+        if (!$rawSuccess || !$prepSuccess) {
+            return $this->json([
+                'status' => 'partial_failure',
+                'raw_saved' => $rawSuccess,
+                'prep_saved' => $prepSuccess,
+                'message' => 'Ingestion completed with storage warnings'
+            ], 500);
+        }
+
+        return $this->json([
+            'status' => 'success', 
+            'timestamp' => $ts,
+            'message' => 'Raw and prepared snapshots saved successfully'
+        ]);
+
+
+    }
+
     public function snapshotsRaw($html, $ts) {
         $path = $this->loc->storage("snapshots-raw/form_{$ts}.html");
         return file_put_contents($path, $html) !== false;
@@ -93,7 +162,7 @@ class IngestionController extends BaseController {
 
         // ask rag to find form fields and correctly map them to data array
         $conditions = array(
-            'tbl' => $this->forms,
+            'tbl' => $this->tbl,
             'where' => array('id' => 1)
         );
 
@@ -161,4 +230,56 @@ class IngestionController extends BaseController {
         
         return $this->json(['status' => 'success', 'payload' => $job['payload']]);
     }
+
+
+    /**
+     * PUT /php/job/update/{id}
+     * Persists neural chunks to MariaDB via framework repository layer.
+     */
+    public function update($id)
+    {
+        $json = file_get_contents('php://input');
+        $data = json_decode($json, true) ?? [];
+        
+        $id = (int)$id;
+        $status = $data['status'] ?? 'unknown';
+
+        $updateData = [
+            'id'     => $id,
+            'status' => $status
+        ];
+
+        if ($status === 'completed' || $status === 'failed') {
+            $updateData['finished_at'] = date('Y-m-d H:i:s');
+        }
+
+        $this->logger->log("NP Step 4: Update received from Python Worker for Job ID: {$id}", 'INFO');
+
+        // Update Job state metrics
+        $result = $this->db->save('jobs', $updateData);
+
+        // Sync Vectors directly to MariaDB safely (No raw SQL)
+        if (!empty($data['chunks']) && is_array($data['chunks'])) {
+            foreach ($data['chunks'] as $chunk) {
+                $this->db->save('vectors', [
+                    'job_id'    => $id,
+                    'content'   => $chunk['content'] ?? '',
+                    'embedding' => json_encode($chunk['embedding'] ?? []),
+                    'pref'      => $chunk['pref'] ?? null
+                ]);
+            }
+        }
+
+        if ($result === false) {
+            $this->logger->log("NP Step 4 Failed: MariaDB update failed to write for job {$id}", 'ERROR');
+            return $this->json(['status' => 'error', 'message' => 'DB Save Failed'], 500);
+        }
+
+        return $this->json([
+            'status' => 'success', 
+            'job_id' => $id, 
+            'chunks_synced' => count($data['chunks'] ?? [])
+        ]);
+    }
+
 }
