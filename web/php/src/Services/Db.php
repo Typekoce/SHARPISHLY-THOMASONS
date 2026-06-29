@@ -148,6 +148,15 @@ public function __construct(array $config, $logger = null)
         $where  = "";
         $values = [];
 
+        // Optional Join logic: defaults to empty string
+        $join = "";
+        if (!empty($params['join'])) {
+            $j = $params['join'];
+            // Default to INNER if no type provided
+            $type = $j['type'] ?? 'INNER';
+            $join = "$type JOIN `{$j['table']}` ON {$j['on']}";
+        }
+
         if (!empty($params['where'])) {
             $conds = [];
             foreach ($params['where'] as $col => $val) {

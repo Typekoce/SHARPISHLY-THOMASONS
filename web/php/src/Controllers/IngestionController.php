@@ -69,17 +69,22 @@ class IngestionController extends BaseController {
     /**
      * Display all records, useful for debugging
      */
-    public function records($id = ''){
-
-        $conditions = array(
-            'tbl' => $this->tbl,
-            // 'where' => array('id' => 1)
-        );
+    public function records($id = '')
+    {
+        $conditions = [
+            'tbl'   => $this->tbl,
+            'join'  => [
+                'table' => 'snapshot', // Ensure this table name is correct
+                'on'    => 'snapshots.id = snapshot.snapshots_id',
+                'type'  => 'LEFT'
+            ],
+            // Use * carefully if you suspect schema mismatch
+            'fields' => ['snapshots.*'] 
+        ];
 
         $res = $this->db->find($conditions);
 
-        $this->json($res);
-
+        return $this->json($res);
     }
 
     /**
@@ -109,11 +114,14 @@ class IngestionController extends BaseController {
             'status' => 'active'
         ]);
 
+        $filename = "form_{$ts}.html";
+
         // 2. Create the child entry linked to that ID
         $model->setSnapshot([
             'snapshots_id' => $registryId,
             'title'        => 'Page 1',
-            'content'      => $html // The cleaned/raw HTML
+            'content'      => $html, // The cleaned/raw HTML
+            'pref'         => $filename
         ]);
 
         // 3. Partial Failure Handling
