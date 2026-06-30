@@ -366,6 +366,7 @@ async bindAgentsDefault(){
 
         if (actionId === 'snapshot') {
             // Trigger the creation form, perhaps passing the agent context
+            Controller.navigate('snapshot');
             SnapshotsController.createForm(agent); 
         } else if (actionId === 'autoform') {
 
@@ -1168,7 +1169,8 @@ const SnapshotsController = {
         }
     },
 
-    createForm() {
+    createForm(agent) {
+        console.log(agent);
         // 1. Create the container
         const container = document.getElementById('snapshots');
         // container.id = 'snapshots'; 
@@ -1181,7 +1183,7 @@ const SnapshotsController = {
         };
 
         // 4. Use eForm to inject fields into container
-        //App.eForm(container, schema);
+        App.eForm(container, schema);
 
         // 5. Add Submit Button
         const btn = App.item('button');

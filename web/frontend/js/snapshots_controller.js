@@ -19,10 +19,10 @@ const SnapshotsController = {
         }
     },
 
-    createForm(agent) {
+    createForm(agent,actionId ) {
         console.log(agent);
         // 1. Create the container
-        const container = document.getElementById('snapshots');
+        const container = document.getElementById(actionId);
         // container.id = 'snapshots'; 
 
         // 3. Define schema matching your HTML requirements

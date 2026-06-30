@@ -128,21 +128,22 @@ async bindAgentsDefault(){
         const actionTd = document.createElement('td');
         const select = App.selectList(actions, (actionId) => {
 
+        // TODO: Create loop
         if (actionId === 'snapshot') {
             // Trigger the creation form, perhaps passing the agent context
-            Controller.navigate('snapshot');
-            SnapshotsController.createForm(agent); 
+            Controller.navigate(actionId);
+            SnapshotsController.createForm(agent,actionId); 
         } else if (actionId === 'autoform') {
 
-            Controller.navigate('autoform');
+            Controller.navigate(actionId );
 
         } else  if (actionId === 'tiktok') {
 
-            Controller.navigate('tiktok');
+            Controller.navigate(actionId );
 
         } else if (actionId === 'email') {
 
-            Controller.navigate('agentemail');
+            Controller.navigate(actionId );
 
         } else {
             // Handle other actions (start, stop, etc.)
