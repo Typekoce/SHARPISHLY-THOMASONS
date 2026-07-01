@@ -92,55 +92,12 @@ class IngestionController extends BaseController {
      */
     public function test($id = ''){
 
+        $data = array(
+            'id' => $id,
+            'request' => $this->request(),
+        );
 
-        //TODO: Dummy html for testing purposes
-
-        $html = "<form id='test'><input type='text' id='firstname' name='firstname'/></form>";
-
-        $ts = $this->timestamp();
-
-        // 1. Save Raw (Tier 1)
-        $rawSuccess = $this->snapshotsRaw($html, $ts);
-        
-        // 2. Save Prepared (Tier 2)
-        $prepSuccess = $this->snapshots($html, $ts);
-
-
-        $model = new SnapshotsModel();
-
-        // 1. Create the parent entry
-        $registryId = $model->setSnapshotRegistry([
-            'title' => 'Form Capture',
-            'status' => 'active'
-        ]);
-
-        $filename = "form_{$ts}.html";
-
-        // 2. Create the child entry linked to that ID
-        $model->setSnapshot([
-            'snapshots_id' => $registryId,
-            'title'        => 'Page 1',
-            'content'      => $html, // The cleaned/raw HTML
-            'pref'         => $filename
-        ]);
-
-        // 3. Partial Failure Handling
-        if (!$rawSuccess || !$prepSuccess) {
-            return $this->json([
-                'status' => 'partial_failure',
-                'raw_saved' => $rawSuccess,
-                'prep_saved' => $prepSuccess,
-                'message' => 'Ingestion completed with storage warnings'
-            ], 500);
-        }
-
-        return $this->json([
-            'status' => 'success', 
-            'timestamp' => $ts,
-            'message' => 'Raw and prepared snapshots saved successfully'
-        ]);
-
-
+        $this->json($data);
     }
 
     public function snapshotsRaw($html, $ts) {

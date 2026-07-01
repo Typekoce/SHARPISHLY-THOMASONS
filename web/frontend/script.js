@@ -1129,6 +1129,7 @@ const HealthController = {
 const SnapshotController = {
     async bindEmails() {
         alert('Inside of bindEmails');
+
         const fields = { 
             'url': {}, 
             'description': {}, 
@@ -1147,15 +1148,43 @@ const SnapshotController = {
         btn.innerHTML = "Queue Email Task";
         form.appendChild(btn);
 
-        btn.onclick = (e) => {
+        btn.onclick = async (e) => {
             e.preventDefault();
             
-            const toInput = document.getElementById('to');
-            const subjectInput = document.getElementById('subject');
-            const bodyInput = document.getElementById('body');
-            
-            // Use the reverted, clean emailQueue
-            AgentController.emailQueue(toInput, subjectInput, bodyInput);
+            // Use the existing Controller utility to capture all form inputs
+            // This assumes the fields match the keys in your SnapshotController.bindEmails schema
+            const postData = {
+                url: document.getElementById('url')?.value,
+                description: document.getElementById('description')?.value,
+                page: document.getElementById('page')?.value
+            };
+
+            app.spinner();
+
+            try {
+                const res = await fetch(App.url('ingestion/test'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(postData)
+                });
+
+                const result = await res.json();
+
+                console.log(result);
+
+                if (res.ok) {
+                    App.flash('Success: Snapshot queued with ID ' + (result.id || 'N/A'));
+                } else {
+                    throw new Error(result.message || 'Server returned an error');
+                }
+
+                
+            } catch (err) {
+                App.flash('Error: ' + err.message);
+                console.error('Snapshot POST error:', err);
+            } finally {
+                app.clearSpinner();
+            }
         };
     },
 };/**
