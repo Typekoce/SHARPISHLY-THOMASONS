@@ -88,26 +88,64 @@ class IngestionController extends BaseController {
     }
 
     /**
-     * Display all records, useful for debugging
+     * Handles the complete ingestion process via POSTed JSON
      */
     public function test($id = '') {
-        // 1. Get raw input for JSON payloads
+        // 1. Retrieve JSON payload
         $rawInput = file_get_contents('php://input');
         $decodedData = json_decode($rawInput, true);
 
-        // 2. Prepare the data structure
-        $data = array(
-            'id'        => $id,
-            'request'   => $this->request(),
-            'POST'      => $_POST,            // Kept for standard form-data
-            'JSON_BODY' => $decodedData       // Captured JSON payload
-        );
+        // 2. Validate essential input
+        $url = $decodedData['url'] ?? null;
+        if (empty($url)) {
+            return $this->json(['status' => 'error', 'message' => 'No URL provided in JSON'], 400);
+        }
 
-        // 3. Set explicit headers for the response
-        header('Content-Type: application/json; charset=utf-8');
+        // 3. Initialize Ingestion and Models
+        $parser = new IngestionModel();
+        $model = new SnapshotsModel();
+        $html = $parser->fetchRaw($url);
         
-        $this->json($data);
-    }
+        if (!$html) {
+            return $this->json(['status' => 'error', 'message' => 'Fetch failed'], 500);
+        }
+
+        $ts = date('Ymd_His');
+
+        // 4. Perform Storage (Tier 1 & Tier 2)
+        $rawSuccess = $this->snapshotsRaw($html, $ts);
+        $prepSuccess = $this->snapshots($html, $ts);
+
+        // 5. Registry Entry
+        $registryId = $model->setSnapshotRegistry([
+            'title' => $decodedData['description'] ?? 'Form Capture',
+            'status' => 'active'
+        ]);
+
+        // 6. Child Entry
+        $model->setSnapshot([
+            'snapshots_id' => $registryId,
+            'title'        => $decodedData['page'] ?? 'Page 1',
+            'content'      => $html
+        ]);
+
+        // 7. Response
+        if (!$rawSuccess || !$prepSuccess) {
+            return $this->json([
+                'status' => 'partial_failure',
+                'raw_saved' => $rawSuccess,
+                'prep_saved' => $prepSuccess,
+                'registry_id' => $registryId
+            ], 500);
+        }
+
+        return $this->json([
+            'status' => 'success',
+            'timestamp' => $ts,
+            'registry_id' => $registryId,
+            'message' => 'Ingestion completed'
+        ]);
+}
 
     public function snapshotsRaw($html, $ts) {
         $path = $this->loc->storage("snapshots-raw/form_{$ts}.html");
