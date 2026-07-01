@@ -90,13 +90,22 @@ class IngestionController extends BaseController {
     /**
      * Display all records, useful for debugging
      */
-    public function test($id = ''){
+    public function test($id = '') {
+        // 1. Get raw input for JSON payloads
+        $rawInput = file_get_contents('php://input');
+        $decodedData = json_decode($rawInput, true);
 
+        // 2. Prepare the data structure
         $data = array(
-            'id' => $id,
-            'request' => $this->request(),
+            'id'        => $id,
+            'request'   => $this->request(),
+            'POST'      => $_POST,            // Kept for standard form-data
+            'JSON_BODY' => $decodedData       // Captured JSON payload
         );
 
+        // 3. Set explicit headers for the response
+        header('Content-Type: application/json; charset=utf-8');
+        
         $this->json($data);
     }
 
