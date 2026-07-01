@@ -347,7 +347,15 @@ handleMenuClick(field, form) {
         if (PageRegistry[Model.currentPage]) PageRegistry[Model.currentPage]();
     },
 
-    navigate(page) { Model.currentPage = page; this.render(); },
+    navigate(page) { 
+        
+        const debug = {page: page};
+
+        console.log(debug);
+        
+        Model.currentPage = page; this.render(); 
+
+    },
 
     bindEvents() {
         const drop = document.getElementById('dropzone');

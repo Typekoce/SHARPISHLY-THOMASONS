@@ -1,48 +1,34 @@
 /** snapshots_controller.js */
-const SnapshotsController = {
-    async save(payload) {
-        app.spinner();
-        try {
-            const res = await fetch(App.url('ingestion/save'), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            const data = await res.json();
-            if (data.status !== 'success') throw new Error(data.message);
-            App.flash(`Success: ${data.id}`);
-            app.modal.close();
-        } catch(e) {
-            App.flash(`Error: ${e.message}`);
-        } finally {
-            app.clearSpinner();
-        }
-    },
-
-    createForm(agent,actionId ) {
-        console.log(agent);
-        // 1. Create the container
-        const container = document.getElementById(actionId);
-        // container.id = 'snapshots'; 
-
-        // 3. Define schema matching your HTML requirements
-        const schema = { 
-            'URL': { 'id': 'url' }, 
-            'Title': { 'id': 'title' }, 
-            'Description': { 'id': 'desc', 'type': 'textarea' }
+const SnapshotController = {
+    async bindEmails() {
+        alert('Inside of bindEmails');
+        const fields = { 
+            'url': {}, 
+            'description': {}, 
+            'page': {} 
         };
+        const form = document.getElementById('form');
+        if (!form) return;
+        
+        // Clear the form and re-render only the fields
+        form.innerHTML = '';
+        Controller.eForm(form, fields);
 
-        // 4. Use eForm to inject fields into container
-        App.eForm(container, schema);
-
-        // 5. Add Submit Button
         const btn = App.item('button');
-        btn.className = 'btn btn-primary mt-2';
-        btn.textContent = 'SCRAPE URL';
-        btn.onclick = async function(){
+        btn.type = 'button';
+        btn.className = 'btn btn-outline-primary mt-2';
+        btn.innerHTML = "Queue Email Task";
+        form.appendChild(btn);
 
+        btn.onclick = (e) => {
+            e.preventDefault();
+            
+            const toInput = document.getElementById('to');
+            const subjectInput = document.getElementById('subject');
+            const bodyInput = document.getElementById('body');
+            
+            // Use the reverted, clean emailQueue
+            AgentController.emailQueue(toInput, subjectInput, bodyInput);
         };
-        container.appendChild(btn);
-
-    }
+    },
 };

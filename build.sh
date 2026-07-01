@@ -17,9 +17,9 @@ cat web/frontend/js/app.js \
     web/frontend/js/controllers.js \
     web/frontend/js/job_progress_controller.js \
     web/frontend/js/health_controller.js \
-     web/frontend/js/page_registry.js \
-    web/frontend/js/model.js \
     web/frontend/js/snapshots_controller.js \
+    web/frontend/js/page_registry.js \
+    web/frontend/js/model.js \
     web/frontend/js/view.js >> $OUTPUT
 
 echo "Successfully built $OUTPUT"

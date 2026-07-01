@@ -364,21 +364,21 @@ async bindAgentsDefault(){
         const actionTd = document.createElement('td');
         const select = App.selectList(actions, (actionId) => {
 
+        // TODO: Create loop
         if (actionId === 'snapshot') {
-            // Trigger the creation form, perhaps passing the agent context
-            Controller.navigate('snapshot');
-            SnapshotsController.createForm(agent); 
+            alert('inside of snapshot condition');
+            Controller.navigate(actionId);
         } else if (actionId === 'autoform') {
 
-            Controller.navigate('autoform');
+            Controller.navigate(actionId );
 
         } else  if (actionId === 'tiktok') {
 
-            Controller.navigate('tiktok');
+            Controller.navigate(actionId );
 
         } else if (actionId === 'email') {
 
-            Controller.navigate('agentemail');
+            Controller.navigate(actionId );
 
         } else {
             // Handle other actions (start, stop, etc.)
@@ -910,7 +910,15 @@ handleMenuClick(field, form) {
         if (PageRegistry[Model.currentPage]) PageRegistry[Model.currentPage]();
     },
 
-    navigate(page) { Model.currentPage = page; this.render(); },
+    navigate(page) { 
+        
+        const debug = {page: page};
+
+        console.log(debug);
+        
+        Model.currentPage = page; this.render(); 
+
+    },
 
     bindEvents() {
         const drop = document.getElementById('dropzone');
@@ -1117,6 +1125,39 @@ const HealthController = {
     }
 }
 
+};/** snapshots_controller.js */
+const SnapshotController = {
+    async bindEmails() {
+        alert('Inside of bindEmails');
+        const fields = { 
+            'url': {}, 
+            'description': {}, 
+            'page': {} 
+        };
+        const form = document.getElementById('form');
+        if (!form) return;
+        
+        // Clear the form and re-render only the fields
+        form.innerHTML = '';
+        Controller.eForm(form, fields);
+
+        const btn = App.item('button');
+        btn.type = 'button';
+        btn.className = 'btn btn-outline-primary mt-2';
+        btn.innerHTML = "Queue Email Task";
+        form.appendChild(btn);
+
+        btn.onclick = (e) => {
+            e.preventDefault();
+            
+            const toInput = document.getElementById('to');
+            const subjectInput = document.getElementById('subject');
+            const bodyInput = document.getElementById('body');
+            
+            // Use the reverted, clean emailQueue
+            AgentController.emailQueue(toInput, subjectInput, bodyInput);
+        };
+    },
 };/**
  * Registry: Maps page IDs to their specific initialization functions
  */
@@ -1129,6 +1170,7 @@ const PageRegistry = {
     'agentemail': () => AgentController.bindAgentEmail(), // New entry
     'autoform': () => AgentController.autoForm(), // New entry
     'sales': () => SalesController.bindSales(), // Add this
+    'snapshot': () => SnapshotController.bindEmails(), // Not being called from the Agent
     'health': () => {
         HealthController.init();
         HealthController.get();
@@ -1148,54 +1190,7 @@ const Model = {
 
 
 
-/** snapshots_controller.js */
-const SnapshotsController = {
-    async save(payload) {
-        app.spinner();
-        try {
-            const res = await fetch(App.url('ingestion/save'), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            const data = await res.json();
-            if (data.status !== 'success') throw new Error(data.message);
-            App.flash(`Success: ${data.id}`);
-            app.modal.close();
-        } catch(e) {
-            App.flash(`Error: ${e.message}`);
-        } finally {
-            app.clearSpinner();
-        }
-    },
-
-    createForm(agent) {
-        console.log(agent);
-        // 1. Create the container
-        const container = document.getElementById('snapshots');
-        // container.id = 'snapshots'; 
-
-        // 3. Define schema matching your HTML requirements
-        const schema = { 
-            'URL': { 'id': 'url' }, 
-            'Title': { 'id': 'title' }, 
-            'Description': { 'id': 'desc', 'type': 'textarea' }
-        };
-
-        // 4. Use eForm to inject fields into container
-        App.eForm(container, schema);
-
-        // 5. Add Submit Button
-        const btn = App.item('button');
-        btn.className = 'btn btn-primary mt-2';
-        btn.textContent = 'SCRAPE URL';
-        btn.onclick = async function(){
-
-        };
-        container.appendChild(btn);
-
-    }
-};/** view.js */
+/** view.js */
 /**
  * View: Global App State
  */

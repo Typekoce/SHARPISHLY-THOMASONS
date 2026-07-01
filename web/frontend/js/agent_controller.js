@@ -130,9 +130,8 @@ async bindAgentsDefault(){
 
         // TODO: Create loop
         if (actionId === 'snapshot') {
-            // Trigger the creation form, perhaps passing the agent context
+            alert('inside of snapshot condition');
             Controller.navigate(actionId);
-            SnapshotsController.createForm(agent,actionId); 
         } else if (actionId === 'autoform') {
 
             Controller.navigate(actionId );
