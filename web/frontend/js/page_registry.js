@@ -17,4 +17,5 @@ const PageRegistry = {
         HealthController.chat('Hello');
     },
     'pentest': () => PentestController.scan(),
+    //'pentest-examine': (data) => PentestController.examine(data)
 };

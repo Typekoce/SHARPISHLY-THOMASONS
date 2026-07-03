@@ -459,7 +459,19 @@ h1 {
 
 #snapshots .form-control {
     width: 100%;
-}/** lead form styling **/
+}#pentest {
+    border: 1px dashed #ccc;
+    padding: 10px;;
+}
+
+#pentest .row {
+    margin-top: 10px;
+    border: 1px dashed #ccc;
+    padding: 10px;
+    cursor: pointer;
+}
+
+/** lead form styling **/
 #leadForm {
     background-color: #ffffff;
     padding: 1.5rem;

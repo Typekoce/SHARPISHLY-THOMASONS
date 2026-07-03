@@ -43,6 +43,7 @@ cat web/frontend/css/app.css \
     web/frontend/css/autoform.css \
     web/frontend/css/neural-pipeline.css \
     web/frontend/css/snapshots.css \
+    web/frontend/css/pentest.css \
     web/frontend/css/leads.css >> $OUTPUT
 
 echo "Successfully built $OUTPUT"

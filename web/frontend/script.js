@@ -1212,21 +1212,34 @@ PentestController.scan = async function() {
 };
 
 PentestController.display = function(result) {
-    const container = App.getItem('form');
+    const container = App.getItem('pentest');
     if (!container) return;
 
-    for(res in result){
+    container.innerHTML = '';
 
-        console.log(result[res]);
-
-        it = App.item('div');
-
-        it.innerHTML = result[res];
-
+    for (let res in result) {
+        const it = App.item('div'); // Use button for built-in hover/click states
+        it.className = 'row';
+        
+        // Bind the click event correctly
+        const rowData = result[res];
+        it.onclick = function(e){
+            const data = {
+                event: e,
+                clicked: this
+            };
+            console.log(data);
+            PentestController.examine(rowData);
+        };
+        
+        it.textContent = rowData;
         container.appendChild(it);
-
     }
+};
 
+PentestController.examine = async function(examine){
+
+    App.flash('clicked: ' + examine);
 };/**
  * Registry: Maps page IDs to their specific initialization functions
  */
@@ -1246,6 +1259,7 @@ const PageRegistry = {
         HealthController.chat('Hello');
     },
     'pentest': () => PentestController.scan(),
+    //'pentest-examine': (data) => PentestController.examine(data)
 };/** model.js */
 
 /**
