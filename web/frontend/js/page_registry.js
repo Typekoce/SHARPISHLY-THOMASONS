@@ -15,5 +15,6 @@ const PageRegistry = {
         HealthController.init();
         HealthController.get();
         HealthController.chat('Hello');
-    }
+    },
+    'pentest': () => PentestController.scan(),
 };

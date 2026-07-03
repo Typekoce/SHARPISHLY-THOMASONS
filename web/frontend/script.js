@@ -348,9 +348,10 @@ async bindAgentsDefault(){
             {id: 'edit', name: 'Edit'},
             {id: 'email', name: 'Email'},
             {id: 'autoform', name: 'Automatic Form Completion'},
-            {id: 'snapshot', name: 'Take Snapshot'},
+            {id: 'snapshot', name: 'Scrape'},
             {id: 'tiktok', name: 'Tiktok'},
             {id: 'delete',name: 'Delete'},
+            {id: 'pentest',name: 'Penetration Testing'},
         ];
 
         // Build standard cells using template literals for safe, static content
@@ -365,10 +366,11 @@ async bindAgentsDefault(){
         const select = App.selectList(actions, (actionId) => {
 
         // TODO: Create loop
-        if (actionId === 'snapshot') {
-            alert('inside of snapshot condition');
+        // pages [{}];
+
+        if (actionId === 'pentest') {
             Controller.navigate(actionId);
-        } else if (actionId === 'autoform') {
+        } else  if (actionId === 'autoform') {
 
             Controller.navigate(actionId );
 
@@ -1187,6 +1189,46 @@ const SnapshotController = {
             }
         };
     },
+};/** pentest_controller.js */
+const PentestController = {};
+
+PentestController.scan = async function(){
+
+    try {
+
+        app.spinner();
+
+        // hard-coded ip
+        const res = await fetch(App.url('pentest/scan/192.168.0.218'));
+        const result = await res.json();
+        console.log(result);
+
+        if (res.ok) {
+            App.flash('Success: scanned IP' );
+
+            this.display(result);
+
+            app.clearSpinner();
+
+        } else {
+            throw new Error(result.message || 'Server returned an error');
+        }
+
+    } catch (err) {
+        App.flash('Error: ' + err.message);
+        console.error('Snapshot POST error:', err);
+    } finally {
+        app.clearSpinner();
+    }
+
+};
+
+PentestController.display = function(result) {
+    const container = App.getItem('form');
+    if (!container) return;
+
+    // Use a pre tag to preserve Nmap formatting
+    container.innerHTML = `<pre style="white-space: pre-wrap; word-wrap: break-word;">${result.result}</pre>`;
 };/**
  * Registry: Maps page IDs to their specific initialization functions
  */
@@ -1204,7 +1246,8 @@ const PageRegistry = {
         HealthController.init();
         HealthController.get();
         HealthController.chat('Hello');
-    }
+    },
+    'pentest': () => PentestController.scan(),
 };/** model.js */
 
 /**

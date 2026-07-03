@@ -112,9 +112,10 @@ async bindAgentsDefault(){
             {id: 'edit', name: 'Edit'},
             {id: 'email', name: 'Email'},
             {id: 'autoform', name: 'Automatic Form Completion'},
-            {id: 'snapshot', name: 'Take Snapshot'},
+            {id: 'snapshot', name: 'Scrape'},
             {id: 'tiktok', name: 'Tiktok'},
             {id: 'delete',name: 'Delete'},
+            {id: 'pentest',name: 'Penetration Testing'},
         ];
 
         // Build standard cells using template literals for safe, static content
@@ -129,10 +130,11 @@ async bindAgentsDefault(){
         const select = App.selectList(actions, (actionId) => {
 
         // TODO: Create loop
-        if (actionId === 'snapshot') {
-            alert('inside of snapshot condition');
+        // pages [{}];
+
+        if (actionId === 'pentest') {
             Controller.navigate(actionId);
-        } else if (actionId === 'autoform') {
+        } else  if (actionId === 'autoform') {
 
             Controller.navigate(actionId );
 
