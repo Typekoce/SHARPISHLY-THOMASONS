@@ -1215,8 +1215,18 @@ PentestController.display = function(result) {
     const container = App.getItem('form');
     if (!container) return;
 
-    // Direct, simple display using <pre> to preserve Nmap formatting
-    container.innerHTML = `<pre style="white-space: pre-wrap; word-wrap: break-word;">${result.result}</pre>`;
+    for(res in result){
+
+        console.log(result[res]);
+
+        it = App.item('div');
+
+        it.innerHTML = result[res];
+
+        container.appendChild(it);
+
+    }
+
 };/**
  * Registry: Maps page IDs to their specific initialization functions
  */
