@@ -74,6 +74,10 @@ function initializeServices(): void {
     // Instantiate Logger first so it can be used by other services
     $logger = new \App\Services\Logger();
     $GLOBALS['logger'] = $logger;
+
+    // 2. Initialize Security & Session (The "Gatekeeper" Layer)
+    \App\Security\Security::applyHeaders();
+    $session = new \App\Security\Session();
     
     $logger->info("Initializing Database connection...");
 
