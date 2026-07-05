@@ -120,6 +120,8 @@ async bindAgentsDefault(){
             {id: 'pension',name: 'Pension Schemes'},
             {id: 'council',name: 'Council Services'},
             {id: 'mortage',name: 'Mortage'},
+            {id: 'virginmedia',name: 'Virgin Media'},
+            {id: 'eonnext',name: 'E On Next'},
         ];
 
         // Build standard cells using template literals for safe, static content
