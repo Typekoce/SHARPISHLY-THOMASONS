@@ -116,6 +116,10 @@ async bindAgentsDefault(){
             {id: 'tiktok', name: 'Tiktok'},
             {id: 'delete',name: 'Delete'},
             {id: 'pentest',name: 'Penetration Testing'},
+            {id: 'phd',name: 'PhD'},
+            {id: 'pension',name: 'Pension Schemes'},
+            {id: 'council',name: 'Council Services'},
+            {id: 'mortage',name: 'Mortage'},
         ];
 
         // Build standard cells using template literals for safe, static content
