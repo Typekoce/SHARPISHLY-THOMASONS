@@ -464,7 +464,21 @@ h1 {
     padding: 10px;;
 }
 
-#pentest .row {
+#pentest .tbl {
+    margin-top: 10px;
+    border: 1px dashed #ccc;
+    padding: 10px;
+    cursor: pointer;
+}
+
+#pentest .tbl tr {
+    margin-top: 10px;
+    border: 1px dashed #ccc;
+    padding: 10px;
+    cursor: pointer;
+}
+
+#pentest .tbl td {
     margin-top: 10px;
     border: 1px dashed #ccc;
     padding: 10px;
