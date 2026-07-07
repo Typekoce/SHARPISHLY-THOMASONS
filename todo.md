@@ -182,3 +182,28 @@ seaview@seaview-Swift-SF113-31:~/Documents/SHARPISHLY-THOMASONS$
 
 ### The create a new Agent save is not working
 * The form save functionality has stopped working
+
+### Add these elements to page registry
+* The commented elements need to be applied
+
+```
+        const actions = [
+            //{id: 'start', name: 'Start'},
+            //{id: 'stop', name: 'Stop'},
+            //{id: 'edit', name: 'Edit'},
+            //{id: 'email', name: 'Email'},
+            {id: 'autoform', name: 'Automatic Form Completion'},
+            {id: 'snapshot', name: 'Scrape'},
+            {id: 'tiktok', name: 'Tiktok'},
+            //{id: 'delete',name: 'Delete'},
+            {id: 'pentest',name: 'Penetration Testing'},
+            //{id: 'phd',name: 'PhD'},
+            {id: 'pension',name: 'Pension Schemes'},
+            //{id: 'council',name: 'Council Services'},
+            //{id: 'mortage',name: 'Mortage'},
+            //{id: 'virginmedia',name: 'Virgin Media'},
+            //{id: 'eonnext',name: 'E On Next'},
+        ];
+```
+
+* Auto form generate this error: Error: Failed to fetch preview

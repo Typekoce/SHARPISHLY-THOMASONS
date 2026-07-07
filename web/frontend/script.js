@@ -343,19 +343,11 @@ async bindAgentsDefault(){
         
         // Define your actions
         const actions = [
-            {id: 'start', name: 'Start'},
-            {id: 'stop', name: 'Stop'},
-            {id: 'edit', name: 'Edit'},
-            {id: 'email', name: 'Email'},
             {id: 'autoform', name: 'Automatic Form Completion'},
-            {id: 'snapshot', name: 'Scrape'},
+            {id: 'snapshot', name: 'Ingestion external form'},
             {id: 'tiktok', name: 'Tiktok'},
-            {id: 'delete',name: 'Delete'},
             {id: 'pentest',name: 'Penetration Testing'},
-            {id: 'phd',name: 'PhD'},
             {id: 'pension',name: 'Pension Schemes'},
-            {id: 'council',name: 'Council Services'},
-            {id: 'mortage',name: 'Mortage'},
         ];
 
         // Build standard cells using template literals for safe, static content
@@ -372,9 +364,15 @@ async bindAgentsDefault(){
         // TODO: Create loop
         // pages [{}];
 
-        if (actionId === 'pentest') {
+        if (actionId === 'snapshot') {
+
             Controller.navigate(actionId);
-        } else  if (actionId === 'autoform') {
+
+        } else if (actionId === 'pentest') {
+
+            Controller.navigate(actionId);
+
+        } else if (actionId === 'autoform') {
 
             Controller.navigate(actionId );
 
@@ -1133,8 +1131,7 @@ const HealthController = {
 
 };/** snapshots_controller.js */
 const SnapshotController = {
-    async bindEmails() {
-        alert('Inside of bindEmails');
+    async displayForm() {
 
         const fields = { 
             'url': {}, 
@@ -1228,17 +1225,6 @@ PentestController.display = function(result) {
         const rowData = result[res];
         console.log(rowData);
         this.row(rowData,container);
-        // it.onclick = function(e){
-        //     const data = {
-        //         event: e,
-        //         clicked: this
-        //     };
-        //     console.log(data);
-        //     PentestController.examine(rowData);
-        // };
-        
-        // it.textContent = rowData;
-        // container.appendChild(it);
     }
 };
 
@@ -1315,7 +1301,7 @@ const PageRegistry = {
     'agentemail': () => AgentController.bindAgentEmail(), // New entry
     'autoform': () => AgentController.autoForm(), // New entry
     'sales': () => SalesController.bindSales(), // Add this
-    'snapshot': () => SnapshotController.bindEmails(), // Not being called from the Agent
+    'snapshot': () => SnapshotController.displayForm(), // Not being called from the Agent
     'health': () => {
         HealthController.init();
         HealthController.get();

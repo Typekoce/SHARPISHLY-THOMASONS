@@ -188,7 +188,7 @@ class IngestionController extends BaseController {
     }
 
     public function save() {
-        //http://192.168.0.218/php/ingestion/save/?url=https://www.applybe.com/?a=145F80311.0
+
         $url = $_GET['url'] ?? '';
         
         $data = [

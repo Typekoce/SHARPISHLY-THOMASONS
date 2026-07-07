@@ -1,7 +1,6 @@
 /** snapshots_controller.js */
 const SnapshotController = {
-    async bindEmails() {
-        alert('Inside of bindEmails');
+    async displayForm() {
 
         const fields = { 
             'url': {}, 

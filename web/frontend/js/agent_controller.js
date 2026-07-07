@@ -107,21 +107,11 @@ async bindAgentsDefault(){
         
         // Define your actions
         const actions = [
-            {id: 'start', name: 'Start'},
-            {id: 'stop', name: 'Stop'},
-            {id: 'edit', name: 'Edit'},
-            {id: 'email', name: 'Email'},
             {id: 'autoform', name: 'Automatic Form Completion'},
-            {id: 'snapshot', name: 'Scrape'},
+            {id: 'snapshot', name: 'Ingestion external form'},
             {id: 'tiktok', name: 'Tiktok'},
-            {id: 'delete',name: 'Delete'},
             {id: 'pentest',name: 'Penetration Testing'},
-            {id: 'phd',name: 'PhD'},
             {id: 'pension',name: 'Pension Schemes'},
-            {id: 'council',name: 'Council Services'},
-            {id: 'mortage',name: 'Mortage'},
-            {id: 'virginmedia',name: 'Virgin Media'},
-            {id: 'eonnext',name: 'E On Next'},
         ];
 
         // Build standard cells using template literals for safe, static content
@@ -138,9 +128,15 @@ async bindAgentsDefault(){
         // TODO: Create loop
         // pages [{}];
 
-        if (actionId === 'pentest') {
+        if (actionId === 'snapshot') {
+
             Controller.navigate(actionId);
-        } else  if (actionId === 'autoform') {
+
+        } else if (actionId === 'pentest') {
+
+            Controller.navigate(actionId);
+
+        } else if (actionId === 'autoform') {
 
             Controller.navigate(actionId );
 

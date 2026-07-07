@@ -10,7 +10,7 @@ const PageRegistry = {
     'agentemail': () => AgentController.bindAgentEmail(), // New entry
     'autoform': () => AgentController.autoForm(), // New entry
     'sales': () => SalesController.bindSales(), // Add this
-    'snapshot': () => SnapshotController.bindEmails(), // Not being called from the Agent
+    'snapshot': () => SnapshotController.displayForm(), // Not being called from the Agent
     'health': () => {
         HealthController.init();
         HealthController.get();
