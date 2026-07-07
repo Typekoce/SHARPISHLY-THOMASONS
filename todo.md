@@ -203,7 +203,21 @@ seaview@seaview-Swift-SF113-31:~/Documents/SHARPISHLY-THOMASONS$
             //{id: 'mortage',name: 'Mortage'},
             //{id: 'virginmedia',name: 'Virgin Media'},
             //{id: 'eonnext',name: 'E On Next'},
+            {id: 'morrisons',name: 'Morrisons Staff community shop'},
         ];
 ```
 
 * Auto form generate this error: Error: Failed to fetch preview
+
+* Form reset button
+
+### Sales Force Integration
+* Created a basic Sales Force controller
+
+### Back button
+
+### Bread crumbs
+
+### Create placeholder view for agent actions
+
+### federation of small business
