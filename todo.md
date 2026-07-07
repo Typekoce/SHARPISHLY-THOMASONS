@@ -221,3 +221,40 @@ seaview@seaview-Swift-SF113-31:~/Documents/SHARPISHLY-THOMASONS$
 ### Create placeholder view for agent actions
 
 ### federation of small business
+
+I have reviewed the current state of your project, including the recent errors, pending features, and integration requirements. Below is the updated, consolidated **TODO.md** tracker, prioritized to address your immediate stability issues before proceeding with new feature development.
+
+### **Active Project TODO.md**
+
+#### **Critical Stability (Immediate Focus)**
+
+* [ ] **1. Fix 500 Error on Auth:** The `curl` request to `/php/google/auth` is failing. Check the PHP error logs (`/var/log/nginx/error.log` or your app's local log) to identify the specific exception occurring during authentication.
+* [ ] **2. Restore Form Save Functionality:** The agent save operation is currently broken. Debug the `IngestionController` or equivalent save route to ensure form data is being correctly transmitted and persisted.
+* [ ] **3. Resolve "Failed to fetch preview":** This is blocking `autoform`. Inspect the network tab in your browser during the preview request to see if the server is returning a 500 error or if the client-side fetch is malformed.
+
+#### **Feature Integration & UI**
+
+* [ ] **4. Update Agent Registry:** Uncomment and register the new action elements (`pentest`, `pension`, `morrisons`, etc.) in the page registry.
+* [ ] **5. Implement UI Helpers:**
+* [ ] Add "Form Reset" button to the `autoform` interface.
+* [ ] Add "Back" button functionality to the agent action views.
+* [ ] Implement Breadcrumbs for improved navigation across agent modules.
+
+
+* [ ] **6. Create Placeholder Views:** Implement empty shell views for the new agent actions to prevent routing errors when they are clicked.
+
+#### **System & Infrastructure**
+
+* [ ] **7. Bitbucket Synchronization:** Generate and configure the SSH keys to push the current `SHARPISHLY-THOMASONS` repository to Bitbucket.
+* [ ] **8. RAG Chat Logging:** Implement the logic in `RagController` to log chat exchanges (query + answer) to the `queries` database table as discussed.
+* [ ] **9. SalesForce Controller Polish:** Refine the basic SalesForce controller to prepare it for secure integration testing.
+* [ ] **10. Federation of Small Business (FSB) Integration:** Map out the initial automation requirements for FSB interaction as part of your "Defensible Automation" launch strategy.
+
+---
+
+### **Next Action Items (Immediate Session)**
+
+1. **Diagnosis:** Execute `tail -f /var/log/nginx/error.log` (or your application-specific error log) and trigger the `/php/google/auth` call to identify why the server is returning a `500 Internal Server Error`.
+2. **Restore:** Once the auth error is identified, verify if the "Form Save" issue is related to a session timeout or a specific service dependency failure.
+
+**Would you like to start by diagnosing the 500 error on the auth route, or would you prefer to address the form save functionality first?**
