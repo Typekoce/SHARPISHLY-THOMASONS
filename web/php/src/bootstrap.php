@@ -75,9 +75,7 @@ function initializeServices(): void {
     $logger = new \App\Services\Logger();
     $GLOBALS['logger'] = $logger;
 
-    // 2. Initialize Security & Session (The "Gatekeeper" Layer)
-    \App\Security\Security::applyHeaders();
-    $session = new \App\Security\Session();
+    Gatekeeper();
     
     $logger->info("Initializing Database connection...");
 
@@ -85,6 +83,27 @@ function initializeServices(): void {
 
     $db = new \App\Services\Db($config, $logger);
 
+}
+/**
+ * 3.1 Gatekeeper will be renamed GateKeeper after testing
+ */
+function Gatekeeper(){
+    // Existing base security
+    if(DEBUG == TRUE){
+        \App\Security\Security::applyHeaders();
+        $session = new \App\Security\Session();
+    }
+
+    // Register Security Services into the GLOBALS scope
+    // This allows you to call them from any Controller without re-instantiating
+    $GLOBALS['security'] = [
+        'monitor'    => new \App\Security\MonitorNetworkTraffic(),
+        'incident'   => new \App\Security\IncidentResponse(),
+        'vuln'       => new \App\Security\VulnerabilityManager(),
+        'protection' => new \App\Security\DataProtection(),
+        'compliance' => new \App\Security\ComplianceEngine(),
+        'policy'     => new \App\Security\PolicyManager()
+    ];
 }
 
 /**

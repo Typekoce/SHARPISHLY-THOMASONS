@@ -6,3 +6,8 @@ define('DB_HOST', 'localhost');
 define('DB_USER', 'sharpishly');
 define('DB_PASS', 'sharpishly');
 define('DB_NAME', 'sharpishly');
+
+/**
+ * Develope Environment
+ */
+define('DEBUG', 'FALSE');
