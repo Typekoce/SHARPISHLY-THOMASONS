@@ -290,3 +290,30 @@ By refusing to use libraries you don't control and insisting on a "jobs as files
 **Final thought:** The project is no longer just a collection of scripts; it is a repository of your professional identity. When you present this code to an employer, you aren't just showing an app—you are showing your **engineering methodology**.
 
 Let’s keep that momentum. Shall we tackle one of those stability items (the 500 error or the save functionality) to push us into the 'A' territory for our next session?
+
+```text
+feat(controller): update SmsController with defensive validation
+
+- Implement json_last_error() checks to ensure RAG service responses are valid JSON[cite: 7, 8].
+- Enforce explicit HTTP 'POST' method signature in respond() calls to ensure transport consistency[cite: 7].
+- Add RuntimeException handling for payload encoding and service availability, integrating with the centralized logger[cite: 7, 8].
+
+```
+
+### Why we are refactoring the `LocationService`
+
+The refactor of `LocationService` is a strategic shift to decouple the application logic from the underlying file system structure, directly supporting the "Don't do things that scale" and "DRY" principles we established.
+
+The primary reasons for this refactor are:
+
+* **Elimination of Path Arithmetic**: We are moving away from fragile, error-prone relative path strings (like `../../../`) scattered throughout the codebase. By centralizing these in `LocationService`, we ensure that if the directory structure changes, we only need to update the logic in one location rather than across every controller and worker.
+
+
+* **Architectural Grounding**: This enforces a consistent "source of truth" for directory locations (snapshots, logs, storage), making the system significantly easier to audit during troubleshooting sessions, as seen in `make logs`.
+
+
+* **Improved Maintainability**: Following our `OPERATIONS.md` policy, this change turns path resolution into a standard operational procedure, reducing the likelihood of "magic string" bugs and simplifying the onboarding of new background tasks or services.
+
+
+
+By formalizing this as a service, we move from an imperative, ad-hoc file management style to a declarative, centralized system that supports the long-term stability of the Sharpishly-Thomasons ecosystem.
