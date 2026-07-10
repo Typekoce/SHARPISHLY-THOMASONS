@@ -127,7 +127,6 @@ pull_if_missing "jina/jina-embeddings-v2-small-en"
 echo -e "\n=== Installation Complete ==="
 echo -e "Run 'make run-rag' to start the RAG service."
 
-#!/bin/bash
 # ===================== PENTEST SETUP =====================
 # Script to install security tools on Ubuntu 24.04
 # =========================================================
@@ -157,3 +156,9 @@ else
 fi
 
 echo "Pentest setup complete."
+
+# ===================== SYSTEM SETUP =====================
+echo -e "\n=== Installing System Dependencies ==="
+sudo apt-get update -qq
+# Added default-jdk to ensure javac is available
+sudo apt-get install -y ca-certificates apt-transport-https lsb-release gnupg curl nginx mariadb-server php${PHP_VERSION}-fpm php${PHP_VERSION}-mysql php${PHP_VERSION}-curl php${PHP_VERSION}-mbstring php${PHP_VERSION}-xml php${PHP_VERSION}-zip python3-venv python3-pip default-jdk

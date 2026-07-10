@@ -317,3 +317,53 @@ The primary reasons for this refactor are:
 
 
 By formalizing this as a service, we move from an imperative, ad-hoc file management style to a declarative, centralized system that supports the long-term stability of the Sharpishly-Thomasons ecosystem.
+
+The directory structure confirms that your filesystem-backed queue is already in place, with 24 pending email jobs ready for processing. The schema in `job_15.json` is clear, though it currently lacks the explicit `type` field and `retry_count` we discussed to manage the "Claim and Move" lifecycle.
+
+To align this with the robust lifecycle we mapped out, we should formalize the directory structure to support atomicity.
+
+### 1. Proposed Directory Cleanup
+
+You currently have `waiting/`. To support the "Claim and Move" protocol, your `storage/agents/emails/` path should be structured as follows:
+
+```bash
+storage/agents/emails/
+├── waiting/    # New jobs arrive here
+├── processing/ # Jobs currently being handled by a worker
+├── completed/  # Successfully finished jobs
+└── failed/     # Jobs that hit a \Throwable
+
+```
+
+### 2. Implementation Strategy
+
+Since your current files are named `job_N.json`, they are already unique. However, to ensure they remain unique across the system, you should transition to UUIDs or include the timestamp in the filename when generating new jobs.
+
+**For the worker, the logic will be:**
+
+1. **Poll**: List `storage/agents/emails/waiting/*.json`.
+
+
+2. **Claim**: `mv waiting/job_N.json processing/job_N.json`.
+
+
+3. **Process**: Execute the email logic.
+
+
+4. **Finalize**: Move to `completed/` or `failed/` based on the result.
+
+
+
+### 3. Immediate Action: The Ingestion Worker
+
+We can now apply the `LocationService` to the ingestion worker so it knows exactly where these folders reside without hardcoding paths.
+
+**Would you like to draft the `WorkerLifecycle` spec, or should I show you how to update your `IngestionWorker.py` to use `LocationService` to scan these directories?**
+
+Action Item for your TODO.md
+[ ] Submission Review: Before submitting, ensure your updated CV, which highlights your long-term commitment to high-scale PHP and educational software architecture, is attached.  
+PDF
+
+Would you like me to add a task to your TODO.md to track your submission status for this Preston-based role?
+
+### 2-Factor Auth implementation
