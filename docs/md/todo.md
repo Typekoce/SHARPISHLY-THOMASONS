@@ -367,3 +367,13 @@ PDF
 Would you like me to add a task to your TODO.md to track your submission status for this Preston-based role?
 
 ### 2-Factor Auth implementation
+
+I have added the task to `todo.md` as requested.
+
+```markdown
+### 2. Implementation Strategy
+*   **Infrastructure Monitor**: Connect `health_controller.js` to the back-end `HealthController` endpoint to dynamically populate the UI diagnostic table[cite: 7, 13].
+
+```
+
+To complete this connection in `health_controller.js`, you should ensure the `get()` method correctly maps the data fields returned by `HealthController::index()`. Since you added `google` to the PHP `data` array, you should also add a `google` status cell to your HTML and a corresponding `this.google(data.google)` handler in your JS object to ensure the UI updates in real-time.
