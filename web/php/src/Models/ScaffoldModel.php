@@ -185,6 +185,19 @@ class ScaffoldModel extends BaseModel
                 'content'    => 'LONGTEXT NULL DEFAULT NULL',
                 'status'     => 'VARCHAR(225)'
             ],
+            'google_tokens' => [
+                'id'            => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'user_id'       => 'INT NOT NULL',
+                'provider'      => 'VARCHAR(50) NOT NULL',
+                'access_token'  => 'TEXT NOT NULL',
+                'refresh_token' => 'TEXT',
+                'scopes'        => 'TEXT',
+                'expires_at'    => 'TIMESTAMP NULL',
+                'revoked_at'    => 'TIMESTAMP NULL',
+                'created_at'    => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+                'updated_at'    => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
+                'UNIQUE KEY user_provider_unique' => '(user_id, provider)',
+            ],            
 
         ];
     }
