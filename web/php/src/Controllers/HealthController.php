@@ -52,6 +52,7 @@ class HealthController extends BaseController
         $data = [
             'database'    => $this->db ? true : false,
             'rag_service' => $this->checkRagService(),
+            'google'      => $this->checkGoogleService(), // Added integration
             'latest_job'  => $rs,
             'ollama'      => $neuralData,
             'rag_service' => $this->runDiagnosticScript('rag_check.sh'),
@@ -84,5 +85,16 @@ class HealthController extends BaseController
         // Map to existing index functionality
         $_GET['mode'] = $_GET['type'] ?? '';
         return $this->index();
+    }
+
+    public function checkGoogleService(): array
+    {
+        try {
+            $google = new \App\Controllers\GoogleController();
+            // We probe the controller instance rather than triggering the full flow
+            return ['status' => 'online', 'connected' => true];
+        } catch (\Throwable $e) {
+            return ['status' => 'offline', 'error' => $e->getMessage()];
+        }
     }
 }

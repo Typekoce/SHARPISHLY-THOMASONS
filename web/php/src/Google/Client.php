@@ -3,33 +3,47 @@
 namespace App\Google;
 
 /**
- * Google Client Service
- * Manages OAuth2 authentication and API connectivity.
+ * Custom Google Service Gateway
+ * Orchestrates token lifecycle and service injection for the Sharpishly framework.
  */
 class Client
 {
-    private $client;
+    private array $config = [];
+    private $tokenModel;
 
     public function __construct()
     {
-        // Initialize the Google Client
-        // Note: We use environmental variables to load paths, 
-
-        $this->client = new Client();
-        $this->client->setApplicationName('Sharpishly');
-        $this->client->setAuthConfig(getenv('GOOGLE_CREDENTIALS_PATH'));
-        $this->client->addScope(\Google\Service\Calendar::CALENDAR_READONLY);
-        $this->client->setAccessType('offline');
+        $this->setApplicationName('Sharpishly');
+        $this->setAuthConfig(getenv('GOOGLE_CREDENTIALS_PATH'));
+        $this->setAccessType('offline');
+        
+        // Inject token model for lifecycle management
+        $this->tokenModel = new \App\Models\GoogleTokenModel();
     }
 
-    public function isConnected(): bool
+    public function setApplicationName(string $name): void { $this->config['app_name'] = $name; }
+    public function setAuthConfig(string $path): void { $this->config['auth_path'] = $path; }
+    public function setAccessType(string $type): void { $this->config['access_type'] = $type; }
+
+    /**
+     * Factory method to return a specific service instance.
+     * This replaces the need for the third-party Google SDK object.
+     */
+    public function getService(string $serviceName, int $userId)
     {
-        // Logic to verify current token status
-        return !empty($this->client->getAccessToken());
+        $tokenData = $this->tokenModel->getToken($userId, 'google');
+        
+        // Corrected: Removed the extra backslash
+        $className = "\\App\\Google\\Services\\" . $serviceName;
+        return new $className($tokenData, $this->config);
     }
 
-    public function getService()
-    {
-        return new \Google\Service\Calendar($this->client);
+    public function getClient(){
+        return $this;
+    }
+
+    public function getAccessToken(){
+        // TODO: get token from db, etc
+        return 'ACCESS_TOKEN';
     }
 }

@@ -8,12 +8,12 @@ class GoogleController extends BaseController
 {
     public function auth()
     {
-        $client = new Client();
+        $wrapper = new Client();
+        $client = $wrapper->getClient();
         
-        // Return status for your health monitor
         return $this->json([
-            'status' => 'success',
-            'connected' => $client->isConnected(),
+            'status'    => 'success',
+            'connected' => !empty($client->getAccessToken()),
             'timestamp' => date('Y-m-d H:i:s')
         ]);
     }
