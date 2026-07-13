@@ -162,3 +162,33 @@ echo -e "\n=== Installing System Dependencies ==="
 sudo apt-get update -qq
 # Added default-jdk to ensure javac is available
 sudo apt-get install -y ca-certificates apt-transport-https lsb-release gnupg curl nginx mariadb-server php${PHP_VERSION}-fpm php${PHP_VERSION}-mysql php${PHP_VERSION}-curl php${PHP_VERSION}-mbstring php${PHP_VERSION}-xml php${PHP_VERSION}-zip python3-venv python3-pip default-jdk
+
+
+# ===================== HIMALAYA EMAIL CLIENT =====================
+
+# Verify dependencies
+if ! command -v curl >/dev/null 2>&1; then
+    echo "curl is required but not installed. Aborting."
+    exit 1
+fi
+
+# Detect distribution and install
+if command -v apt-get >/dev/null 2>&1 || command -v dnf >/dev/null 2>&1; then
+    echo "Installing Himalaya..."
+    curl -sSL https://raw.githubusercontent.com/pimalaya/himalaya/master/install.sh | sudo sh
+else
+    echo "Unsupported distribution."
+    exit 1
+fi
+
+mkdir -p ~/.config/himalaya/
+touch ~/.config/himalaya/config.toml
+
+# Set directory permissions
+chmod 700 ~/.config/himalaya/
+
+# Set file permissions
+chmod 600 ~/.config/himalaya/config.toml
+
+echo "Himalaya installed successfully."
+echo "Run 'himalaya --help' to verify the installation."

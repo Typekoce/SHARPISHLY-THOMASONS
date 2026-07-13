@@ -96,4 +96,12 @@ class Location {
     public function makefile(): string       { return $this->projectRoot . '/Makefile'; }
     public function env(): string            { return $this->projectRoot . '/.env'; }
     public function nginxConfig(): string    { return $this->projectRoot . '/infra/nginx/default.conf'; }
-}
+
+    /**
+     * Home directory hard-coded for now!
+     */
+    public function home($path = ''){
+        return "/home/seaview/" . $path;
+    }
+
+}// end of class
