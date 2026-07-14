@@ -160,16 +160,16 @@ App.eForm = function(form, schema) {
         form.appendChild(row);
     });
 };/* app_spinner.js */
-app.spinner = function(){
+App.spinner = function(){
     const spinner = document.getElementById('spinner');
     if (spinner) spinner.style.display = 'flex'; // Make it visible
 };
 
-app.clearSpinner = function(){
+App.clearSpinner = function(){
     const spinner = document.getElementById('spinner');
     if (spinner) spinner.style.display = 'none'; // Hide it again
 };/** app_modal.js */
-app.modal = {
+App.modal = {
     open(content, options = {}) {
         const {
             closeOnBackdrop = true,
@@ -552,7 +552,7 @@ AgentController.formPreview = async function(url) {
     const preview = document.getElementById('preview');
     if (!preview) return; // Guard clause
 
-    app.spinner();
+    App.spinner();
     try {
         const response = await fetch(App.url(url));
         if (!response.ok) throw new Error('Failed to fetch preview');
@@ -563,7 +563,7 @@ AgentController.formPreview = async function(url) {
         // Corrected from e.getMessage() to e.message
         App.flash('Error: ' + e.message);
     } finally {
-        app.clearSpinner();
+        App.clearSpinner();
     }
 };/** controllers.js **/
 
@@ -588,7 +588,7 @@ const RagController = {
             history.innerHTML += `<p><strong>You:</strong> ${query}</p>`;
             input.value = '';
             
-            app.spinner(); // Minimal change: Start spinner
+            App.spinner(); // Minimal change: Start spinner
             
             try {
                 // Changed from POST/body to GET/URL query parameter
@@ -600,7 +600,7 @@ const RagController = {
                 history.innerHTML += `<p><strong>Bot:</strong> ${data.answer || data.message}</p>`;
             } catch (e) { history.innerHTML += `<p class="text-danger">Error: Service unavailable</p>`; }
             finally {
-                app.clearSpinner(); // Minimal change: Stop spinner
+                App.clearSpinner(); // Minimal change: Stop spinner
             }
             
             history.scrollTop = history.scrollHeight;
@@ -852,12 +852,12 @@ handleMenuClick(field, form) {
             const page = e.target.closest('[data-page]')?.dataset.page;
             if (page) { e.preventDefault(); this.navigate(page); }
         });
-        app.spinner();
-        app.clearSpinner();
+        App.spinner();
+        App.clearSpinner();
     },
 
     showCookieConsent() {
-        app.modal.open(`
+        App.modal.open(`
             <h3>Cookie Policy</h3>
             <p>We use cookies to enhance your neural-pipeline experience. Do you accept our terms?</p>
             <div style="display:flex; gap:10px; justify-content:end; margin-top:20px;">
@@ -868,12 +868,12 @@ handleMenuClick(field, form) {
 
         document.getElementById('btn-accept').onclick = () => {
             console.log("Cookies accepted");
-            app.modal.close();
+            App.modal.close();
         };
 
         document.getElementById('btn-reject').onclick = () => {
             console.log("Cookies rejected");
-            app.modal.close();
+            App.modal.close();
         };
     },
 
@@ -1040,46 +1040,63 @@ const JobProgressController = {
 const HealthController = {
     elements: {},
 
-    // Ensure DOM elements are only mapped once, when they exist
+    // Ensure DOM elements are only mApped once, when they exist
     init() {
         this.elements = {
-            rag: app.getItem('status-rag'),
-            worker: app.getItem('status-worker'),
-            ollama: app.getItem('status-ollama'),
-            models: app.getItem('status-models')
+            rag: App.getItem('status-rag'),
+            worker: App.getItem('status-worker'),
+            ollama: App.getItem('status-ollama'),
+            models: App.getItem('status-models')
         };
     },
 
-    async get() {
-        // Defensive check: If elements aren't mapped, do it now
-        if (Object.keys(this.elements).length === 0) this.init();
+// Inside HealthController.get()
+async get() {
+    if (Object.keys(this.elements).length === 0) this.init();
+    
+    App.spinner();
+    try {
+        const res = await fetch(App.url('health'));
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         
-        app.spinner();
-        try {
-            const res = await fetch(App.url('health'));
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            
-            const data = await res.json();
+        const data = await res.json();
 
-            // Safe property access using optional chaining (?.) and fallbacks
-            this.rag(data.rag_service);
-            this.ollama(data.ollama);
-            this.models(data.ollama?.models || []);
-            this.worker(data.worker_status || 'unknown');
-            this.emails(data.email_status || 'idle');
+        // Normalizing data from the successful response
+        this.rag(data.rag_service || 'offline');
+        // ... (rest of your calls)
 
-        } catch (e) {
-            console.error("Health Center unreachable:", e);
-            App.flash(`Health Center Error: ${e.message}`);
-        } finally {
-            app.clearSpinner();
-        }
-    },
+    } catch (e) {
+        console.error("Health Center unreachable:", e);
+        // Explicitly update the UI to show the service is unreachable
+        this.rag('unreachable'); 
+        App.flash(`Health Center Error: Service unreachable`);
+    } finally {
+        App.clearSpinner();
+    }
+},
 
-    rag(status) {
+    async rag() {
         if (!this.elements.rag) return;
-        this.elements.rag.className = (status === 'online') ? 'text-success' : 'text-danger';
-        this.elements.rag.innerText = status.toUpperCase();
+
+        try {
+            // Fetch the status from the new RagController endpoint
+            const response = await fetch(App.url('rag/check'));
+            const data = await response.json();
+
+            // Determine if the service is online based on the API response
+            const isOnline = (data.rag_service === 'online');
+
+            // Update DOM
+            this.elements.rag.innerText = isOnline ? 'ONLINE' : 'UNREACHABLE';
+            this.elements.rag.style.color = isOnline ? '#28a745' : '#dc3545';
+            
+        } catch (e) {
+            // Handle network or parsing errors
+            console.error("RAG status check failed:", e);
+            this.elements.rag.innerText = 'UNREACHABLE';
+            this.elements.rag.style.color = '#dc3545';
+            App.flash('RAG Service: Unreachable');
+        }
     },
 
     ollama(data) {
@@ -1098,36 +1115,10 @@ const HealthController = {
     },
 
     worker(status) { /* Placeholder for worker-specific logic */ },
+
     emails(status) { /* Placeholder for email-queue logic */ },
-    // chat test
-    async chat(userQuery) {
-    if (!userQuery) return;
 
-    // Use the specific endpoint confirmed by your terminal
-    const url = `http://localhost:8765/rag/ask?query=${encodeURIComponent(userQuery)}`;
-
-    app.spinner();
-
-    try {
-        const response = await fetch(url, {
-            method: 'GET', // Matches the do_GET implementation in rag_service.py
-            headers: { 'Content-Type': 'application/json' }
-        });
-
-        if (!response.ok) throw new Error(`Server returned ${response.status}`);
-        
-        const data = await response.json();
-        console.log("RAG Answer:", data.answer);
-        
-        // Handle your display logic here (e.g., app.updateChat(data.answer))
-
-    } catch (e) {
-        // Fixed the typo 'messga' -> 'message'
-        app.flash('Chat Error: ' + e.message);
-    } finally {
-        app.clearSpinner();
-    }
-}
+    async chat(userQuery) { /* Placeholder for chat logic */}
 
 };/** snapshots_controller.js */
 const SnapshotController = {
@@ -1162,7 +1153,7 @@ const SnapshotController = {
                 page: document.getElementById('page')?.value
             };
 
-            app.spinner();
+            App.spinner();
 
             try {
                 const res = await fetch(App.url('ingestion/test'), {
@@ -1186,7 +1177,7 @@ const SnapshotController = {
                 App.flash('Error: ' + err.message);
                 console.error('Snapshot POST error:', err);
             } finally {
-                app.clearSpinner();
+                App.clearSpinner();
             }
         };
     },
@@ -1195,7 +1186,7 @@ const PentestController = {};
 
 PentestController.scan = async function() {
     try {
-        app.spinner();
+        App.spinner();
         const res = await fetch(App.url('pentest/scan/192.168.0.218'));
         const result = await res.json();
 

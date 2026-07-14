@@ -1,10 +1,10 @@
 /* app_spinner.js */
-app.spinner = function(){
+App.spinner = function(){
     const spinner = document.getElementById('spinner');
     if (spinner) spinner.style.display = 'flex'; // Make it visible
 };
 
-app.clearSpinner = function(){
+App.clearSpinner = function(){
     const spinner = document.getElementById('spinner');
     if (spinner) spinner.style.display = 'none'; // Hide it again
 };

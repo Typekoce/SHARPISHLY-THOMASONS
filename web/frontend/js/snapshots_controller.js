@@ -31,7 +31,7 @@ const SnapshotController = {
                 page: document.getElementById('page')?.value
             };
 
-            app.spinner();
+            App.spinner();
 
             try {
                 const res = await fetch(App.url('ingestion/test'), {
@@ -55,7 +55,7 @@ const SnapshotController = {
                 App.flash('Error: ' + err.message);
                 console.error('Snapshot POST error:', err);
             } finally {
-                app.clearSpinner();
+                App.clearSpinner();
             }
         };
     },

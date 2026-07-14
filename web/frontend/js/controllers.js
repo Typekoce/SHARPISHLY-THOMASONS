@@ -21,7 +21,7 @@ const RagController = {
             history.innerHTML += `<p><strong>You:</strong> ${query}</p>`;
             input.value = '';
             
-            app.spinner(); // Minimal change: Start spinner
+            App.spinner(); // Minimal change: Start spinner
             
             try {
                 // Changed from POST/body to GET/URL query parameter
@@ -33,7 +33,7 @@ const RagController = {
                 history.innerHTML += `<p><strong>Bot:</strong> ${data.answer || data.message}</p>`;
             } catch (e) { history.innerHTML += `<p class="text-danger">Error: Service unavailable</p>`; }
             finally {
-                app.clearSpinner(); // Minimal change: Stop spinner
+                App.clearSpinner(); // Minimal change: Stop spinner
             }
             
             history.scrollTop = history.scrollHeight;
@@ -285,12 +285,12 @@ handleMenuClick(field, form) {
             const page = e.target.closest('[data-page]')?.dataset.page;
             if (page) { e.preventDefault(); this.navigate(page); }
         });
-        app.spinner();
-        app.clearSpinner();
+        App.spinner();
+        App.clearSpinner();
     },
 
     showCookieConsent() {
-        app.modal.open(`
+        App.modal.open(`
             <h3>Cookie Policy</h3>
             <p>We use cookies to enhance your neural-pipeline experience. Do you accept our terms?</p>
             <div style="display:flex; gap:10px; justify-content:end; margin-top:20px;">
@@ -301,12 +301,12 @@ handleMenuClick(field, form) {
 
         document.getElementById('btn-accept').onclick = () => {
             console.log("Cookies accepted");
-            app.modal.close();
+            App.modal.close();
         };
 
         document.getElementById('btn-reject').onclick = () => {
             console.log("Cookies rejected");
-            app.modal.close();
+            App.modal.close();
         };
     },
 

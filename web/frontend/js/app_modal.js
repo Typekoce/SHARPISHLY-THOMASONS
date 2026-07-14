@@ -1,5 +1,5 @@
 /** app_modal.js */
-app.modal = {
+App.modal = {
     open(content, options = {}) {
         const {
             closeOnBackdrop = true,

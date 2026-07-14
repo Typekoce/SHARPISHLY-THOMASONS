@@ -4,46 +4,63 @@
 const HealthController = {
     elements: {},
 
-    // Ensure DOM elements are only mapped once, when they exist
+    // Ensure DOM elements are only mApped once, when they exist
     init() {
         this.elements = {
-            rag: app.getItem('status-rag'),
-            worker: app.getItem('status-worker'),
-            ollama: app.getItem('status-ollama'),
-            models: app.getItem('status-models')
+            rag: App.getItem('status-rag'),
+            worker: App.getItem('status-worker'),
+            ollama: App.getItem('status-ollama'),
+            models: App.getItem('status-models')
         };
     },
 
-    async get() {
-        // Defensive check: If elements aren't mapped, do it now
-        if (Object.keys(this.elements).length === 0) this.init();
+// Inside HealthController.get()
+async get() {
+    if (Object.keys(this.elements).length === 0) this.init();
+    
+    App.spinner();
+    try {
+        const res = await fetch(App.url('health'));
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         
-        app.spinner();
-        try {
-            const res = await fetch(App.url('health'));
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            
-            const data = await res.json();
+        const data = await res.json();
 
-            // Safe property access using optional chaining (?.) and fallbacks
-            this.rag(data.rag_service);
-            this.ollama(data.ollama);
-            this.models(data.ollama?.models || []);
-            this.worker(data.worker_status || 'unknown');
-            this.emails(data.email_status || 'idle');
+        // Normalizing data from the successful response
+        this.rag(data.rag_service || 'offline');
+        // ... (rest of your calls)
 
-        } catch (e) {
-            console.error("Health Center unreachable:", e);
-            App.flash(`Health Center Error: ${e.message}`);
-        } finally {
-            app.clearSpinner();
-        }
-    },
+    } catch (e) {
+        console.error("Health Center unreachable:", e);
+        // Explicitly update the UI to show the service is unreachable
+        this.rag('unreachable'); 
+        App.flash(`Health Center Error: Service unreachable`);
+    } finally {
+        App.clearSpinner();
+    }
+},
 
-    rag(status) {
+    async rag() {
         if (!this.elements.rag) return;
-        this.elements.rag.className = (status === 'online') ? 'text-success' : 'text-danger';
-        this.elements.rag.innerText = status.toUpperCase();
+
+        try {
+            // Fetch the status from the new RagController endpoint
+            const response = await fetch(App.url('rag/check'));
+            const data = await response.json();
+
+            // Determine if the service is online based on the API response
+            const isOnline = (data.rag_service === 'online');
+
+            // Update DOM
+            this.elements.rag.innerText = isOnline ? 'ONLINE' : 'UNREACHABLE';
+            this.elements.rag.style.color = isOnline ? '#28a745' : '#dc3545';
+            
+        } catch (e) {
+            // Handle network or parsing errors
+            console.error("RAG status check failed:", e);
+            this.elements.rag.innerText = 'UNREACHABLE';
+            this.elements.rag.style.color = '#dc3545';
+            App.flash('RAG Service: Unreachable');
+        }
     },
 
     ollama(data) {
@@ -62,35 +79,9 @@ const HealthController = {
     },
 
     worker(status) { /* Placeholder for worker-specific logic */ },
+
     emails(status) { /* Placeholder for email-queue logic */ },
-    // chat test
-    async chat(userQuery) {
-    if (!userQuery) return;
 
-    // Use the specific endpoint confirmed by your terminal
-    const url = `http://localhost:8765/rag/ask?query=${encodeURIComponent(userQuery)}`;
-
-    app.spinner();
-
-    try {
-        const response = await fetch(url, {
-            method: 'GET', // Matches the do_GET implementation in rag_service.py
-            headers: { 'Content-Type': 'application/json' }
-        });
-
-        if (!response.ok) throw new Error(`Server returned ${response.status}`);
-        
-        const data = await response.json();
-        console.log("RAG Answer:", data.answer);
-        
-        // Handle your display logic here (e.g., app.updateChat(data.answer))
-
-    } catch (e) {
-        // Fixed the typo 'messga' -> 'message'
-        app.flash('Chat Error: ' + e.message);
-    } finally {
-        app.clearSpinner();
-    }
-}
+    async chat(userQuery) { /* Placeholder for chat logic */}
 
 };

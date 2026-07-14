@@ -316,7 +316,7 @@ AgentController.formPreview = async function(url) {
     const preview = document.getElementById('preview');
     if (!preview) return; // Guard clause
 
-    app.spinner();
+    App.spinner();
     try {
         const response = await fetch(App.url(url));
         if (!response.ok) throw new Error('Failed to fetch preview');
@@ -327,6 +327,6 @@ AgentController.formPreview = async function(url) {
         // Corrected from e.getMessage() to e.message
         App.flash('Error: ' + e.message);
     } finally {
-        app.clearSpinner();
+        App.clearSpinner();
     }
 };

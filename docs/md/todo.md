@@ -377,3 +377,7 @@ I have added the task to `todo.md` as requested.
 ```
 
 To complete this connection in `health_controller.js`, you should ensure the `get()` method correctly maps the data fields returned by `HealthController::index()`. Since you added `google` to the PHP `data` array, you should also add a `google` status cell to your HTML and a corresponding `this.google(data.google)` handler in your JS object to ensure the UI updates in real-time.
+
+### JavaScript Naming Conventions
+* I introduced an error to the script.js by using app in stead of App = {};
+* A check may need to be introduced to prevent this in the future

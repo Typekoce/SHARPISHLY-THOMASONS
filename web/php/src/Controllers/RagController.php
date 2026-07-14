@@ -69,8 +69,6 @@ class RagController extends BaseController {
         return $this->json($data);
     }
 
-
-
     /**
     * Save queries
     *
@@ -87,5 +85,35 @@ class RagController extends BaseController {
         );
 
 	$this->db->save('queries',$conditions);
+    }
+
+    /**
+     * Check if the RAG service is active.
+     * @return bool
+     */
+    public function status(): bool {
+        $host = '127.0.0.1';
+        $port = 8765;
+        $timeout = 1; 
+
+        // @ suppresses warnings; connection status handled by boolean check
+        $connection = @fsockopen($host, $port, $errno, $errstr, $timeout);
+        
+        if ($connection !== false) {
+            fclose($connection);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * JSON endpoint for frontend health checks
+     */
+    public function check() {
+        $isOnline = $this->status();
+        return $this->json([
+            'status' => $isOnline ? 'online' : 'offline',
+            'rag_service' => $isOnline ? 'online' : 'unreachable',
+        ]);
     }
 }
