@@ -381,3 +381,4 @@ To complete this connection in `health_controller.js`, you should ensure the `ge
 ### JavaScript Naming Conventions
 * I introduced an error to the script.js by using app in stead of App = {};
 * A check may need to be introduced to prevent this in the future
+* Display pop-up moda; message when user attempts to close the page
