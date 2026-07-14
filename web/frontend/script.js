@@ -1199,7 +1199,7 @@ PentestController.scan = async function() {
     } catch (err) {
         App.flash('Error: ' + err.message);
     } finally {
-        app.clearSpinner();
+        App.clearSpinner();
     }
 };
 
