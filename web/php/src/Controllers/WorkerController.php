@@ -8,6 +8,9 @@ class WorkerController extends BaseController {
 
     public function dispatch(string $command): void {
 
+        // http://localhost/php/worker/dispatch/worker?query="ls"
+
+
         if(isset($_GET['query'])){
             $command = urldecode($_GET['query']);
         }
@@ -50,7 +53,9 @@ class WorkerController extends BaseController {
 
     public function url($url = ''){
 
-        return "http://" . $_SERVER['HTTP_HOST'] . "/php/worker/dispatch?query='" . urlencode($url) . "'";
+        http://localhost/php/worker/dispatch/worker?query="ls"
+
+        return "http://" . $_SERVER['HTTP_HOST'] . "/php/worker/dispatch/worker?query='" . urlencode($url) . "'";
 
     }
 
