@@ -62,22 +62,36 @@ class TerminalController extends BaseController {
 
     }
 
-    public function alias($command){
-
+    public function alias($command)
+    {
         $terminal = array(
-            'ls' => 'ls -all',
-            'history' => '',
-            'history-update' => "history | grep 'update'"
-        );
+            'ls'             => 'ls -all',
+            'history'        => 'history',
+            'history-update' => "history | grep 'update'",
+            
+            // Project maintenance & logs
+            'logs-app'       => 'tail -f storage/logs/app.log',
+            // Updated to reflect the specific log path for the project
+            'logs-nginx'     => 'tail -f /var/log/nginx/sharpishly_access.log',
+            'db-migrate'     => 'curl -i http://localhost/php/scaffold/migrate',
+            
+            // Safety-first cleanup: targeting job-specific files
+            'cleanup'        => 'find storage/cmd/jobs/waiting -type f -name "job_*" -delete',
+            
+            // Deterministic service check
+            'status'         => 'sh -lc "systemctl status mariadb; systemctl status nginx"',
+            
+            // Schema validation
+            'schema-check'   => 'php scripts/schema-check.php',
 
-        if(isset($terminal[$command])){
+            //
+            'docker-maxie' => 'ssh -o ConnectTimeout=5 maxie "docker ps --format \'table {{.ID}}\t{{.Image}}\t{{.Status}}\t{{.Names}}\'"',        );
 
+        if (isset($terminal[$command])) {
             return $terminal[$command];
-
         }
 
         return false;
-
     }
 
 }
