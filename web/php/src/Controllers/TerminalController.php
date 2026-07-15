@@ -8,6 +8,8 @@ use RuntimeException;
 
 class TerminalController extends BaseController {
 
+    public $tbl = 'terminal';
+
     public function load(string $command): void {
 
         $run = $this->alias($command);
@@ -28,6 +30,14 @@ class TerminalController extends BaseController {
 
             $finalFile = $dir . "/" . $filename;
 
+            $save = array(
+                'filename'      => $filename,
+                'command'       => $command,
+                'created_at'    => $this->now()
+            );
+
+            $result = $this->db->save($this->tbl, $save);
+
             // 1. Write content
             // Use LOCK_EX to ensure the write is clean
             if (file_put_contents($tempFile, "#!/bin/bash\n" . $run, LOCK_EX) === false) {
@@ -43,6 +53,7 @@ class TerminalController extends BaseController {
 
                 throw new RuntimeException("Failed to rename $tempFile to $finalFile");
             }
+            
 
 
         }
@@ -56,6 +67,7 @@ class TerminalController extends BaseController {
         $terminal = array(
             'ls' => 'ls -all',
             'history' => '',
+            'history-update' => "history | grep 'update'"
         );
 
         if(isset($terminal[$command])){

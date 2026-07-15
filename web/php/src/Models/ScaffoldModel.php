@@ -196,9 +196,16 @@ class ScaffoldModel extends BaseModel
                 'revoked_at'    => 'TIMESTAMP NULL',
                 'created_at'    => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
                 'updated_at'    => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
-                'UNIQUE KEY user_provider_unique' => '(user_id, provider)',
-            ],            
-
+            ],           
+           'terminal' => [
+                'id'         => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'filename'      => 'VARCHAR(225)',
+                'command' => 'VARCHAR(225)',
+                'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+                'pref'       => 'VARCHAR(255) DEFAULT NULL',
+                'content'    => 'LONGTEXT NULL DEFAULT NULL',
+                'status'     => 'VARCHAR(225)'
+            ],
         ];
     }
 }
