@@ -1,0 +1,18 @@
+  GNU nano 7.2                                        /home/seaview/.config/himalaya/config.toml                                                  
+[accounts."Paul McIntosh"]
+default = true
+email = "mysharpishly@gmail.com"
+display-name = "MySharpishly"
+downloads-dir = "/home/seaview/Downloads"
+backend.type = "imap"
+backend.host = "imap.gmail.com"
+backend.port = 993
+backend.login = "mysharpishly@gmail.com"
+backend.encryption.type = "tls"
+backend.auth.type = "password"
+backend.auth.command = "pass show email/mysharpishly"
+message.send.backend.type = "smtp"
+message.send.backend.host = "smtp.gmail.com"
+message.send.backend.port = 587
+message.send.backend.login = "mysharpishly@gmail.com"
+message.send.backend.encryption.type = "start-tls"
