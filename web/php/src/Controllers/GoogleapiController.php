@@ -36,7 +36,6 @@ class GoogleapiController extends BaseController
             return $this->jsonResponse(['error' => 'missing_code'], 400);
         }
 
-        // Configuration sourced from constants defined in bootstrap via env.php[cite: 2, 4]
         $params = [
             'code'          => $code,
             'client_id'     => GOOGLE_CLIENT_ID,
@@ -45,10 +44,22 @@ class GoogleapiController extends BaseController
             'grant_type'    => 'authorization_code',
         ];
 
+        // Capture raw response to expose Google's diagnostic feedback
         $response = $this->curlRequest('https://oauth2.googleapis.com/token', [], $params);
         
+        // Log the response internally for your server logs
+        error_log("Google OAuth Debug: " . json_encode($response));
+
+        // If exchange fails, return the full Google response for instant verification
         if (!is_array($response) || empty($response['access_token'])) {
-            return $this->jsonResponse(['error' => 'token_exchange_failed', 'details' => $response], 502);
+            return $this->jsonResponse([
+                'error'           => 'token_exchange_failed',
+                'google_feedback' => $response, // This reveals 'invalid_grant' details
+                'debug_params'    => [
+                    'redirect_uri_used' => GOOGLE_REDIRECT_URI,
+                    'client_id_used'    => GOOGLE_CLIENT_ID
+                ]
+            ], 502);
         }
 
         $this->saveLocalToken($response['access_token']);

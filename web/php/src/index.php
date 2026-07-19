@@ -16,7 +16,7 @@ $aliases = [
     'job-status' => ['Upload', 'status'],
     'search'     => ['Search', 'query'],
     'chat'       => ['Chat', 'ask'],
-    // 'google-auth' => ['Google', 'auth'],
+    'upload'               => ['Upload', 'index'],   
     // 'chat-stream'=> ['Chat', 'stream'],
 ];
 
@@ -26,7 +26,6 @@ $uriPath = parse_url($requestUri, PHP_URL_PATH) ?? '/';
 
 $parts = explode('/', trim($uriPath, '/'));
 //echo "<pre>";
-//print_r($parts);
 // 4. Strip prefixes (/php/ or /api/)
 if (isset($parts[0]) && ($parts[0] === 'php' || $parts[0] === 'api')) {
     array_shift($parts);

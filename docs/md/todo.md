@@ -393,3 +393,12 @@ To complete this connection in `health_controller.js`, you should ensure the `ge
 ### Set up GoDaddy
 
 ### Set up Zoho
+
+### Set up SSL locally @seaview
+* set up SSL on @seaview
+* The @foozie has issues connecting via browser: https://sharpishly.dev/
+
+## Google Client ID URL
+
+https://accounts.google.com/o/oauth2/v2/auth?client_id=CLIENT_ID&redirect_uri=http://sharpishly.dev/php/googleapi/callback&response_type=code&scope=https://www.googleapis.com/auth/userinfo.profile+https://www.googleapis.com/auth/userinfo.email&access_type=offline&prompt=consent
+
