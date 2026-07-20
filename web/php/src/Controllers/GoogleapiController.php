@@ -6,7 +6,7 @@ namespace App\Controllers;
  * Standalone GoogleapiController
  * Handles OAuth2 flow and endpoint interaction within a single class.
  */
-class GoogleapiController extends BaseController
+class GoogleapiController extends BaseCloudController
 {
     /**
      * Entry point: Fetches user profile data.
