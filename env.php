@@ -8,12 +8,19 @@ define('DB_PASS', 'sharpishly');
 define('DB_NAME', 'sharpishly');
 
 /**
-* Google API
+* sharpishly.dev* Google API
 */
 define('GOOGLE_CLIENT_ID', '');
 define('GOOGLE_CLIENT_SECRET', '');
 define('GOOGLE_REDIRECT_URI', 'http://sharpishly.dev/php/googleapi/callback');
 
+
+/**
+* hotmail
+**/
+define('HOTMAIL_CLIENT_ID','15042627-9611-4ef5-b367-b9b03627c2cf');
+define('HOTMAIL_CLIENT_SECRET','0704de49-3c33-496a-a52b-f98a149b1dba');
+define('HOTMAIL_REDIRECT_URI','https://sharpishly.dev/php/hotmailapi/callback');
 
 /**
  * Develope Environment
