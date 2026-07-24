@@ -23,6 +23,15 @@ define('HOTMAIL_CLIENT_SECRET','0704de49-3c33-496a-a52b-f98a149b1dba');
 define('HOTMAIL_REDIRECT_URI','https://sharpishly.dev/php/hotmailapi/callback');
 
 /**
+ * Azure Foundry
+ */
+define('AZURE_FOUNDRY_ENDPOINT','');
+define('AZURE_FOUNDRY_API_KEY','');
+
+
+
+
+/**
  * Develope Environment
  */
 define('DEBUG', 'FALSE');
