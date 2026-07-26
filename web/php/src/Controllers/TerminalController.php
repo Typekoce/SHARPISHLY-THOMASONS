@@ -6,6 +6,9 @@ use RuntimeException;
 
 //TODO: Might store commands in DB
 
+/**
+ * The supervisor_worker.sh watches the cmd folders
+ */
 class TerminalController extends BaseController {
 
     public $tbl = 'terminal';
@@ -90,8 +93,13 @@ class TerminalController extends BaseController {
             //
             'docker-maxie-status'   => 'echo "YOUR_PASSWORD" | ssh -t maxie "sudo -S systemctl status docker"',
             
-            'gmail-inbox'   => 'himalaya envelope list'
-            
+            'gmail-inbox'   => 'himalaya envelope list',
+
+            // Git log
+            'git-log'       => 'git log --oneline --graph --decorate',
+
+            // Check which files render json endpoints
+            'json-endpoints' => "grep -R '$this->json(' web/php/src/Controllers/"
         );
 
         if (isset($terminal[$command])) {
