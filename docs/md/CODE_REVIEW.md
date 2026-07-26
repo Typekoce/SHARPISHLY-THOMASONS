@@ -73,3 +73,59 @@ To align with the upcoming demo build, complete controller reviews in the follow
 1. **Standalone Cloud Controllers:** `GoogleapiController`, `HotmailapiController`, `AwsapiController`, `AzureapiController`
 2. **Framework Core & Routing:** `TestController`, `TerminalController`
 3. **Agent & Pipeline Endpoints:** Inbound SMS webhooks, document generation, and RAG/vector orchestration components.
+
+# Controller Code Review & Response Contract Audit
+
+## Overview & Architectural Principles
+The standard response boundary across all application controllers must route through `BaseController::json()`. Direct JSON outputs, manual `echo` statements, or raw `header()` modifications are treated as code smells unless explicitly justified.
+
+### Architectural Takeaways
+* **`BaseController::json()` as Standard:** Centralized response handler ensuring consistent HTTP status codes and `Content-Type: application/json; charset=utf-8` headers.
+* **Predictable Boundaries:** Operational controllers already utilize JSON as their primary boundary, aiding testability and keeping HTTP interactions predictable.
+* **Candidate Normalization:** Domain and data controllers act as thin pass-throughs between models and `$this->json()`, making them prime candidates for standardized response structures.
+
+---
+
+## Response Strategy & Review Implications
+
+1. **Output Consolidation:** Any controller using direct `header()`, `echo`, or manual `json_encode()` calls must be refactored to use `$this->json()`.
+2. **Single Responsibility Principle (SRP):** Controllers executing terminal commands, cURL requests, vector database queries, or job writes must be evaluated for SRP violations before normalizing response payloads.
+3. **Strict Contracts:** Infrastructure, health, and monitoring endpoints require strict response contracts to ensure reliability for automated tooling and internal orchestration.
+
+> **Rule:** If a controller returns data to the client or an external service, it must return through `BaseController::json()` unless a specific exception is formally documented.
+
+---
+
+## Controller Audit Matrix
+
+| Controller | JSON Helper Used | Direct JSON Usage | External I/O | Status Code Consistency | Refactor Priority |
+| :--- | :---: | :---: | :--- | :---: | :---: |
+| **`BaseController`** | Native | N/A | None | High | Low (Source) |
+| **`IngestionController`** | Yes | Minimal | Filesystem / DB / HTTP | Moderate | Medium |
+| **`JobController`** | Yes | Minimal | Filesystem / Vector Store | Moderate | High |
+| **`HealthController`** | Yes | No | DB / LLM / External APIs | High | Low |
+| **`ScaffoldController`** | Yes | No | Database Schema | High | Low |
+| **`BashController`** | Yes | No | Terminal / OS Execution | High | Medium |
+| **`SearchController`** | Yes | No | Vector DB / Neural Embeddings | High | Low |
+| **`VectorController`** | Yes | Low | Vector DB / Filesystem | Moderate | Medium |
+| **`RagController`** | Yes | No | Vector DB / AI Engine | High | Low |
+| **`ChatController`** | Yes | No | AI Services | High | Low |
+| **`EmailsController`** | Yes | Low | Queue Storage / Local IO | Moderate | Medium |
+| **`SmsController`** | Yes | Low | Queue Storage / Local IO | Moderate | Medium |
+| **`GoogleController`** | Yes | No | OAuth / External APIs | High | Low |
+| **`GoogleapiController`** | Yes | No | Google API Services | High | Low |
+| **`HotmailapiController`** | Yes | No | Microsoft Graph APIs | High | Low |
+| **`AzureapiController`** | Yes | No | Azure Cloud APIs | High | Low |
+| **`DocsController`** | Yes | Potential | Database | Moderate | Low |
+| **`QueryController`** | Yes | Potential | Database | Moderate | Low |
+| **`LeadController`** | Yes | Potential | Database | Moderate | Low |
+| **`SalesController`** | Yes | Potential | Database | Moderate | Low |
+| **`FacebookController`** | Yes | Potential | External API / Database | Moderate | Medium |
+
+---
+
+## Priority Action Items
+
+* **High Priority (`JobController`):** Manages multiple direct write operations and embedding generation alongside response outputs. Ensure strict status code propagation to prevent unhandled queue failures.
+* **Medium Priority (`IngestionController`, `VectorController`, `EmailsController`, `SmsController`):** Manages file imports, queue drops, and database chunk syncing. Audit to eliminate any remaining direct `echo json_encode(...)` calls in favor of `$this->json()`.
+* **Low Priority (API & Domain Controllers):** Thin wrappers over vendor APIs or simple model queries that largely comply with the base controller's response contract.
