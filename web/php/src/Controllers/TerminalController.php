@@ -99,7 +99,10 @@ class TerminalController extends BaseController {
             'git-log'       => 'git log --oneline --graph --decorate',
 
             // Check which files render json endpoints
-            'json-endpoints' => "grep -R '$this->json(' web/php/src/Controllers/"
+            'json-endpoints' => "grep -R '$this->json(' web/php/src/Controllers/",
+
+            // Find Api Controllers
+            'api-controllers'   => "find web/php/src/Controllers/ -type f -iname '*apiController*' -exec grep -Hni 'json' {} +"
         );
 
         if (isset($terminal[$command])) {

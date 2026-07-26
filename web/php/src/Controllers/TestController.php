@@ -14,6 +14,9 @@ class TestController extends BaseController {
         'class'         => __CLASS__,
         'function'      => __FUNCTION__,
         'google_api'    => $this->decodeJsonRequest('googleapi'),
+        'hotmail_api'    => $this->decodeJsonRequest('hotmailapi'),
+        'azure_api'    => $this->decodeJsonRequest('azureapi'),
+        'aws_api'    => $this->decodeJsonRequest('awsapi'),
         'recent_work'   => array(
             'ssl_setup'     => 'setup-local-ssl.sh',
             'installer'     => 'build-installer.sh',
