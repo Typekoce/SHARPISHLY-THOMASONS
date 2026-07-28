@@ -44,7 +44,9 @@ class TerminalModel extends BaseModel {
             'api-controllers'   => "find web/php/src/Controllers/ -type f -iname '*apiController*' -exec grep -Hni 'json' {} +",
 
             // NMAP
-            'nmap-local' => 'nmap 192.168.0.218 -sV -T4 2>&1'
+            'nmap-local' => 'nmap 192.168.0.218 -sV -T4 2>&1',
+
+            'nginx-header-check' => 'php diagnostics/nginx-header-check.php'
         );
 
         if (isset($terminal[$command])) {
