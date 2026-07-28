@@ -11,13 +11,34 @@ $logger = new Logger();
  * 2. Define Route Aliases
  * Maps the URL slug to the [ControllerName, MethodName]
  */
+// $aliases = [
+//     'upload'     => ['Upload', 'index'],
+//     'job-status' => ['Upload', 'status'],
+//     'search'     => ['Search', 'query'],
+//     'chat'       => ['Chat', 'ask'],
+//     'upload'     => ['Upload', 'index'], 
+//     'pentest-diagnostics'   => ['PentestDianostics','index']  
+//     // 'chat-stream'=> ['Chat', 'stream'],
+// ];
+
+/**
+ * 2. Define Route Aliases
+ * Maps the URL slug to the [ControllerName, MethodName]
+ */
 $aliases = [
-    'upload'     => ['Upload', 'index'],
-    'job-status' => ['Upload', 'status'],
-    'search'     => ['Search', 'query'],
-    'chat'       => ['Chat', 'ask'],
-    'upload'               => ['Upload', 'index'],   
-    // 'chat-stream'=> ['Chat', 'stream'],
+    'upload'               => ['Upload', 'index'],
+    'job-status'           => ['Upload', 'status'],
+    'search'               => ['Search', 'query'],
+    'chat'                 => ['Chat', 'ask'],
+    'pentest-scan'         => ['Pentest', 'scan'],
+    'pentest-diagnostics'  => ['PentestDiagnostics', 'treats'],
+
+    // OAuth & Cloud Service Callbacks
+    'auth-google-callback'  => ['Auth', 'googleCallback'],
+    'auth-hotmail-callback' => ['Auth', 'hotmailCallback'],
+    'auth-aws-callback'     => ['Auth', 'awsCallback'],
+    
+    // 'chat-stream'        => ['Chat', 'stream'],
 ];
 
 // 3. Parse the URI (CLI-aware fallback)
