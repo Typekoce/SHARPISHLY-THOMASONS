@@ -2,94 +2,146 @@
 
 namespace App\Controllers;
 
+use DOMDocument;
+use DOMXPath;
 use SimpleXMLElement;
 
 class IndeedApiController extends BaseController
 {
     /**
-     * Entry point: Fetches and displays software developer jobs.
-     * Route: /indeed-api?q=Software+Developer&location=United+Kingdom
+     * Reads local snapshots and returns parsed job listing objects.
+     * Route: /indeed-api
      */
     public function index(): void
     {
-        $query    = trim($this->request('q') ?? 'Software Developer');
-        $location = trim($this->request('location') ?? 'United Kingdom');
+        if (!isset($this->loc)) {
+            $this->json(['success' => false, 'error' => 'location_service_missing'], 500);
+            return;
+        }
 
-        $token  = $this->getLocalToken();
-        $source = 'mock_fallback';
-        $jobs   = [];
+        $snapshotDir = $this->loc->storage('snapshots');
+        $jobs        = [];
+        $maxJobs     = 20;
+        $primarySource = 'local_snapshots';
 
-        if ($token !== null) {
-            $source = 'indeed_api';
-            $jobs   = $this->fetchFromIndeedApi($query, $location, $token);
-        } else {
-            $jobs = $this->fetchFromIndeedRss($query, $location);
-            if (!empty($jobs)) {
-                $source = 'indeed_rss';
+        if (is_dir($snapshotDir)) {
+            $files = glob($snapshotDir . '/*.html');
+            if ($files !== false) {
+                rsort($files); // Process newest snapshots first
+
+                foreach ($files as $filePath) {
+                    $parsedJobs = $this->parseSnapshotFile($filePath);
+                    
+                    foreach ($parsedJobs as $job) {
+                        $jobs[] = $job;
+                        if (count($jobs) >= $maxJobs) {
+                            break 2;
+                        }
+                    }
+                }
             }
         }
 
-        // Safe deterministic fallback if upstream feeds are empty or fail
-        if (empty($jobs)) {
-            $source = 'mock_fallback';
-            $jobs   = $this->getMockFallbackJobs();
-        }
-
         $this->json([
-            'success'      => true,
-            'source'       => $source,
-            'token_active' => $token !== null,
-            'query'        => [
-                'q'        => $query,
-                'location' => $location,
-            ],
-            'results'      => $jobs,
+            'success'     => true,
+            'source'      => $primarySource,
+            'environment' => 'production',
+            'count'       => count($jobs),
+            'results'     => $jobs,
         ]);
     }
 
     /**
-     * Ingest live roles via standard XML RSS feed.
+     * Inspects file header and routes to either HTML DOM or XML RSS parser.
      */
-    private function fetchFromIndeedRss(string $query, string $location): array
+    private function parseSnapshotFile(string $filePath): array
     {
-        $url = 'https://www.indeed.com/rss?' . http_build_query([
-            'q' => $query,
-            'l' => $location,
-        ]);
-
-        $ch = curl_init($url);
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT        => 8,
-            CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            CURLOPT_FOLLOWLOCATION => true,
-        ]);
-
-        $xmlString = curl_exec($ch);
-        $errno     = curl_errno($ch);
-        curl_close($ch);
-
-        if ($errno !== 0 || empty($xmlString)) {
+        $content = file_get_contents($filePath);
+        if (empty($content)) {
             return [];
         }
 
+        // Detect RSS vs HTML
+        if (strpos($content, '<rss') !== false || strpos($content, '<?xml') !== false) {
+            return $this->parseRssSnapshot($content, $filePath);
+        }
+
+        return $this->parseHtmlSnapshot($content, $filePath);
+    }
+
+    /**
+     * Parse DOM-based HTML snapshots (Supervisor / Headless Chrome).
+     */
+    private function parseHtmlSnapshot(string $html, string $filePath): array
+    {
+        $dom = new DOMDocument();
         libxml_use_internal_errors(true);
-        $xml = simplexml_load_string($xmlString);
+        $dom->loadHTML($html);
+        libxml_clear_errors();
+
+        $xpath = new DOMXPath($dom);
+        $nodes = $xpath->query("//div[contains(@class, 'job_seen_beacon')] | //div[contains(@class, 'cardOutline')] | //td[contains(@class, 'resultContent')]");
+
+        if ($nodes->length === 0) {
+            return [];
+        }
+
+        $jobs         = [];
+        $fileTag      = basename($filePath, '.html');
+        $snapshotDate = date('Y-m-d', filemtime($filePath));
+
+        foreach ($nodes as $index => $node) {
+            $titleNode   = $xpath->query(".//h2[contains(@class, 'jobTitle')]//span", $node)->item(0);
+            $companyNode = $xpath->query(".//*[contains(@data-testid, 'company-name')]", $node)->item(0);
+            $snippetNode = $xpath->query(".//*[contains(@class, 'underlining')] | .//div[contains(@class, 'job-snippet')]", $node)->item(0);
+            $linkNode    = $xpath->query(".//h2[contains(@class, 'jobTitle')]//a", $node)->item(0);
+
+            $role       = $titleNode ? trim($titleNode->textContent) : 'Software Developer';
+            $company    = $companyNode ? trim($companyNode->textContent) : 'Indeed Employer';
+            $rawSummary = $snippetNode ? trim($snippetNode->textContent) : 'No summary provided in snapshot.';
+            $summary    = preg_replace('/\s+/', ' ', $rawSummary);
+            $url        = $linkNode ? 'https://uk.indeed.com' . $linkNode->getAttribute('href') : '#';
+
+            $jobs[] = [
+                'id'           => $fileTag . '_html_' . ($index + 1),
+                'role'         => $role,
+                'company'      => $company,
+                'platform'     => 'Indeed (HTML Snapshot)',
+                'summary'      => $summary,
+                'url'          => $url,
+                'status'       => 'pending',
+                'status_label' => 'HTML Ingested',
+                'applied_at'   => $snapshotDate,
+                'has_cv'       => false,
+            ];
+        }
+
+        return $jobs;
+    }
+
+    /**
+     * Parse XML RSS snapshots (Synchronous cURL Ingestion).
+     */
+    private function parseRssSnapshot(string $xmlContent, string $filePath): array
+    {
+        libxml_use_internal_errors(true);
+        $xml = simplexml_load_string($xmlContent);
         if ($xml === false || !isset($xml->channel->item)) {
             return [];
         }
 
-        $jobs = [];
-        $idCounter = 100;
+        $jobs         = [];
+        $fileTag      = basename($filePath, '.html');
+        $snapshotDate = date('Y-m-d', filemtime($filePath));
+        $counter      = 0;
 
         foreach ($xml->channel->item as $item) {
-            $idCounter++;
+            $counter++;
             $title       = (string) $item->title;
             $link        = (string) $item->link;
-            $description = strip_tags((string) $item->description);
-            $pubDate     = (string) $item->pubDate;
+            $description = preg_replace('/\s+/', ' ', strip_tags((string) $item->description));
+            $company     = 'Indeed Employer';
 
-            $company = 'Indeed Employer';
             if (strpos($title, ' - ') !== false) {
                 $parts   = explode(' - ', $title);
                 $title   = trim($parts[0]);
@@ -97,112 +149,19 @@ class IndeedApiController extends BaseController
             }
 
             $jobs[] = [
-                'id'           => $idCounter,
+                'id'           => $fileTag . '_rss_' . $counter,
                 'role'         => $title,
                 'company'      => $company,
-                'platform'     => 'Indeed',
+                'platform'     => 'Indeed (RSS Snapshot)',
                 'summary'      => substr($description, 0, 180) . '...',
                 'url'          => $link,
                 'status'       => 'pending',
-                'status_label' => 'Available',
-                'applied_at'   => !empty($pubDate) ? date('Y-m-d', strtotime($pubDate)) : date('Y-m-d'),
-                'has_cv'       => false,
-            ];
-
-            if (count($jobs) >= 10) {
-                break;
-            }
-        }
-
-        return $jobs;
-    }
-
-    /**
-     * Experimental stub for Partner API integration once partner app GraphQL/REST docs are finalized.
-     */
-    private function fetchFromIndeedApi(string $query, string $location, string $token): array
-    {
-        // Placeholder endpoint structure pending partner onboarding
-        $url = 'https://apis.indeed.com/v2/jobs?' . http_build_query([
-            'q' => $query,
-            'l' => $location,
-        ]);
-
-        $headers = [
-            'Authorization: Bearer ' . $token,
-            'Accept: application/json',
-        ];
-
-        $ch = curl_init($url);
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT        => 10,
-            CURLOPT_HTTPHEADER     => $headers,
-        ]);
-
-        $response = curl_exec($ch);
-        $errno    = curl_errno($ch);
-        curl_close($ch);
-
-        if ($errno !== 0 || !$response) {
-            return [];
-        }
-
-        $data = json_decode($response, true);
-        if (!isset($data['results']) || !is_array($data['results'])) {
-            return [];
-        }
-
-        $jobs = [];
-        foreach ($data['results'] as $idx => $job) {
-            $jobs[] = [
-                'id'           => $job['jobkey'] ?? ($idx + 1),
-                'role'         => $job['jobtitle'] ?? 'Software Developer',
-                'company'      => $job['company'] ?? 'Unknown Company',
-                'platform'     => 'Indeed API',
-                'summary'      => $job['snippet'] ?? 'No job summary provided.',
-                'url'          => $job['url'] ?? '#',
-                'status'       => 'pending',
-                'status_label' => 'Available',
-                'applied_at'   => $job['formattedRelativeTime'] ?? date('Y-m-d'),
+                'status_label' => 'RSS Ingested',
+                'applied_at'   => $snapshotDate,
                 'has_cv'       => false,
             ];
         }
 
         return $jobs;
-    }
-
-    private function getMockFallbackJobs(): array
-    {
-        return [
-            [
-                'id'           => 1,
-                'role'         => 'Senior PHP / C++ Developer',
-                'company'      => 'Apex Systems',
-                'platform'     => 'Indeed',
-                'summary'      => 'Looking for a developer to build lightweight MVC frameworks and robust back-end APIs without heavy third-party dependencies.',
-                'status'       => 'applied',
-                'status_label' => 'Applied',
-                'applied_at'   => '2026-07-28',
-                'has_cv'       => true,
-            ],
-            [
-                'id'           => 2,
-                'role'         => 'Full Stack Software Engineer',
-                'company'      => 'Nexus Tech UK',
-                'platform'     => 'Indeed',
-                'summary'      => 'Maintain clean asynchronous job queue state machines and custom micro-controller integrations.',
-                'status'       => 'pending',
-                'status_label' => 'Generating CV',
-                'applied_at'   => 'Pending',
-                'has_cv'       => false,
-            ],
-        ];
-    }
-
-    private function getLocalToken(): ?string
-    {
-        $path = $this->loc->storage('indeed/tokens/access_token.txt');
-        return is_file($path) ? trim(file_get_contents($path)) : null;
     }
 }
