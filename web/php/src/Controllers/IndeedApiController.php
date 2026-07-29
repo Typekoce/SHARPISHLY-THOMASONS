@@ -2,59 +2,43 @@
 
 namespace App\Controllers;
 
+use SimpleXMLElement;
+
 class IndeedApiController extends BaseController
 {
     /**
-     * Entry point: Returns internal job application tracking data.
-     * Route: /indeed-api?q=Software+Developer
+     * Entry point: Fetches and displays software developer jobs.
+     * Route: /indeed-api?q=Software+Developer&location=United+Kingdom
      */
     public function index(): void
     {
         $query    = trim($this->request('q') ?? 'Software Developer');
         $location = trim($this->request('location') ?? 'United Kingdom');
 
-        $hasToken = $this->getLocalToken() !== null;
+        $token  = $this->getLocalToken();
+        $source = 'mock_fallback';
+        $jobs   = [];
 
-        // Structured payload mapped to the #agentic frontend contract
-        $jobs = [
-            [
-                'id'           => 1,
-                'role'         => 'Senior Software Engineer',
-                'company'      => 'TechCorp Global',
-                'platform'     => 'Indeed',
-                'summary'      => 'CV tailored to emphasize zero-dependency MVC architecture, custom shell scripts, and raw API integrations.',
-                'status'       => 'applied',
-                'status_label' => 'Applied',
-                'applied_at'   => '2026-10-24',
-                'has_cv'       => true,
-            ],
-            [
-                'id'           => 2,
-                'role'         => 'Backend Systems Architect',
-                'company'      => 'DataFlow Ltd',
-                'platform'     => 'Indeed',
-                'summary'      => 'Agent is currently polling the endpoint to finalize the resume mapping.',
-                'status'       => 'pending',
-                'status_label' => 'Generating CV',
-                'applied_at'   => 'Pending API Response...',
-                'has_cv'       => false,
-            ],
-            [
-                'id'           => 3,
-                'role'         => 'Systems Developer (PHP/C++)',
-                'company'      => 'Innovate Solutions',
-                'platform'     => 'Indeed',
-                'summary'      => 'CV tailored to highlight containerization without Docker and standalone state machines.',
-                'status'       => 'applied',
-                'status_label' => 'Applied',
-                'applied_at'   => '2026-10-23',
-                'has_cv'       => true,
-            ],
-        ];
+        if ($token !== null) {
+            $source = 'indeed_api';
+            $jobs   = $this->fetchFromIndeedApi($query, $location, $token);
+        } else {
+            $jobs = $this->fetchFromIndeedRss($query, $location);
+            if (!empty($jobs)) {
+                $source = 'indeed_rss';
+            }
+        }
+
+        // Safe deterministic fallback if upstream feeds are empty or fail
+        if (empty($jobs)) {
+            $source = 'mock_fallback';
+            $jobs   = $this->getMockFallbackJobs();
+        }
 
         $this->json([
             'success'      => true,
-            'token_active' => $hasToken,
+            'source'       => $source,
+            'token_active' => $token !== null,
             'query'        => [
                 'q'        => $query,
                 'location' => $location,
@@ -64,100 +48,161 @@ class IndeedApiController extends BaseController
     }
 
     /**
-     * Client credentials OAuth flow stub for Indeed Partner API integration.
-     * Route: /indeed-token
+     * Ingest live roles via standard XML RSS feed.
      */
-    public function fetchToken(): void
+    private function fetchFromIndeedRss(string $query, string $location): array
     {
-        if (!defined('INDEED_CLIENT_ID') || !defined('INDEED_CLIENT_SECRET')) {
-            $this->json([
-                'success' => false,
-                'error'   => 'missing_credentials',
-                'message' => 'INDEED_CLIENT_ID and INDEED_CLIENT_SECRET constants are not defined.',
-            ], 400);
-            return;
-        }
-
-        $url = 'https://apis.indeed.com/oauth/v2/tokens';
-
-        $headers = [
-            'Accept: application/json',
-            'Content-Type: application/x-www-form-urlencoded',
-            'User-Agent: Sharpishly-Agent/1.0',
-        ];
-
-        $params = [
-            'client_id'     => INDEED_CLIENT_ID,
-            'client_secret' => INDEED_CLIENT_SECRET,
-            'grant_type'    => 'client_credentials',
-            'scope'         => 'employer_access',
-        ];
-
-        $response = $this->curlRequestForm($url, $headers, $params);
-
-        if (!$response['ok'] || empty($response['data']['access_token'])) {
-            $this->json([
-                'success'         => false,
-                'error'           => 'token_exchange_failed',
-                'indeed_feedback' => $response['data'] ?? null,
-            ], 502);
-            return;
-        }
-
-        $this->saveLocalToken($response['data']['access_token']);
-
-        $this->json([
-            'success'    => true,
-            'status'     => 'token_saved',
-            'expires_in' => $response['data']['expires_in'] ?? null,
+        $url = 'https://www.indeed.com/rss?' . http_build_query([
+            'q' => $query,
+            'l' => $location,
         ]);
+
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 8,
+            CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            CURLOPT_FOLLOWLOCATION => true,
+        ]);
+
+        $xmlString = curl_exec($ch);
+        $errno     = curl_errno($ch);
+        curl_close($ch);
+
+        if ($errno !== 0 || empty($xmlString)) {
+            return [];
+        }
+
+        libxml_use_internal_errors(true);
+        $xml = simplexml_load_string($xmlString);
+        if ($xml === false || !isset($xml->channel->item)) {
+            return [];
+        }
+
+        $jobs = [];
+        $idCounter = 100;
+
+        foreach ($xml->channel->item as $item) {
+            $idCounter++;
+            $title       = (string) $item->title;
+            $link        = (string) $item->link;
+            $description = strip_tags((string) $item->description);
+            $pubDate     = (string) $item->pubDate;
+
+            $company = 'Indeed Employer';
+            if (strpos($title, ' - ') !== false) {
+                $parts   = explode(' - ', $title);
+                $title   = trim($parts[0]);
+                $company = trim($parts[1]);
+            }
+
+            $jobs[] = [
+                'id'           => $idCounter,
+                'role'         => $title,
+                'company'      => $company,
+                'platform'     => 'Indeed',
+                'summary'      => substr($description, 0, 180) . '...',
+                'url'          => $link,
+                'status'       => 'pending',
+                'status_label' => 'Available',
+                'applied_at'   => !empty($pubDate) ? date('Y-m-d', strtotime($pubDate)) : date('Y-m-d'),
+                'has_cv'       => false,
+            ];
+
+            if (count($jobs) >= 10) {
+                break;
+            }
+        }
+
+        return $jobs;
     }
 
     /**
-     * Executes a form-encoded cURL request.
+     * Experimental stub for Partner API integration once partner app GraphQL/REST docs are finalized.
      */
-    private function curlRequestForm(string $url, array $headers, array $params): array
+    private function fetchFromIndeedApi(string $query, string $location, string $token): array
     {
-        $ch = curl_init($url);
+        // Placeholder endpoint structure pending partner onboarding
+        $url = 'https://apis.indeed.com/v2/jobs?' . http_build_query([
+            'q' => $query,
+            'l' => $location,
+        ]);
 
+        $headers = [
+            'Authorization: Bearer ' . $token,
+            'Accept: application/json',
+        ];
+
+        $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT        => 10,
-            CURLOPT_USERAGENT      => 'Sharpishly-Agent/1.0',
-            CURLOPT_POST           => true,
-            CURLOPT_POSTFIELDS     => http_build_query($params),
             CURLOPT_HTTPHEADER     => $headers,
         ]);
 
-        $raw    = curl_exec($ch);
-        $errno  = curl_errno($ch);
-        $error  = curl_error($ch);
-        $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $response = curl_exec($ch);
+        $errno    = curl_errno($ch);
         curl_close($ch);
 
-        if ($errno !== 0 || $raw === false) {
-            return ['ok' => false, 'status' => 0, 'error' => $error];
+        if ($errno !== 0 || !$response) {
+            return [];
         }
 
-        $data = json_decode($raw, true);
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            return ['ok' => false, 'status' => $status, 'error' => 'invalid_json', 'raw' => $raw];
+        $data = json_decode($response, true);
+        if (!isset($data['results']) || !is_array($data['results'])) {
+            return [];
         }
 
-        return ['ok' => $status >= 200 && $status < 300, 'status' => $status, 'data' => $data];
+        $jobs = [];
+        foreach ($data['results'] as $idx => $job) {
+            $jobs[] = [
+                'id'           => $job['jobkey'] ?? ($idx + 1),
+                'role'         => $job['jobtitle'] ?? 'Software Developer',
+                'company'      => $job['company'] ?? 'Unknown Company',
+                'platform'     => 'Indeed API',
+                'summary'      => $job['snippet'] ?? 'No job summary provided.',
+                'url'          => $job['url'] ?? '#',
+                'status'       => 'pending',
+                'status_label' => 'Available',
+                'applied_at'   => $job['formattedRelativeTime'] ?? date('Y-m-d'),
+                'has_cv'       => false,
+            ];
+        }
+
+        return $jobs;
+    }
+
+    private function getMockFallbackJobs(): array
+    {
+        return [
+            [
+                'id'           => 1,
+                'role'         => 'Senior PHP / C++ Developer',
+                'company'      => 'Apex Systems',
+                'platform'     => 'Indeed',
+                'summary'      => 'Looking for a developer to build lightweight MVC frameworks and robust back-end APIs without heavy third-party dependencies.',
+                'status'       => 'applied',
+                'status_label' => 'Applied',
+                'applied_at'   => '2026-07-28',
+                'has_cv'       => true,
+            ],
+            [
+                'id'           => 2,
+                'role'         => 'Full Stack Software Engineer',
+                'company'      => 'Nexus Tech UK',
+                'platform'     => 'Indeed',
+                'summary'      => 'Maintain clean asynchronous job queue state machines and custom micro-controller integrations.',
+                'status'       => 'pending',
+                'status_label' => 'Generating CV',
+                'applied_at'   => 'Pending',
+                'has_cv'       => false,
+            ],
+        ];
     }
 
     private function getLocalToken(): ?string
     {
         $path = $this->loc->storage('indeed/tokens/access_token.txt');
         return is_file($path) ? trim(file_get_contents($path)) : null;
-    }
-
-    private function saveLocalToken(string $token): void
-    {
-        $path = $this->loc->storage('indeed/tokens/access_token.txt');
-        @mkdir(dirname($path), 0700, true);
-        file_put_contents($path, $token);
-        chmod($path, 0600);
     }
 }
