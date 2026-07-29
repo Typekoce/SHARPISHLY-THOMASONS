@@ -565,7 +565,17 @@ AgentController.formPreview = async function(url) {
     } finally {
         App.clearSpinner();
     }
-};/** controllers.js **/
+};/**
+ * Agentic Controller
+ */
+const AgenticController = {
+    init() {
+        // Hello
+        console.log('hello');
+    }
+};
+
+/** controllers.js **/
 
 /**
  * Home Controller
@@ -1300,6 +1310,7 @@ const PageRegistry = {
     },
     'pentest': () => PentestController.scan(),
     //'pentest-examine': (data) => PentestController.examine(data)
+    'agentic' : AgenticController.init()
 };/** model.js */
 
 /**
