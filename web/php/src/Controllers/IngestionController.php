@@ -2,296 +2,111 @@
 
 namespace App\Controllers;
 
-use App\Models\IngestionModel;
-use App\Models\SnapshotsModel;
+use DOMDocument;
+use DOMXPath;
 
-class IngestionController extends BaseController {
-
-    public $tbl = 'snapshots';
-
-    public function index() {
-        // 1. Retrieve the URL directly from the query parameter
-        $url = $_GET['query'] ?? '';
-
-        if (empty($url)) {
-            return $this->json(['error' => 'No URL provided'], 400);
-        }
-        
-        $parser = new IngestionModel();
-        
-        $html = $parser->fetchRaw($url);
-        if (!$html) {
-            return $this->json(['status' => 'error', 'message' => 'Fetch failed'], 500);
-        }
-
-        $ts = date('Ymd_His');
-
-        // 1. Save Raw (Tier 1)
-        $rawSuccess = $this->snapshotsRaw($html, $ts);
-        
-        // 2. Save Prepared (Tier 2)
-        $prepSuccess = $this->snapshots($html, $ts);
-
-
-        $model = new SnapshotsModel();
-
-        // 1. Create the parent entry
-        $registryId = $model->setSnapshotRegistry([
-            'title' => 'Form Capture',
-            'status' => 'active'
-        ]);
-
-        // 2. Create the child entry linked to that ID
-        $model->setSnapshot([
-            'snapshots_id' => $registryId,
-            'title'        => 'Page 1',
-            'content'      => $html // The cleaned/raw HTML
-        ]);
-
-        // 3. Partial Failure Handling
-        if (!$rawSuccess || !$prepSuccess) {
-            return $this->json([
-                'status' => 'partial_failure',
-                'raw_saved' => $rawSuccess,
-                'prep_saved' => $prepSuccess,
-                'message' => 'Ingestion completed with storage warnings'
-            ], 500);
-        }
-
-        return $this->json([
-            'status' => 'success', 
-            'timestamp' => $ts,
-            'message' => 'Raw and prepared snapshots saved successfully'
-        ]);
-
-    }
-
+class IndeedApiController extends BaseController
+{
     /**
-     * Display all records, useful for debugging
+     * Reads ingested HTML snapshots from storage/snapshots and parses job listings.
+     * Route: /indeed-api
      */
-    public function records($id = '')
+    public function index(): void
     {
-        $conditions = [
-            'tbl'   => $this->tbl,
-            'join'  => [
-                'table' => 'snapshot', // Ensure this table name is correct
-                'on'    => 'snapshots.id = snapshot.snapshots_id',
-                'type'  => 'LEFT'
-            ],
-            // Use * carefully if you suspect schema mismatch
-            'fields' => ['snapshots.*'] 
-        ];
-
-        $res = $this->db->find($conditions);
-
-        return $this->json($res);
-    }
-
-    /**
-     * Handles the complete ingestion process via POSTed JSON
-     */
-    public function test($id = '') {
-        // 1. Retrieve JSON payload
-        $rawInput = file_get_contents('php://input');
-        $decodedData = json_decode($rawInput, true);
-
-        // 2. Validate essential input
-        $url = $decodedData['url'] ?? null;
-        if (empty($url)) {
-            return $this->json(['status' => 'error', 'message' => 'No URL provided in JSON'], 400);
-        }
-
-        // 3. Initialize Ingestion and Models
-        $parser = new IngestionModel();
-        $model = new SnapshotsModel();
-        $html = $parser->fetchRaw($url);
-        
-        if (!$html) {
-            return $this->json(['status' => 'error', 'message' => 'Fetch failed'], 500);
-        }
-
-        $ts = date('Ymd_His');
-
-        // 4. Perform Storage (Tier 1 & Tier 2)
-        $rawSuccess = $this->snapshotsRaw($html, $ts);
-        $prepSuccess = $this->snapshots($html, $ts);
-
-        // 5. Registry Entry
-        $registryId = $model->setSnapshotRegistry([
-            'title' => $decodedData['description'] ?? 'Form Capture',
-            'status' => 'active'
-        ]);
-
-        // 6. Child Entry
-        $model->setSnapshot([
-            'snapshots_id' => $registryId,
-            'title'        => $decodedData['page'] ?? 'Page 1',
-            'content'      => $html
-        ]);
-
-        // 7. Response
-        if (!$rawSuccess || !$prepSuccess) {
-            return $this->json([
-                'status' => 'partial_failure',
-                'raw_saved' => $rawSuccess,
-                'prep_saved' => $prepSuccess,
-                'registry_id' => $registryId
-            ], 500);
-        }
-
-        return $this->json([
-            'status' => 'success',
-            'timestamp' => $ts,
-            'registry_id' => $registryId,
-            'message' => 'Ingestion completed'
-        ]);
-}
-
-    public function snapshotsRaw($html, $ts) {
-        $path = $this->loc->storage("snapshots-raw/form_{$ts}.html");
-        return file_put_contents($path, $html) !== false;
-    }
-
-    public function snapshots($html, $ts) {
-        $path = $this->loc->storage("snapshots/form_{$ts}.html");
-        $cleaned = $this->prepareFile($html);
-        return file_put_contents($path, $cleaned) !== false;
-    }
-
-    public function prepareFile($html) {
-        // Using PHP-compatible PCRE syntax (i = case insensitive, s = dot matches newline)
-        $patterns = [
-            '#<script\b[^>]*>.*?</script>#is',
-            '#<style\b[^>]*>.*?</style>#is',
-            '#<svg\b[^>]*>.*?</svg>#is',
-            '#<noscript\b[^>]*>.*?</noscript>#is',
-        ];
-        $cleaned = preg_replace($patterns, '', $html);
-        return trim($cleaned);
-    }
-
-    public function setFields($data){
-
-        // ask rag to find form fields and correctly map them to data array
-        $conditions = array(
-            'tbl' => $this->tbl,
-            'where' => array('id' => 1)
-        );
-
-        $res = $this->db->find($conditions);
-
-        // map form field names to data
-        //  map($data,$res);
-
-
-        return $data;
-    }
-
-    public function save() {
-
-        $url = $_GET['url'] ?? '';
-        
-        $data = [
-            'FirstName' => 'Paul', 
-            'email' => 'paul@sharpishly.com'
-        ];
-
-        $data = 
-
-        $parser = new IngestionModel();
-        $html = $parser->fetchRaw($url);
-
-        if ($html === false) {
-            $this->json(['error' => 'Failed to retrieve content'], 500);
+        if (!isset($this->loc)) {
+            $this->json(['success' => false, 'error' => 'location_service_missing'], 500);
             return;
         }
 
-        $dom = new \DOMDocument();
+        $snapshotDir = $this->loc->storage('snapshots');
+        $jobs = [];
+        $maxJobs = 20;
+
+        if (is_dir($snapshotDir)) {
+            $files = glob($snapshotDir . '/*.html');
+            if ($files !== false) {
+                // Process newest snapshots first
+                rsort($files);
+
+                foreach ($files as $filePath) {
+                    $parsedJobs = $this->parseSnapshotFile($filePath);
+                    
+                    foreach ($parsedJobs as $job) {
+                        $jobs[] = $job;
+                        if (count($jobs) >= $maxJobs) {
+                            break 2; // Exit both file search and job extraction loops
+                        }
+                    }
+                }
+            }
+        }
+
+        $this->json([
+            'success'     => true,
+            'source'      => 'local_snapshots',
+            'environment' => 'production',
+            'count'       => count($jobs),
+            'results'     => $jobs,
+        ]);
+    }
+
+    /**
+     * Parses stored HTML content to extract job cards using DOMXPath.
+     */
+    private function parseSnapshotFile(string $filePath): array
+    {
+        $html = file_get_contents($filePath);
+        if (empty($html)) {
+            return [];
+        }
+
+        $dom = new DOMDocument();
         libxml_use_internal_errors(true);
         $dom->loadHTML($html);
         libxml_clear_errors();
 
-        // Pass the DOM to the model to handle the transformation
-        $dom = $parser->populateForm($dom, $data);
-
-        header('Content-Type: text/html; charset=UTF-8');
-        echo $dom->saveHTML();
-        exit;
-    }
-
-    /**
-     * GET /php/job/payload/{id}
-     * Streams the raw BLOB data from MariaDB to the requester.
-     */
-    public function payload($id)
-    {
-        $conditions = [
-            'tbl'   => $this->forms,
-            'where' => ['id' => (int)$id]
-        ];
-
-        $jobResult = $this->db->find($conditions);
-        $job = $jobResult[0] ?? null; 
-
-        if (!$job || empty($job['payload'])) {
-            return $this->json([
-                'status'  => 'error',
-                'message' => 'Payload not found or empty'
-            ], 404);
-        }
+        $xpath = new DOMXPath($dom);
         
-        return $this->json(['status' => 'success', 'payload' => $job['payload']]);
+        // Target standard Indeed job card containers
+        $nodes = $xpath->query("//div[contains(@class, 'job_seen_beacon')] | //div[contains(@class, 'cardOutline')] | //td[contains(@class, 'resultContent')]");
+
+        if ($nodes->length === 0) {
+            return [];
+        }
+
+        $jobs = [];
+        $fileTag = basename($filePath, '.html');
+        $snapshotDate = date('Y-m-d', filemtime($filePath));
+
+        foreach ($nodes as $index => $node) {
+            $titleNode   = $xpath->query(".//h2[contains(@class, 'jobTitle')]//span", $node)->item(0);
+            $companyNode = $xpath->query(".//*[contains(@data-testid, 'company-name')]", $node)->item(0);
+            $snippetNode = $xpath->query(".//*[contains(@class, 'underlining')] | .//div[contains(@class, 'job-snippet')]", $node)->item(0);
+            $linkNode    = $xpath->query(".//h2[contains(@class, 'jobTitle')]//a", $node)->item(0);
+
+            $role       = $titleNode ? trim($titleNode->textContent) : 'Software Developer';
+            $company    = $companyNode ? trim($companyNode->textContent) : 'Indeed Employer';
+            $rawSummary = $snippetNode ? trim($snippetNode->textContent) : 'No summary provided in snapshot.';
+            
+            // Normalize inner HTML whitespace and linebreaks
+            $summary = preg_replace('/\s+/', ' ', $rawSummary);
+
+            $url = $linkNode ? 'https://www.indeed.com' . $linkNode->getAttribute('href') : '#';
+
+            $jobs[] = [
+                'id'           => $fileTag . '_' . ($index + 1),
+                'role'         => $role,
+                'company'      => $company,
+                'platform'     => 'Indeed',
+                'summary'      => $summary,
+                'url'          => $url,
+                'status'       => 'pending',
+                'status_label' => 'Snapshot Ingested',
+                'applied_at'   => $snapshotDate,
+                'has_cv'       => false,
+            ];
+        }
+
+        return $jobs;
     }
-
-
-    /**
-     * PUT /php/job/update/{id}
-     * Persists neural chunks to MariaDB via framework repository layer.
-     */
-    public function update($id)
-    {
-        $json = file_get_contents('php://input');
-        $data = json_decode($json, true) ?? [];
-        
-        $id = (int)$id;
-        $status = $data['status'] ?? 'unknown';
-
-        $updateData = [
-            'id'     => $id,
-            'status' => $status
-        ];
-
-        if ($status === 'completed' || $status === 'failed') {
-            $updateData['finished_at'] = date('Y-m-d H:i:s');
-        }
-
-        $this->logger->log("NP Step 4: Update received from Python Worker for Job ID: {$id}", 'INFO');
-
-        // Update Job state metrics
-        $result = $this->db->save('jobs', $updateData);
-
-        // Sync Vectors directly to MariaDB safely (No raw SQL)
-        if (!empty($data['chunks']) && is_array($data['chunks'])) {
-            foreach ($data['chunks'] as $chunk) {
-                $this->db->save('vectors', [
-                    'job_id'    => $id,
-                    'content'   => $chunk['content'] ?? '',
-                    'embedding' => json_encode($chunk['embedding'] ?? []),
-                    'pref'      => $chunk['pref'] ?? null
-                ]);
-            }
-        }
-
-        if ($result === false) {
-            $this->logger->log("NP Step 4 Failed: MariaDB update failed to write for job {$id}", 'ERROR');
-            return $this->json(['status' => 'error', 'message' => 'DB Save Failed'], 500);
-        }
-
-        return $this->json([
-            'status' => 'success', 
-            'job_id' => $id, 
-            'chunks_synced' => count($data['chunks'] ?? [])
-        ]);
-    }
-
 }
