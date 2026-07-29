@@ -3,8 +3,8 @@
  */
 const AgenticController = {
     init() {
-        // Hello
-        console.log('hello');
+        const data = {foo: 'bar',app: App};
+        console.log(data);
     }
 };
 
