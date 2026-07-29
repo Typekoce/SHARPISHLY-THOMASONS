@@ -37,6 +37,11 @@ $aliases = [
     'auth-google-callback'  => ['Auth', 'googleCallback'],
     'auth-hotmail-callback' => ['Auth', 'hotmailCallback'],
     'auth-aws-callback'     => ['Auth', 'awsCallback'],
+
+    // Indeed API calls
+    'indeed-api'            => ['IndeedApi', 'index'],
+    'auth-indeed-callback' => ['IndeedApi', 'callback'],
+    'indeed-token' => ['IndeedApi', 'fetchToken'],
     
     // 'chat-stream'        => ['Chat', 'stream'],
 ];
