@@ -28,7 +28,10 @@ define('HOTMAIL_REDIRECT_URI','https://sharpishly.dev/php/hotmailapi/callback');
 define('AZURE_FOUNDRY_ENDPOINT','');
 define('AZURE_FOUNDRY_API_KEY','');
 
-
+/**
+ * @maxie login
+ */
+define('MAXIE_PASSWORD','Space1999');
 
 
 /**
