@@ -2,158 +2,61 @@
 
 declare(strict_types=1);
 
-namespace App\Controllers;
+namespace App\Models;
 
-use App\Models\AgentModel;
-use App\Services\Logger;
-
-class MobileAgentController extends BaseController 
+class AgentModel extends BaseModel
 {
-    private AgentModel $agentModel;
-    private Logger $logger;
-
-    public function __construct() 
-    {
-        $this->agentModel = new AgentModel();
-        $this->logger = $GLOBALS['logger'] ?? new Logger();
-    }
+    private string $table = 'agents';
 
     /**
-     * READ: Display all agents or a specific agent by ID
-     * Route: GET /mobile-agent or /mobile-agent/{id}
+     * Retrieve all agents ordered by latest
      */
-    public function index($id = null): void 
+    public function all(): array
     {
-        if ($id !== null) {
-            $agent = $this->agentModel->find((int)$id);
-            if (!$agent) {
-                $this->json(['error' => 'Agent not found'], 404);
-                return;
-            }
-            $this->json(['status' => 'success', 'data' => $agent]);
-            return;
-        }
-
-        $agents = $this->agentModel->all();
-        $this->json([
-            'status' => 'success',
-            'data'   => $agents
+        return $this->db->find([
+            'tbl'   => $this->table,
+            'order' => ['id' => 'DESC']
         ]);
     }
 
     /**
-     * CREATE: Store a newly generated Agent from mobile_controller.js
-     * Route: POST /mobile-agent/store
+     * Find a single agent record by ID
      */
-    public function store(): void 
+    public function find(int $id): ?array
     {
-        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $results = $this->db->find([
+            'tbl'   => $this->table,
+            'where' => ['id' => $id],
+            'limit' => 1
+        ]);
 
-        $title    = trim($input['title'] ?? '');
-        $category = trim($input['category'] ?? '');
-        $summary  = trim($input['summary'] ?? '');
-
-        if (empty($title) || empty($summary)) {
-            $this->json(['error' => 'Title and summary are required'], 400);
-            return;
-        }
-
-        $agentData = [
-            'title'    => $title,
-            'category' => $category ?: 'career',
-            'summary'  => $summary,
-            'status'   => 'dispatched'
-        ];
-
-        $newId = $this->agentModel->create($agentData);
-
-        if (!$newId) {
-            $this->logger->error("Failed to create mobile agent", $agentData);
-            $this->json(['error' => 'Failed to create agent'], 500);
-            return;
-        }
-
-        $agentData['id'] = $newId;
-
-        $this->logger->info("New mobile agent created", ['id' => $newId]);
-        $this->json([
-            'status'  => 'success',
-            'message' => 'Agent successfully dispatched',
-            'data'    => $agentData
-        ], 201);
+        return $results[0] ?? null;
     }
 
     /**
-     * UPDATE: Update an existing Agent's status or summary
-     * Route: POST/PUT /mobile-agent/update/{id}
+     * Create or update an agent record matching ScaffoldModel schema
      */
-    public function update($id = null): void 
+    public function create(array $data): int|bool
     {
-        if (!$id) {
-            $this->json(['error' => 'Agent ID required'], 400);
-            return;
-        }
-
-        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
-
-        $existing = $this->agentModel->find((int)$id);
-        if (!$existing) {
-            $this->json(['error' => 'Agent not found'], 404);
-            return;
-        }
-
-        $updateData = [];
-        if (isset($input['title']))    $updateData['title']    = trim($input['title']);
-        if (isset($input['category'])) $updateData['category'] = trim($input['category']);
-        if (isset($input['summary']))  $updateData['summary']  = trim($input['summary']);
-        if (isset($input['status']))   $updateData['status']   = trim($input['status']);
-
-        if (empty($updateData)) {
-            $this->json(['error' => 'No valid fields provided for update'], 400);
-            return;
-        }
-
-        $success = $this->agentModel->update((int)$id, $updateData);
-
-        if (!$success) {
-            $this->json(['error' => 'Failed to update agent'], 500);
-            return;
-        }
-
-        $this->json([
-            'status'  => 'success',
-            'message' => "Agent #{$id} updated successfully"
-        ]);
+        return $this->db->save($this->table, $data);
     }
 
     /**
-     * DELETE: Remove an agent by ID
-     * Route: POST/DELETE /mobile-agent/delete/{id}
+     * Update an agent by ID
      */
-    public function delete($id = null): void 
+    public function update(int $id, array $data): bool
     {
-        if (!$id) {
-            $this->json(['error' => 'Agent ID required'], 400);
-            return;
-        }
+        $data['id'] = $id;
+        $result = $this->db->save($this->table, $data);
+        return $result !== false;
+    }
 
-        $existing = $this->agentModel->find((int)$id);
-        if (!$existing) {
-            $this->json(['error' => 'Agent not found'], 404);
-            return;
-        }
-
-        $success = $this->agentModel->delete((int)$id);
-
-        if (!$success) {
-            $this->json(['error' => 'Failed to delete agent'], 500);
-            return;
-        }
-
-        $this->logger->info("Mobile agent deleted", ['id' => $id]);
-        $this->json([
-            'status'  => 'success',
-            'message' => "Agent #{$id} deleted successfully"
-        ]);
+    /**
+     * Delete an agent by ID
+     */
+    public function delete(int $id): bool
+    {
+        $sql = "DELETE FROM `{$this->table}` WHERE `id` = ?";
+        return $this->db->execute($sql, [$id]);
     }
 }

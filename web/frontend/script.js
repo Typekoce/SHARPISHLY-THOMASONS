@@ -1320,6 +1320,7 @@ const MobileController = {
         if (typeof App !== 'undefined' && App.log) {
             App.log(App);
         }
+        this.getRecords();
         this.openScreen('screen-home');
     },
 
@@ -1432,6 +1433,31 @@ const MobileController = {
 
         input.value = '';
         this.openScreen('screen-agentic');
+    },
+
+    async getRecords() {
+        try {
+            const response = await fetch(App.url('mobile-agent'));
+            const res = await response.json();
+
+            if (res.records && Array.isArray(res.records)) {
+                const agentList = document.getElementById('agentic-list');
+                if (!agentList) return;
+
+                agentList.innerHTML = '';
+                res.records.forEach(item => {
+                    const title = item.agent_name || item.title || 'Sharpishly Agent';
+                    const category = item.role || item.category || 'career';
+                    const text = item.description || item.message || item.summary || '';
+                    const ts = item.created_at || '';
+
+                    const card = this.cardHTML(title, category, text, ts);
+                    agentList.appendChild(card);
+                });
+            }
+        } catch (err) {
+            console.error('Failed to fetch agent records:', err);
+        }
     }
 };/** model.js */
 

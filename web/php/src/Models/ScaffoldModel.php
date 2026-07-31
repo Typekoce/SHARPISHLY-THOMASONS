@@ -4,16 +4,8 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-/**
- * ScaffoldModel - The Single Source of Truth for the Sharpishly Database Schema
- * Optimized for initial development by removing complex constraints.
- */
 class ScaffoldModel extends BaseModel
 {
-    /**
-     * Synchronizes all tables defined in the blueprint.
-     * @return array List of tables that were verified/created
-     */
     public function syncSchema(): array
     {
         $applied = [];
@@ -29,10 +21,6 @@ class ScaffoldModel extends BaseModel
         return $applied;
     }
 
-    /**
-     * Master Blueprint - Bare Essentials
-     * Removed INDEX and CONSTRAINT declarations to ensure a clean cold-start.
-     */
     public function getTableDefinitions(): array
     {
         return [
@@ -41,9 +29,9 @@ class ScaffoldModel extends BaseModel
                 'migration_name' => 'VARCHAR(255) UNIQUE NOT NULL',
                 'executed_at'    => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
                 'batch'          => 'INT DEFAULT 1',
-                'pref'  => 'VARCHAR(255) DEFAULT NULL',
-                'content' => 'LONGTEXT NULL DEFAULT NULL',
-		'status'	=> 'VARCHAR(255)',
+                'pref'           => 'VARCHAR(255) DEFAULT NULL',
+                'content'        => 'LONGTEXT NULL DEFAULT NULL',
+                'status'         => 'VARCHAR(255)',
             ],
 
             'users' => [
@@ -51,9 +39,9 @@ class ScaffoldModel extends BaseModel
                 'username'   => 'VARCHAR(100) NOT NULL UNIQUE',
                 'password'   => 'VARCHAR(255) NOT NULL',
                 'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
-                'pref'  => 'VARCHAR(255) DEFAULT NULL',
-                'content' => 'LONGTEXT NULL DEFAULT NULL',
-                'status'        => 'VARCHAR(255)',
+                'pref'       => 'VARCHAR(255) DEFAULT NULL',
+                'content'    => 'LONGTEXT NULL DEFAULT NULL',
+                'status'     => 'VARCHAR(255)',
             ],
 
             'documents' => [
@@ -61,35 +49,33 @@ class ScaffoldModel extends BaseModel
                 'filename'   => 'VARCHAR(255) NOT NULL',
                 'status'     => "ENUM('pending', 'processing', 'active', 'archived') DEFAULT 'pending'",
                 'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
-                'pref'  => 'VARCHAR(255) DEFAULT NULL',
-                'content' => 'LONGTEXT NULL DEFAULT NULL',
+                'pref'       => 'VARCHAR(255) DEFAULT NULL',
+                'content'    => 'LONGTEXT NULL DEFAULT NULL',
             ],
 
             'jobs' => [
-                'id'           => 'INT AUTO_INCREMENT PRIMARY KEY',
-                'payload' => 'LONGTEXT NULL DEFAULT NULL',
-                'status'       => "ENUM('pending', 'processing', 'completed', 'failed') DEFAULT 'pending'",
-                'current_step' => 'VARCHAR(255) DEFAULT NULL',
-                'progress'     => 'INT DEFAULT 0',
-                'created_at'   => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
-                'finished_at'  => 'TIMESTAMP NULL DEFAULT NULL',
+                'id'                => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'payload'           => 'LONGTEXT NULL DEFAULT NULL',
+                'status'            => "ENUM('pending', 'processing', 'completed', 'failed') DEFAULT 'pending'",
+                'current_step'      => 'VARCHAR(255) DEFAULT NULL',
+                'progress'          => 'INT DEFAULT 0',
+                'created_at'        => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+                'finished_at'       => 'TIMESTAMP NULL DEFAULT NULL',
                 'embedding_version' => 'VARCHAR(50) DEFAULT NULL',
                 'processed_at'      => 'TIMESTAMP NULL DEFAULT NULL',
                 'error_message'     => 'TEXT NULL',
-                'pref'  => 'VARCHAR(255) DEFAULT NULL',
-                'content' => 'LONGTEXT NULL DEFAULT NULL',
-                //'finished_at'       => 'DATETIME NULL'
+                'pref'              => 'VARCHAR(255) DEFAULT NULL',
+                'content'           => 'LONGTEXT NULL DEFAULT NULL',
             ],
 
             'vectors' => [
-                'id'          => 'INT AUTO_INCREMENT PRIMARY KEY',
-                'job_id'      => 'INT NOT NULL',
-                //'content'     => 'TEXT NOT NULL',
-                'embedding'   => 'JSON NOT NULL',
-                'created_at'  => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
-                'pref'  => 'VARCHAR(255) DEFAULT NULL',
-                'content' => 'LONGTEXT NULL DEFAULT NULL',
-                'status'        => 'VARCHAR(255)',
+                'id'         => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'job_id'     => 'INT NOT NULL',
+                'embedding'  => 'JSON NOT NULL',
+                'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+                'pref'       => 'VARCHAR(255) DEFAULT NULL',
+                'content'    => 'LONGTEXT NULL DEFAULT NULL',
+                'status'     => 'VARCHAR(255)',
             ],
 
             'knowledge_chunks' => [
@@ -100,9 +86,9 @@ class ScaffoldModel extends BaseModel
                 'valid_from'      => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
                 'valid_until'     => 'TIMESTAMP NULL DEFAULT NULL',
                 'version_id'      => 'VARCHAR(50)',
-                'pref'  => 'VARCHAR(255) DEFAULT NULL',
-                'content' => 'LONGTEXT NULL DEFAULT NULL',
-                'status'        => 'VARCHAR(255)',
+                'pref'            => 'VARCHAR(255) DEFAULT NULL',
+                'content'         => 'LONGTEXT NULL DEFAULT NULL',
+                'status'          => 'VARCHAR(255)',
             ],
 
             'logs' => [
@@ -111,101 +97,42 @@ class ScaffoldModel extends BaseModel
                 'message'    => 'TEXT',
                 'context'    => 'JSON',
                 'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
-                'pref'  => 'VARCHAR(255) DEFAULT NULL',
-                'content' => 'LONGTEXT NULL DEFAULT NULL',
-                'status'        => 'VARCHAR(255)',
-            ],
-
-	   'queries' => [
-                'id'         => 'INT AUTO_INCREMENT PRIMARY KEY',
-                'title'      => 'VARCHAR(225)',
-                'message'    => 'VARCHAR(225)',
-                'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
-                'pref'  => 'VARCHAR(255) DEFAULT NULL',
-                'content' => 'LONGTEXT NULL DEFAULT NULL',
-                'status'        => 'VARCHAR(255)',
-            ],
-
-           'agent' => [
-                'id'         => 'INT AUTO_INCREMENT PRIMARY KEY',
-                'title'      => 'VARCHAR(225)',
-                'message'    => 'VARCHAR(225)',
-                'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
-                'pref' 	     => 'VARCHAR(255) DEFAULT NULL',
-                'content'    => 'LONGTEXT NULL DEFAULT NULL',
-                'status'     => 'VARCHAR(225)'
-            ],
-
-           'emails' => [
-                'id'         => 'INT AUTO_INCREMENT PRIMARY KEY',
-                'title'      => 'VARCHAR(225)',
-                'message'    => 'VARCHAR(225)',
-		        'email'	     => 'VARCHAR(225)',
-                'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
                 'pref'       => 'VARCHAR(255) DEFAULT NULL',
                 'content'    => 'LONGTEXT NULL DEFAULT NULL',
-                'status'     => 'VARCHAR(225)'
+                'status'     => 'VARCHAR(255)',
             ],
 
-           'agents' => [
+            'queries' => [
                 'id'         => 'INT AUTO_INCREMENT PRIMARY KEY',
                 'title'      => 'VARCHAR(225)',
-                'agent_name' =>	'VARCHAR(225)',
-                'description' => 'VARCHAR(225)',
-                'role'	=> 'VARCHAR(225)',
                 'message'    => 'VARCHAR(225)',
                 'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
                 'pref'       => 'VARCHAR(255) DEFAULT NULL',
                 'content'    => 'LONGTEXT NULL DEFAULT NULL',
-                'status'     => 'VARCHAR(225)'
+                'status'     => 'VARCHAR(255)',
             ],
 
-           'snapshots' => [
+            'agent' => [
                 'id'         => 'INT AUTO_INCREMENT PRIMARY KEY',
                 'title'      => 'VARCHAR(225)',
-                'agent_name' =>	'VARCHAR(225)',
-                'description' => 'VARCHAR(225)',
-                'role'	=> 'VARCHAR(225)',
                 'message'    => 'VARCHAR(225)',
                 'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
                 'pref'       => 'VARCHAR(255) DEFAULT NULL',
                 'content'    => 'LONGTEXT NULL DEFAULT NULL',
-                'status'     => 'VARCHAR(225)'
+                'status'     => 'VARCHAR(255)'
             ],
 
-           'snapshot' => [
+            'emails' => [
                 'id'         => 'INT AUTO_INCREMENT PRIMARY KEY',
-                'snapshots_id'      => 'VARCHAR(225)',
                 'title'      => 'VARCHAR(225)',
-                'description' => 'VARCHAR(225)',
-                'page' => 'VARCHAR(225)',
                 'message'    => 'VARCHAR(225)',
+                'email'      => 'VARCHAR(225)',
                 'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
                 'pref'       => 'VARCHAR(255) DEFAULT NULL',
                 'content'    => 'LONGTEXT NULL DEFAULT NULL',
-                'status'     => 'VARCHAR(225)'
+                'status'     => 'VARCHAR(255)'
             ],
-            'google_tokens' => [
-                'id'            => 'INT AUTO_INCREMENT PRIMARY KEY',
-                'user_id'       => 'INT NOT NULL',
-                'provider'      => 'VARCHAR(50) NOT NULL',
-                'access_token'  => 'TEXT NOT NULL',
-                'refresh_token' => 'TEXT',
-                'scopes'        => 'TEXT',
-                'expires_at'    => 'TIMESTAMP NULL',
-                'revoked_at'    => 'TIMESTAMP NULL',
-                'created_at'    => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
-                'updated_at'    => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
-            ],           
-           'terminal' => [
-                'id'         => 'INT AUTO_INCREMENT PRIMARY KEY',
-                'filename'      => 'VARCHAR(225)',
-                'command' => 'VARCHAR(225)',
-                'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
-                'pref'       => 'VARCHAR(255) DEFAULT NULL',
-                'content'    => 'LONGTEXT NULL DEFAULT NULL',
-                'status'     => 'VARCHAR(225)'
-            ],
+
             'agents' => [
                 'id'          => 'INT AUTO_INCREMENT PRIMARY KEY',
                 'title'       => 'VARCHAR(225)',
@@ -219,6 +146,55 @@ class ScaffoldModel extends BaseModel
                 'pref'        => 'VARCHAR(255) DEFAULT NULL',
                 'content'     => 'LONGTEXT NULL DEFAULT NULL',
                 'status'      => 'VARCHAR(225)',
+            ],
+
+            'snapshots' => [
+                'id'          => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'title'       => 'VARCHAR(225)',
+                'agent_name'  => 'VARCHAR(225)',
+                'description' => 'VARCHAR(225)',
+                'role'        => 'VARCHAR(225)',
+                'message'     => 'VARCHAR(225)',
+                'created_at'  => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+                'pref'        => 'VARCHAR(255) DEFAULT NULL',
+                'content'     => 'LONGTEXT NULL DEFAULT NULL',
+                'status'      => 'VARCHAR(225)'
+            ],
+
+            'snapshot' => [
+                'id'           => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'snapshots_id' => 'VARCHAR(225)',
+                'title'        => 'VARCHAR(225)',
+                'description'  => 'VARCHAR(225)',
+                'page'         => 'VARCHAR(225)',
+                'message'      => 'VARCHAR(225)',
+                'created_at'   => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+                'pref'         => 'VARCHAR(255) DEFAULT NULL',
+                'content'      => 'LONGTEXT NULL DEFAULT NULL',
+                'status'       => 'VARCHAR(255)'
+            ],
+
+            'google_tokens' => [
+                'id'            => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'user_id'       => 'INT NOT NULL',
+                'provider'      => 'VARCHAR(50) NOT NULL',
+                'access_token'  => 'TEXT NOT NULL',
+                'refresh_token' => 'TEXT',
+                'scopes'        => 'TEXT',
+                'expires_at'    => 'TIMESTAMP NULL',
+                'revoked_at'    => 'TIMESTAMP NULL',
+                'created_at'    => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+                'updated_at'    => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
+            ],
+
+            'terminal' => [
+                'id'         => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'filename'   => 'VARCHAR(225)',
+                'command'    => 'VARCHAR(225)',
+                'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+                'pref'       => 'VARCHAR(255) DEFAULT NULL',
+                'content'    => 'LONGTEXT NULL DEFAULT NULL',
+                'status'     => 'VARCHAR(255)'
             ],
         ];
     }
