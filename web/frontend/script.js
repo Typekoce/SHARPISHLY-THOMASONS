@@ -159,6 +159,10 @@ App.eForm = function(form, schema) {
         row.appendChild(el);
         form.appendChild(row);
     });
+};
+
+App.log = function(log){
+    console.log(log);
 };/* app_spinner.js */
 App.spinner = function(){
     const spinner = document.getElementById('spinner');
@@ -1310,8 +1314,19 @@ const PageRegistry = {
     },
     'pentest': () => PentestController.scan(),
     //'pentest-examine': (data) => PentestController.examine(data)
-    'agentic' : AgenticController.init()
-};/** model.js */
+    'agentic' : AgenticController.init(),
+    //'mobile' : MobileController.init()
+};/**
+ * Mobile Controller
+ */
+const MobileController = {
+    init() {
+        // Initial setup
+        App.log(App);
+    },
+};
+
+/** model.js */
 
 /**
  * Model: Global App State

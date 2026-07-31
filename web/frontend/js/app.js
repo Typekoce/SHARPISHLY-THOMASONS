@@ -159,3 +159,7 @@ App.eForm = function(form, schema) {
         form.appendChild(row);
     });
 };
+
+App.log = function(log){
+    console.log(log);
+};
