@@ -40,8 +40,11 @@ $aliases = [
 
     // Indeed API calls
     'indeed-api'            => ['IndeedApi', 'index'],
-    'auth-indeed-callback' => ['IndeedApi', 'callback'],
-    'indeed-token' => ['IndeedApi', 'fetchToken'],
+    'auth-indeed-callback'  => ['IndeedApi', 'callback'],
+    'indeed-token'          => ['IndeedApi', 'fetchToken'],
+
+    // Mobile Demo
+    'mobile-agent'          => ['MobileAgent','index']
     
     // 'chat-stream'        => ['Chat', 'stream'],
 ];
