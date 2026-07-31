@@ -1381,6 +1381,13 @@ const MobileController = {
         timestamp.textContent = `Created: ${ts}`;
 
         const btn = document.createElement('button');
+
+        // Inside cardHTML(item):
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            this.showDetail(title, text, ts);
+        };
+
         btn.className = 'btn btn-primary';
         btn.textContent = 'View Agent';
 
@@ -1458,7 +1465,15 @@ const MobileController = {
         } catch (err) {
             console.error('Failed to fetch agent records:', err);
         }
-    }
+    },
+
+    showDetail(title, text, ts) {
+            document.getElementById('detail-title').textContent = title;
+            document.getElementById('detail-summary').textContent = text;
+            document.getElementById('detail-timestamp').textContent = ts;
+
+            this.openScreen('screen-agent-detail');
+        },
 };/** model.js */
 
 /**

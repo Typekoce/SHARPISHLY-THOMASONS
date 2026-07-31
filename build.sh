@@ -48,6 +48,7 @@ cat web/frontend/css/app.css \
     web/frontend/css/snapshots.css \
     web/frontend/css/pentest.css \
     web/frontend/css/mobile.css \
+    web/frontend/css/screen-agent-detail.css \
     web/frontend/css/leads.css >> $OUTPUT
 
 echo "Successfully built $OUTPUT"

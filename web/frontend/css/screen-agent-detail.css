@@ -1,0 +1,58 @@
+/* Mobile Detail View Styling */
+#mobile #screen-agent-detail {
+    display: none;
+    padding: 1rem;
+}
+
+#mobile #screen-agent-detail.active {
+    display: block;
+}
+
+/* Detail Card Container */
+#mobile #screen-agent-detail .detail-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1.25rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    margin-top: 1rem;
+}
+
+/* Back Action Bar */
+#mobile #screen-agent-detail .detail-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+}
+
+/* Main Agent Title */
+#mobile #screen-agent-detail h2#detail-title {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0.75rem 0 0.5rem 0;
+    line-height: 1.3;
+}
+
+/* Summary / Body Text */
+#mobile #screen-agent-detail p#detail-summary {
+    font-size: 0.95rem;
+    color: #334155;
+    line-height: 1.6;
+    background: #f8fafc;
+    border-left: 4px solid #3b82f6;
+    padding: 0.85rem;
+    border-radius: 0 8px 8px 0;
+    margin: 1rem 0;
+}
+
+/* Timestamp Footer */
+#mobile #screen-agent-detail small#detail-timestamp {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: #64748b;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
