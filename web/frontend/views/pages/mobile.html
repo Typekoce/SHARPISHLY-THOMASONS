@@ -1,5 +1,3 @@
-
-
 <div id="mobile">
     <div class="device-frame">
         <div class="phone-notch"></div>
@@ -14,12 +12,12 @@
             <!-- Screen 1: Home Screen Grid -->
             <div id="screen-home" class="screen active">
                 <div class="app-grid">
-                    <div class="app-icon" onclick="openScreen('screen-sharpishly')">
+                    <div class="app-icon" onclick="MobileController.openScreen('screen-sharpishly')">
                         <div class="icon-box icon-sharpishly">S</div>
                         <span class="app-name">Sharpishly</span>
                     </div>
 
-                    <div class="app-icon" onclick="openScreen('screen-agentic')">
+                    <div class="app-icon" onclick="MobileController.openScreen('screen-agentic')">
                         <div class="icon-box" style="background:#6f42c1;">⚡</div>
                         <span class="app-name">Agentic</span>
                     </div>
@@ -39,7 +37,7 @@
             <!-- Screen 2: Sharpishly Input Screen -->
             <div id="screen-sharpishly" class="screen">
                 <div class="app-header">
-                    <button class="back-btn" onclick="openScreen('screen-home')">← Back</button>
+                    <button class="back-btn" onclick="MobileController.openScreen('screen-home')">← Back</button>
                     <h3 style="margin:0; font-size: 0.95rem;">Dispatch Agent</h3>
                 </div>
                 <div class="app-body">
@@ -47,7 +45,7 @@
                         Enter an instruction to construct a new platform agent:
                     </p>
                     <textarea id="agent-instruction" class="agent-input" placeholder="e.g. Schedule GP doctors appointment for next Thursday or pay council tax bill..."></textarea>
-                    <button class="btn-dispatch" onclick="generateAgent()">Convert to Agent</button>
+                    <button class="btn-dispatch" onclick="MobileController.generateAgent()">Convert to Agent</button>
                 </div>
             </div>
 
@@ -60,7 +58,7 @@
                                 <h1>Agentic Hub</h1>
                                 <p>Platform Workflows</p>
                             </div>
-                            <button class="back-btn" onclick="openScreen('screen-home')">Home</button>
+                            <button class="back-btn" onclick="MobileController.openScreen('screen-home')">Home</button>
                         </header>
 
                         <!-- Static Template Cards List -->
@@ -259,9 +257,8 @@
 
             <!-- Navigation Indicator -->
             <div class="nav-bar">
-                <div class="home-indicator" onclick="openScreen('screen-home')"></div>
+                <div class="home-indicator" onclick="MobileController.openScreen('screen-home')"></div>
             </div>
         </div>
     </div>
 </div>
-
