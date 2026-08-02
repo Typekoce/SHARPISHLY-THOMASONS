@@ -7,6 +7,9 @@ use Throwable;
 
 class MobileAgentController extends BaseController 
 {
+
+    public table = 'agents';
+
     /**
      * Display all agents
      */
@@ -41,6 +44,7 @@ class MobileAgentController extends BaseController
     {
         // 1. Query the database using standard $this->db abstraction
         $results = $this->db->find([
+            //TODO: 'tbl'   => $this->table, not set!!!
             'tbl'   => $this->table,
             'where' => ['status' => 'pending'],
             'order' => ['id' => 'ASC'],
