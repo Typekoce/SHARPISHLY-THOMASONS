@@ -59,4 +59,31 @@ class AgentModel extends BaseModel
         $sql = "DELETE FROM `{$this->table}` WHERE `id` = ?";
         return $this->db->execute($sql, [$id]);
     }
+
+    // Inside AgentModel.php (Model Layer)
+
+    public function claimNextPending(): ?array
+    {
+        // 1. Find the oldest pending record via Model abstraction
+        $pending = $this->where('status', 'pending')
+                        ->orderBy('id', 'ASC')
+                        ->first();
+
+        if (!$pending) {
+            return null;
+        }
+
+        // 2. Atomically update status to prevent double-execution
+        $updated = $this->update($pending['id'], [
+            'status'     => 'running',
+            'claimed_at' => date('Y-m-d H:i:s')
+        ]);
+
+        if (!$updated) {
+            return null;
+        }
+
+        $pending['status'] = 'running';
+        return $pending;
+    }
 }

@@ -90,7 +90,7 @@ const MobileController = {
     },
 
     // Convert text message -> new Agent card
-    generateAgent() {
+    old_generateAgent() {
         const input = document.getElementById('agent-instruction');
         const text = input ? input.value.trim() : '';
 
@@ -126,6 +126,37 @@ const MobileController = {
 
         input.value = '';
         this.openScreen('screen-agentic');
+    },
+
+    async generateAgent() {
+        const input = document.getElementById('agent-instruction');
+        const text = input ? input.value.trim() : '';
+
+        if (!text) {
+            alert('Please enter an instruction message.');
+            return;
+        }
+
+        try {
+            const response = await fetch(App.url('mobile-agent'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ instruction: text })
+            });
+
+            const res = await response.json();
+
+            if (res.status === 'success' || res.data) {
+                // Re-fetch server records to display persisted cards
+                await this.getRecords();
+                input.value = '';
+                this.openScreen('screen-agentic');
+            } else {
+                alert(res.error || 'Failed to dispatch agent plan.');
+            }
+        } catch (err) {
+            console.error('Error dispatching agent:', err);
+        }
     },
 
     async getRecords() {
