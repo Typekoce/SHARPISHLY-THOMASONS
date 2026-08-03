@@ -66,13 +66,16 @@ if [ ! -f "${INGESTION_WORKER}" ]; then
 fi
 
 echo "→ Launching Ingestion RAG Worker..."
-"${PYTHON_BIN}" "${INGESTION_WORKER}" >> "${LOG_DIR}/ingestion_worker.log" 2>&1 &
+(
+    cd "${ROOT_DIR}"
+    exec "${PYTHON_BIN}" "${INGESTION_WORKER}"
+) >> "${LOG_DIR}/ingestion_worker.log" 2>&1 &
 PIDS+=($!)
 
 # ---------------------------------------------------------------------
-# 2. Start Command Queue Worker
+# 2. Command Queue / Supervisor Worker
 # ---------------------------------------------------------------------
-echo "→ Launching Command Queue Worker..."
+echo "→ Launching Command Queue / Supervisor Worker..."
 (
     QUEUE_DIR="${ROOT_DIR}/storage/cmd/jobs/waiting"
     PROC_DIR="${ROOT_DIR}/storage/cmd/jobs/processing"
@@ -85,12 +88,21 @@ echo "→ Launching Command Queue Worker..."
             [ -e "${job}" ] || continue
             
             jobname=$(basename "${job}")
-            mv "${job}" "${PROC_DIR}/"
+            target="${PROC_DIR}/${jobname}"
             
-            bash "${PROC_DIR}/${jobname}" > "${PROC_DIR}/${jobname}.log" 2>&1 || true
+            # Atomic move guard (skip if already in processing)
+            if ! mv -n "${job}" "${target}" 2>/dev/null; then
+                continue
+            fi
             
-            mv "${PROC_DIR}/${jobname}" "${DONE_DIR}/" 2>/dev/null || true
-            mv "${PROC_DIR}/${jobname}.log" "${DONE_DIR}/" 2>/dev/null || true
+            logname="${jobname}.log"
+            
+            # Execute job script and capture execution output
+            bash "${target}" > "${PROC_DIR}/${logname}" 2>&1 || true
+            
+            # Archive job script and output log
+            mv "${target}" "${DONE_DIR}/" 2>/dev/null || true
+            mv "${PROC_DIR}/${logname}" "${DONE_DIR}/" 2>/dev/null || true
         done
         sleep 1
     done

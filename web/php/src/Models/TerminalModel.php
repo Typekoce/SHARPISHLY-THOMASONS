@@ -13,7 +13,7 @@ class TerminalModel extends BaseModel {
             'history-update' => "history | grep 'update'",
             
             // Project maintenance & logs
-            'logs-app'       => 'tail -f storage/logs/app.log',
+            'logs-app'       => 'tail -f storage/log/*.* storage/logs/*.*',
             // Updated to reflect the specific log path for the project
             'logs-nginx'     => 'tail -f /var/log/nginx/sharpishly_access.log',
             'db-migrate'     => 'curl -i http://localhost/php/scaffold/migrate',
