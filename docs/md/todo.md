@@ -70,3 +70,28 @@
 * [ ] **RAG Chat Logging:** Implement logic in `RagController` to automatically log successful Q&A chat exchanges (query + answer) to the `queries` database table.
 * [ ] **SalesForce Controller Polish:** Refine the basic SalesForce controller to prepare it for secure integration testing.
 * [ ] **Federation of Small Business (FSB) Integration:** Map out initial automation workflows for FSB interaction as part of the launch strategy.
+
+# TODO: Fix Terminal Model & Command Queue Enqueueing Architecture
+
+## Background / Issue Summary
+Attempts to execute remote deployment and provisioning tasks via `curl -i http://localhost/php/terminal/load/<alias>` failed to execute on `@maxie` (`192.168.0.90`). 
+
+While `TerminalController` logged the incoming HTTP requests, `TerminalModel::alias()` merely returns string mapping definitions. The endpoint was not creating `.sh` job files in `storage/cmd/jobs/waiting/`. Consequently, background workers never picked up or executed the commands (such as `maxie-keygen`), leading to missing SSH keys and stalled deployment tasks.
+
+---
+
+## Required Tasks
+
+### 1. Refactor `TerminalController` & `TerminalModel`
+- [ ] **Implement File Enqueueing Logic:** Update `TerminalController::load()` (or the appropriate action) so that resolving an alias generates an executable `job_<timestamp>_<hash>.sh` file inside `storage/cmd/jobs/waiting/`.
+- [ ] **Validate File Permissions:** Ensure generated job files are written with executable permissions (`0755` or `0777`) so `start_workers.sh` can execute them without permission errors.
+- [ ] **Enforce Queue Cleanliness:** Ensure failed or empty enqueues are handled gracefully without leaving orphan files.
+
+### 2. Standardize Remote SSH & Host Authorization
+- [ ] **Establish Host-Level Key Auth:** Run `ssh-copy-id maxie@192.168.0.90` on the host running the workers (`seaview`) to ensure background worker processes can connect to `@maxie` without interactive password prompts.
+- [ ] **Enforce BatchMode:** Verify all `ssh` commands within `TerminalModel.php` aliases include `-o BatchMode=yes` to prevent non-interactive worker processes from hanging on password prompts.
+
+### 3. End-to-End Verification Flow
+- [ ] **Verify Queue Output:** Confirm that issuing a `curl` request to an alias endpoint writes a valid job file into `storage/cmd/jobs/waiting/`.
+- [ ] **Verify Worker Execution:** Confirm that `start_workers.sh` processes the job file, moves it to `processing/`, executes it, and archives the output log in `completed/`.
+- [ ] **Test `@maxie` Provisioning:** Test `maxie-keygen` and verify `id_ed25519.pub` is generated successfully on `@maxie`.
