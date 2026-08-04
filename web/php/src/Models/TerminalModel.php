@@ -14,7 +14,6 @@ class TerminalModel extends BaseModel {
             
             // Project maintenance & logs
             'logs-app'       => 'tail -f storage/log/*.* storage/logs/*.*',
-            // Updated to reflect the specific log path for the project
             'logs-nginx'     => 'tail -f /var/log/nginx/sharpishly_access.log',
             'db-migrate'     => 'curl -i http://localhost/php/scaffold/migrate',
             
@@ -29,10 +28,12 @@ class TerminalModel extends BaseModel {
             // Schema validation
             'schema-check'   => 'php scripts/schema-check.php',
 
+            // Host-level SSH Key Authorization & Test
+            'maxie-authorize-host' => 'ssh-copy-id maxie@192.168.0.90',
+            'maxie-test-auth'      => 'ssh -o BatchMode=yes maxie@192.168.0.90 "echo Auth Success"',
+
             // test docker on @maxie
             'docker-maxie' => 'ssh -o ConnectTimeout=5 maxie "docker ps --format \'table {{.ID}}\t{{.Image}}\t{{.Status}}\t{{.Names}}\'"',
-            
-            //
             'docker-maxie-status'   => 'echo "YOUR_PASSWORD" | ssh -t maxie "sudo -S systemctl status docker"',
             
             'gmail-inbox'   => 'himalaya envelope list',
@@ -40,10 +41,9 @@ class TerminalModel extends BaseModel {
             // Git log
             'git-log'       => 'git log --oneline --graph --decorate',
 
-            // Fixed: Escaped variable dollar sign inside double-quoted string
-            'json-endpoints' => "grep -R '\$this->json(' web/php/src/Controllers/",
-            // Find Api Controllers
-            'api-controllers'   => "find web/php/src/Controllers/ -type f -iname '*apiController*' -exec grep -Hni 'json' {} +",
+            // JSON and API Controller search
+            'json-endpoints'   => "grep -R '\$this->json(' web/php/src/Controllers/",
+            'api-controllers'  => "find web/php/src/Controllers/ -type f -iname '*apiController*' -exec grep -Hni 'json' {} +",
 
             // NMAP
             'nmap-local' => 'nmap 192.168.0.218 -sV -T4 2>&1',
@@ -53,7 +53,7 @@ class TerminalModel extends BaseModel {
             // SSH Key Management & GitHub Verification on @maxie
             'maxie-keygen'        => 'ssh maxie@192.168.0.90 "mkdir -p ~/.ssh && chmod 700 ~/.ssh && [ -f ~/.ssh/id_ed25519 ] || ssh-keygen -t ed25519 -C \"maxie@192.168.0.90\" -N \"\" -f ~/.ssh/id_ed25519"',
             'maxie-get-key'       => 'ssh maxie@192.168.0.90 "cat ~/.ssh/id_ed25519.pub"',
-            'maxie-verify-github'  => 'ssh -o BatchMode=yes maxie@192.168.0.90 "ssh -T -o StrictHostKeyChecking=accept-new git@github.com"',
+            'maxie-verify-github' => 'ssh -o BatchMode=yes maxie@192.168.0.90 "ssh -T -o StrictHostKeyChecking=accept-new git@github.com"',
 
             // deploy Sharpishly repo to maxie@192.168.0.90
             'maxie-deploy-sharpishly'   => 'ssh -o BatchMode=yes maxie@192.168.0.90 "rm -rf sharpishly && git clone git@github.com:Typekoce/SHARPISHLY-THOMASONS.git sharpishly && cd sharpishly && chmod +x final_installation.sh && ./final_installation.sh"',
