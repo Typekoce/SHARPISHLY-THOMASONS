@@ -44,7 +44,8 @@ $aliases = [
     'indeed-token'          => ['IndeedApi', 'fetchToken'],
 
     // Mobile Demo
-    'mobile-agent'          => ['MobileAgent','index']
+    'mobile-agent'          => ['MobileAgent','index'],
+    'mobile-agent-create' => ['MobileAgent', 'create'],
     
     // 'chat-stream'        => ['Chat', 'stream'],
 ];

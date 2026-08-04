@@ -28,7 +28,9 @@ class MobileAgentController extends BaseController
      */
     public function create(): void
     {
-        $instruction = trim((string) $this->request('instruction'));
+        $raw = file_get_contents('php://input');
+        $input = json_decode($raw, true) ?? [];
+        $instruction = trim((string) ($input['instruction'] ?? ''));
 
         if (empty($instruction)) {
             $this->json(['status' => 'error', 'error' => 'Instruction cannot be empty'], 400);
