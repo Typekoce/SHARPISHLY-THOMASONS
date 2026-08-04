@@ -7,34 +7,53 @@ use Throwable;
 
 class MobileAgentController extends BaseController 
 {
-
-    public table = 'agents';
-
     /**
      * Display all agents
      */
     public function index($id = ''): void
     {
-        $records = [];
+        $agent = new AgentModel();
 
-        try {
-            $agent = new AgentModel();
-            $records = $agent->all();
-        } catch (Throwable $e) {
-            if (isset($this->logger)) {
-                $this->logger->error('Failed to fetch agents: ' . $e->getMessage());
-            }
-        }
-
-        $data = [
+        $this->json([
             'id'      => $id,
             'model'   => __CLASS__,
             'action'  => __FUNCTION__,
             'time'    => $this->now(),
-            'records' => $records
-        ];
+            'records' => $agent->all()
+        ]);
+    }
 
-        $this->json($data);
+    /**
+     * Handle POST payload to generate and dispatch an agent plan
+     */
+    public function create(): void
+    {
+        $instruction = trim((string) $this->request('instruction'));
+
+        if (empty($instruction)) {
+            $this->json(['status' => 'error', 'error' => 'Instruction cannot be empty'], 400);
+        }
+
+        try {
+            $agentModel = new AgentModel();
+            
+            $inserted = $agentModel->create([
+                'agent_name'  => 'Sharpishly Agent',
+                'description' => $instruction,
+                'status'      => 'pending',
+                'created_at'  => $this->now()
+            ]);
+
+            if ($inserted) {
+                $this->json(['status' => 'success', 'data' => ['id' => $inserted]]);
+            }
+
+            $this->json(['status' => 'error', 'error' => 'Database insertion failed.'], 500);
+
+        } catch (Throwable $e) {
+            $this->logger->error('Failed to create agent: ' . $e->getMessage());
+            $this->json(['status' => 'error', 'error' => $e->getMessage()], 500);
+        }
     }
 
     /**
@@ -42,34 +61,12 @@ class MobileAgentController extends BaseController
      */
     public function claimNextPending(): ?array
     {
-        // 1. Query the database using standard $this->db abstraction
-        $results = $this->db->find([
-            //TODO: 'tbl'   => $this->table, not set!!!
-            'tbl'   => $this->table,
-            'where' => ['status' => 'pending'],
-            'order' => ['id' => 'ASC'],
-            'limit' => 1
-        ]);
-
-        $pending = $results[0] ?? null;
-
-        if (!$pending) {
+        try {
+            $agentModel = new AgentModel();
+            return $agentModel->claimNextPending();
+        } catch (Throwable $e) {
+            $this->logger->error('Failed to claim pending agent: ' . $e->getMessage());
             return null;
         }
-
-        // 2. Atomically mark as running
-        $updated = $this->update((int)$pending['id'], [
-            'status'     => 'running',
-            'claimed_at' => date('Y-m-d H:i:s')
-        ]);
-
-        if (!$updated) {
-            return null;
-        }
-
-        $pending['status'] = 'running';
-        return $pending;
     }
-
-
 }
