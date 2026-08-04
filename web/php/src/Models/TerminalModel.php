@@ -56,7 +56,8 @@ class TerminalModel extends BaseModel {
             'maxie-verify-github' => 'ssh -o BatchMode=yes maxie@192.168.0.90 "ssh -T -o StrictHostKeyChecking=accept-new git@github.com"',
 
             // deploy Sharpishly repo to maxie@192.168.0.90
-            'maxie-deploy-sharpishly'   => 'ssh -o BatchMode=yes maxie@192.168.0.90 "rm -rf sharpishly && git clone git@github.com:Typekoce/SHARPISHLY-THOMASONS.git sharpishly && cd sharpishly && chmod +x final_installation.sh && ./final_installation.sh"',
+            //'maxie-deploy-sharpishly'   => 'ssh -o BatchMode=yes maxie@192.168.0.90 "rm -rf sharpishly && git clone git@github.com:Typekoce/SHARPISHLY-THOMASONS.git sharpishly && cd sharpishly && chmod +x final_installation.sh && ./final_installation.sh"',
+'maxie-deploy-sharpishly' => 'ssh -o BatchMode=yes maxie@192.168.0.90 "rm -rf sharpishly && git clone git@github.com:Typekoce/SHARPISHLY-THOMASONS.git sharpishly && cd sharpishly && chmod +x final_installation.sh && ./final_installation.sh"',
 
             // Deployment support aliases
             'maxie-setup-sudoers' => 'ssh -t maxie@192.168.0.90 "echo \"maxie ALL=(ALL) NOPASSWD: ALL\" | sudo tee /etc/sudoers.d/maxie > /dev/null && sudo chmod 0440 /etc/sudoers.d/maxie"',
