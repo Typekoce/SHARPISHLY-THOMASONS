@@ -19,8 +19,8 @@ class TerminalModel extends BaseModel {
             'db-migrate'     => 'curl -i http://localhost/php/scaffold/migrate',
             
             // Safety-first cleanup: targeting job-specific files
-            'cleanup'        => 'find storage/cmd/jobs/waiting -type f -name "job_*" -delete',
-            'cleanup-jobs'   => 'find storage/cmd/jobs/waiting -type f -name "job_*" -delete',
+            'cleanup'          => 'find storage/cmd/jobs/waiting -type f -name "job_*" -delete',
+            'cleanup-jobs'     => 'find storage/cmd/jobs/waiting -type f -name "job_*" -delete',
             'cleanup-jobs-all' => 'find storage/cmd/jobs/{waiting,processing,completed} -type f -name "job_*" -delete',
             
             // Deterministic service check
@@ -50,8 +50,13 @@ class TerminalModel extends BaseModel {
 
             'nginx-header-check' => 'php diagnostics/nginx-header-check.php',
 
-            // deploy Sharpishly repo to maxie@192.168.0.90 (using HTTPS clone)
-            'maxie-deploy-sharpishly'   => 'ssh -o BatchMode=yes maxie@192.168.0.90 "rm -rf sharpishly && git clone https://github.com/Typekoce/SHARPISHLY-THOMASONS.git sharpishly && cd sharpishly && chmod +x final_installation.sh && ./final_installation.sh"',
+            // SSH Key Management & GitHub Verification on @maxie
+            'maxie-keygen'        => 'ssh maxie@192.168.0.90 "mkdir -p ~/.ssh && chmod 700 ~/.ssh && [ -f ~/.ssh/id_ed25519 ] || ssh-keygen -t ed25519 -C \"maxie@192.168.0.90\" -N \"\" -f ~/.ssh/id_ed25519"',
+            'maxie-get-key'       => 'ssh maxie@192.168.0.90 "cat ~/.ssh/id_ed25519.pub"',
+            'maxie-verify-github'  => 'ssh -o BatchMode=yes maxie@192.168.0.90 "ssh -T -o StrictHostKeyChecking=accept-new git@github.com"',
+
+            // deploy Sharpishly repo to maxie@192.168.0.90
+            'maxie-deploy-sharpishly'   => 'ssh -o BatchMode=yes maxie@192.168.0.90 "rm -rf sharpishly && git clone git@github.com:Typekoce/SHARPISHLY-THOMASONS.git sharpishly && cd sharpishly && chmod +x final_installation.sh && ./final_installation.sh"',
 
             // Deployment support aliases
             'maxie-setup-sudoers' => 'ssh -t maxie@192.168.0.90 "echo \"maxie ALL=(ALL) NOPASSWD: ALL\" | sudo tee /etc/sudoers.d/maxie > /dev/null && sudo chmod 0440 /etc/sudoers.d/maxie"',
