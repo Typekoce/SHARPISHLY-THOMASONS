@@ -46,7 +46,15 @@ class TerminalModel extends BaseModel {
             // NMAP
             'nmap-local' => 'nmap 192.168.0.218 -sV -T4 2>&1',
 
-            'nginx-header-check' => 'php diagnostics/nginx-header-check.php'
+            'nginx-header-check' => 'php diagnostics/nginx-header-check.php',
+
+            // deploy Sharpishly repo to maxie@192.168.0.90
+            'maxie-deploy-sharpishly'   => 'ssh maxie@192.168.0.90 "rm -rf sharpishly && git clone git@github.com:Typekoce/SHARPISHLY-THOMASONS.git sharpishly && cd sharpishly && chmod +x final_installation.sh && ./final_installation.sh"',
+
+            // Optional helper aliases for non-interactive host setup
+            'maxie-setup-sudoers' => 'ssh -t maxie@192.168.0.90 "echo \"maxie ALL=(ALL) NOPASSWD: ALL\" | sudo tee /etc/sudoers.d/maxie > /dev/null && sudo chmod 0440 /etc/sudoers.d/maxie"',
+            'maxie-prep-ollama'   => 'ssh maxie@192.168.0.90 "ollama pull llama3 && ollama pull jina/jina-embeddings-v2-small-en"',
+            'maxie-health-check'  => 'ssh maxie@192.168.0.90 "db-check && sudo systemctl status nginx"'
         );
 
         if (isset($terminal[$command])) {
