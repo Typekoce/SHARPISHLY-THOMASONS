@@ -20,6 +20,8 @@ class TerminalModel extends BaseModel {
             
             // Safety-first cleanup: targeting job-specific files
             'cleanup'        => 'find storage/cmd/jobs/waiting -type f -name "job_*" -delete',
+            'cleanup-jobs'   => 'find storage/cmd/jobs/waiting -type f -name "job_*" -delete',
+            'cleanup-jobs-all' => 'find storage/cmd/jobs/{waiting,processing,completed} -type f -name "job_*" -delete',
             
             // Deterministic service check
             'status'         => 'sh -lc "systemctl status mariadb; systemctl status nginx"',
@@ -48,13 +50,13 @@ class TerminalModel extends BaseModel {
 
             'nginx-header-check' => 'php diagnostics/nginx-header-check.php',
 
-            // deploy Sharpishly repo to maxie@192.168.0.90
-            'maxie-deploy-sharpishly'   => 'ssh maxie@192.168.0.90 "rm -rf sharpishly && git clone git@github.com:Typekoce/SHARPISHLY-THOMASONS.git sharpishly && cd sharpishly && chmod +x final_installation.sh && ./final_installation.sh"',
+            // deploy Sharpishly repo to maxie@192.168.0.90 (using HTTPS clone)
+            'maxie-deploy-sharpishly'   => 'ssh -o BatchMode=yes maxie@192.168.0.90 "rm -rf sharpishly && git clone https://github.com/Typekoce/SHARPISHLY-THOMASONS.git sharpishly && cd sharpishly && chmod +x final_installation.sh && ./final_installation.sh"',
 
-            // Optional helper aliases for non-interactive host setup
+            // Deployment support aliases
             'maxie-setup-sudoers' => 'ssh -t maxie@192.168.0.90 "echo \"maxie ALL=(ALL) NOPASSWD: ALL\" | sudo tee /etc/sudoers.d/maxie > /dev/null && sudo chmod 0440 /etc/sudoers.d/maxie"',
-            'maxie-prep-ollama'   => 'ssh maxie@192.168.0.90 "ollama pull llama3 && ollama pull jina/jina-embeddings-v2-small-en"',
-            'maxie-health-check'  => 'ssh maxie@192.168.0.90 "db-check && sudo systemctl status nginx"'
+            'maxie-prep-ollama'   => 'ssh -o BatchMode=yes maxie@192.168.0.90 "ollama pull llama3 && ollama pull jina/jina-embeddings-v2-small-en"',
+            'maxie-health-check'  => 'ssh -o BatchMode=yes maxie@192.168.0.90 "db-check && sudo systemctl status nginx"'
         );
 
         if (isset($terminal[$command])) {
