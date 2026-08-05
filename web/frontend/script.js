@@ -1442,7 +1442,7 @@ const MobileController = {
         this.openScreen('screen-agentic');
     },
 
-    async generateAgent() {
+    async old_1_generateAgent() {
         const input = document.getElementById('agent-instruction');
         const text = input ? input.value.trim() : '';
 
@@ -1468,6 +1468,35 @@ const MobileController = {
             } else {
                 alert(res.error || 'Failed to dispatch agent plan.');
             }
+        } catch (err) {
+            console.error('Error dispatching agent:', err);
+        }
+    },
+
+    async generateAgent() {
+        const input = document.getElementById('agent-instruction');
+        const instruction = input?.value.trim();
+
+        if (!instruction) {
+            return alert('Please enter an instruction message.');
+        }
+
+        try {
+            const response = await fetch(App.url('mobile-agent-create'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ instruction })
+            });
+
+            const res = await response.json();
+
+            if (res.status !== 'success' && !res.data) {
+                return alert(res.error || 'Failed to dispatch agent plan.');
+            }
+
+            input.value = '';
+            await this.getRecords();
+            this.openScreen('screen-agentic');
         } catch (err) {
             console.error('Error dispatching agent:', err);
         }
