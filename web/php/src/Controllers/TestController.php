@@ -2,6 +2,8 @@
 
 namespace App\Controllers;
 
+use App\Services\Orm;
+
 class TestController extends BaseController {
 
     /**
@@ -33,6 +35,9 @@ class TestController extends BaseController {
         ),
     );
 
+        // Bind ORM execution results into the data array
+        $data = $this->orm($data);
+
         $this->json($data); //[cite: 3]
     }
 
@@ -45,6 +50,42 @@ class TestController extends BaseController {
 
         return json_decode($gmailRaw, true);
 
+    }
+
+    public function orm($data){
+
+        $orm = new Orm();
+
+        $rs = array();
+
+        // 1. ChatGPT call
+        $response = $orm->execute([
+            'source'  => 'ChatGPT',
+            'action'  => 'create',
+            'api_key' => 'YOUR_API_KEY',
+            'data'    => [
+                'model'    => 'gpt-4o',
+                'messages' => [['role' => 'user', 'content' => 'Hello!']]
+            ]
+        ]);
+
+        $rs['ChatGTP']  = $response;
+
+        // 2. Ollama call
+        $response = $orm->execute([
+            'source' => 'Ollama',
+            'action' => 'create',
+            'data'   => [
+                'model'  => 'llama3',
+                'prompt' => 'Explain MVC'
+            ]
+        ]);
+
+        $rs['Ollama']  = $response;
+
+        $data['orm'] = $rs;
+
+        return $data;
     }
 
 }
