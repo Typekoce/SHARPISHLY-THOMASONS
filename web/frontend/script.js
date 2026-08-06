@@ -1338,8 +1338,7 @@ const MobileController = {
     /**
      * Builds and returns a DOM element card matching #agentic markup template
      */
-    cardHTML(title, category, text, ts) {
-        // Main container
+    cardHTML(title, category, text, ts, prompt = null) {
         const card = document.createElement('div');
         card.className = 'job-card';
         card.setAttribute('data-category', category);
@@ -1381,15 +1380,12 @@ const MobileController = {
         timestamp.textContent = `Created: ${ts}`;
 
         const btn = document.createElement('button');
-
-        // Inside cardHTML(item):
-        btn.onclick = (e) => {
-            e.stopPropagation();
-            this.showDetail(title, text, ts);
-        };
-
         btn.className = 'btn btn-primary';
         btn.textContent = 'View Agent';
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            this.showDetail(title, text, ts, prompt);
+        };
 
         footer.appendChild(timestamp);
         footer.appendChild(btn);
@@ -1401,76 +1397,6 @@ const MobileController = {
         card.appendChild(footer);
 
         return card;
-    },
-
-    // Convert text message -> new Agent card
-    old_generateAgent() {
-        const input = document.getElementById('agent-instruction');
-        const text = input ? input.value.trim() : '';
-
-        if (!text) {
-            alert('Please enter an instruction message.');
-            return;
-        }
-
-        // Infer category based on input context
-        let title = "Sharpishly Agent";
-        let category = "career";
-        const lower = text.toLowerCase();
-
-        if (lower.includes('doctor') || lower.includes('health') || lower.includes('chemist') || lower.includes('gp')) {
-            title = "Doctors / Health";
-            category = "health";
-        } else if (lower.includes('tax') || lower.includes('council') || lower.includes('manchester')) {
-            title = "Manchester City Council";
-            category = "bills";
-        } else if (lower.includes('bill') || lower.includes('virgin') || lower.includes('tv') || lower.includes('netflix')) {
-            title = "Subscription Service";
-            category = "subscription";
-        }
-
-        const ts = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-
-        const cardElement = this.cardHTML(title, category, text, ts);
-
-        const agentList = document.getElementById('agentic-list');
-        if (agentList) {
-            agentList.prepend(cardElement);
-        }
-
-        input.value = '';
-        this.openScreen('screen-agentic');
-    },
-
-    async old_1_generateAgent() {
-        const input = document.getElementById('agent-instruction');
-        const text = input ? input.value.trim() : '';
-
-        if (!text) {
-            alert('Please enter an instruction message.');
-            return;
-        }
-
-        try {
-            const response = await fetch(App.url('mobile-agent'), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ instruction: text })
-            });
-
-            const res = await response.json();
-
-            if (res.status === 'success' || res.data) {
-                // Re-fetch server records to display persisted cards
-                await this.getRecords();
-                input.value = '';
-                this.openScreen('screen-agentic');
-            } else {
-                alert(res.error || 'Failed to dispatch agent plan.');
-            }
-        } catch (err) {
-            console.error('Error dispatching agent:', err);
-        }
     },
 
     async generateAgent() {
@@ -1517,8 +1443,9 @@ const MobileController = {
                     const category = item.role || item.category || 'career';
                     const text = item.description || item.message || item.summary || '';
                     const ts = item.created_at || '';
+                    const prompt = item.content || null;
 
-                    const card = this.cardHTML(title, category, text, ts);
+                    const card = this.cardHTML(title, category, text, ts, prompt);
                     agentList.appendChild(card);
                 });
             }
@@ -1527,13 +1454,87 @@ const MobileController = {
         }
     },
 
-    showDetail(title, text, ts) {
-            document.getElementById('detail-title').textContent = title;
-            document.getElementById('detail-summary').textContent = text;
-            document.getElementById('detail-timestamp').textContent = ts;
+    showDetail(title, text, ts, prompt = null) {
+        const titleEl = document.getElementById('detail-title');
+        const summaryEl = document.getElementById('detail-summary');
+        const tsEl = document.getElementById('detail-timestamp');
 
-            this.openScreen('screen-agent-detail');
-        },
+        if (titleEl) titleEl.textContent = title;
+        if (summaryEl) summaryEl.textContent = text;
+        if (tsEl) tsEl.textContent = ts;
+
+        const screenDetail = document.getElementById('screen-agent-detail');
+        if (screenDetail) {
+            let promptEl = document.getElementById('detail-prompt');
+            if (promptEl) {
+                promptEl.remove();
+            }
+
+            let data = prompt;
+            if (typeof prompt === 'string') {
+                try { data = JSON.parse(prompt); } catch (e) {}
+            }
+
+            const mockPrompt = {
+                action: 'dispatch_agent',
+                target: title,
+                instruction: text || 'Execute standard automated workflow',
+                status: 'active_pipeline'
+            };
+
+            const payload = (data && typeof data === 'object') ? data : mockPrompt;
+            promptEl = this.formatPrompt(payload);
+            screenDetail.appendChild(promptEl);
+        }
+
+        this.openScreen('screen-agent-detail');
+    },
+
+    formatPrompt(data) {
+        const container = document.createElement('div');
+        container.id = 'detail-prompt';
+        container.style.cssText = 'margin: 1rem 0; padding: 0.75rem; background: #f4f5f7; border-radius: 6px; font-size: 0.85rem; border: 1px solid #e5e7eb;';
+
+        const buildNode = (obj) => {
+            const wrapper = document.createElement('div');
+
+            for (const [key, val] of Object.entries(obj)) {
+                const row = document.createElement('div');
+                row.style.cssText = 'margin-bottom: 0.4rem; display: flex; flex-direction: column;';
+
+                const label = document.createElement('strong');
+                label.textContent = key.toUpperCase();
+                label.style.cssText = 'color: #374151; font-size: 0.75rem; letter-spacing: 0.05em; margin-bottom: 0.1rem;';
+
+                row.appendChild(label);
+
+                if (val !== null && typeof val === 'object') {
+                    const nestedContainer = document.createElement('div');
+                    nestedContainer.style.cssText = 'padding-left: 0.5rem; border-left: 2px solid #cbd5e1; margin-top: 0.2rem;';
+                    nestedContainer.appendChild(buildNode(val));
+                    row.appendChild(nestedContainer);
+                } else {
+                    const valueEl = document.createElement('span');
+                    valueEl.textContent = String(val);
+                    valueEl.style.cssText = 'color: #1f2937; background: #ffffff; padding: 0.25rem 0.5rem; border-radius: 4px; border: 1px solid #d1d5db; font-family: monospace; word-break: break-word;';
+                    row.appendChild(valueEl);
+                }
+
+                wrapper.appendChild(row);
+            }
+            return wrapper;
+        };
+
+        if (data && typeof data === 'object') {
+            container.appendChild(buildNode(data));
+        } else {
+            const fallback = document.createElement('span');
+            fallback.textContent = String(data);
+            container.appendChild(fallback);
+        }
+
+        return container;
+    }
 };/** model.js */
 
 /**

@@ -2,7 +2,7 @@
 
 namespace App\Controllers;
 
-use App\Services\Db;
+use App\Models\AgentModel;
 use App\Services\PromptService;
 use Throwable;
 
@@ -13,20 +13,19 @@ class MobileAgentController extends BaseController
      */
     public function index($id = ''): void
     {
-        $db = new Db([]);
-        $records = $db->find(['tbl' => 'agents']);
+        $agent = new AgentModel();
 
         $this->json([
             'id'      => $id,
             'model'   => __CLASS__,
             'action'  => __FUNCTION__,
             'time'    => $this->now(),
-            'records' => $records
+            'records' => $agent->all()
         ]);
     }
 
     /**
-     * Handle POST payload to parse prompt semantics and persist directly via Db.
+     * Handle POST payload to generate and dispatch an agent plan
      */
     public function create(): void
     {
@@ -39,42 +38,40 @@ class MobileAgentController extends BaseController
         }
 
         try {
-            $db = new Db([]);
-            $promptService = new PromptService();
+            $agentModel = new AgentModel();
 
-            $insertedId = $promptService->convertAndSave($instruction, $db);
+            $prompt = new PromptService();
 
-            if ($insertedId) {
-                $this->json([
-                    'status' => 'success',
-                    'data'   => [
-                        'id'     => $insertedId,
-                        'parsed' => $promptService->read($instruction)
-                    ]
-                ]);
+            $content = $prompt->read($instruction);
+            
+            $inserted = $agentModel->create([
+                'agent_name'  => 'Sharpishly Agent',
+                'description' => $instruction,
+                'content'     => json_encode($content),
+                'status'      => 'pending',
+                'created_at'  => $this->now()
+            ]);
+
+            if ($inserted) {
+                $this->json(['status' => 'success', 'data' => ['id' => $inserted]]);
             }
 
             $this->json(['status' => 'error', 'error' => 'Database insertion failed.'], 500);
 
         } catch (Throwable $e) {
-            $this->logger->error('Failed to create agent prompt: ' . $e->getMessage());
+            $this->logger->error('Failed to create agent: ' . $e->getMessage());
             $this->json(['status' => 'error', 'error' => $e->getMessage()], 500);
         }
     }
 
     /**
-     * Fetch pending agent records
+     * Atomically fetch and claim the next pending agent record
      */
     public function claimNextPending(): ?array
     {
         try {
-            $db = new Db([]);
-            $records = $db->find([
-                'tbl'   => 'agents',
-                'where' => ['status' => 'pending'],
-                'limit' => 1
-            ]);
-            return $records[0] ?? null;
+            $agentModel = new AgentModel();
+            return $agentModel->claimNextPending();
         } catch (Throwable $e) {
             $this->logger->error('Failed to claim pending agent: ' . $e->getMessage());
             return null;
