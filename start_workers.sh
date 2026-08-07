@@ -11,6 +11,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOG_DIR="${ROOT_DIR}/storage/logs"
 PYTHON_BIN="${ROOT_DIR}/venv/bin/python3"
 INGESTION_WORKER="${ROOT_DIR}/pymvc/app/ingestion_worker.py"
+RAG_SERVICE="${ROOT_DIR}/pymvc/app/rag_service.py"
 
 # Ensure log directory exists
 mkdir -p "${LOG_DIR}"
@@ -20,7 +21,7 @@ PIDS=()
 
 cleanup() {
     echo ""
-    echo "🛑 Stopping all neural and background workers..."
+    echo "🛑 Stopping all neural, API, and background workers..."
     
     # Stage 1: Graceful SIGTERM
     for pid in "${PIDS[@]}"; do
@@ -58,22 +59,52 @@ fi
 export PYTHONPATH="${ROOT_DIR}/pymvc:${PYTHONPATH:-}"
 
 # ---------------------------------------------------------------------
-# 1. Start Ingestion / Vector Worker
+# 1. Ollama Neural Engine & Model Service
 # ---------------------------------------------------------------------
-if [ ! -f "${INGESTION_WORKER}" ]; then
+if command -v ollama >/dev/null 2>&1; then
+    if curl -s http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
+        echo "→ Ollama Neural Engine is already active on port 11434."
+    else
+        echo "→ Launching Ollama Neural Engine..."
+        ollama serve >> "${LOG_DIR}/ollama.log" 2>&1 &
+        PIDS+=($!)
+        sleep 2
+    fi
+else
+    echo "⚠️  Ollama binary not found in PATH. Skipping local model engine startup."
+fi
+
+# ---------------------------------------------------------------------
+# 2. Local RAG Service Endpoint
+# ---------------------------------------------------------------------
+if [ -f "${RAG_SERVICE}" ]; then
+    echo "→ Launching RAG API Service..."
+    (
+        cd "${ROOT_DIR}"
+        exec "${PYTHON_BIN}" "${RAG_SERVICE}"
+    ) >> "${LOG_DIR}/rag_service.log" 2>&1 &
+    PIDS+=($!)
+else
+    echo "⚠️  RAG service script not found at ${RAG_SERVICE}. Skipping."
+fi
+
+# ---------------------------------------------------------------------
+# 3. Ingestion / Vector Worker
+# ---------------------------------------------------------------------
+if [ -f "${INGESTION_WORKER}" ]; then
+    echo "→ Launching Ingestion RAG Worker..."
+    (
+        cd "${ROOT_DIR}"
+        exec "${PYTHON_BIN}" "${INGESTION_WORKER}"
+    ) >> "${LOG_DIR}/ingestion_worker.log" 2>&1 &
+    PIDS+=($!)
+else
     echo "❌ Ingestion worker script missing: ${INGESTION_WORKER}"
     exit 1
 fi
 
-echo "→ Launching Ingestion RAG Worker..."
-(
-    cd "${ROOT_DIR}"
-    exec "${PYTHON_BIN}" "${INGESTION_WORKER}"
-) >> "${LOG_DIR}/ingestion_worker.log" 2>&1 &
-PIDS+=($!)
-
 # ---------------------------------------------------------------------
-# 2. Command Queue / Supervisor Worker
+# 4. Command Queue / Supervisor Worker
 # ---------------------------------------------------------------------
 echo "→ Launching Command Queue / Supervisor Worker..."
 (
@@ -90,7 +121,7 @@ echo "→ Launching Command Queue / Supervisor Worker..."
             jobname=$(basename "${job}")
             target="${PROC_DIR}/${jobname}"
             
-            # Atomic move guard (skip if already in processing)
+            # Atomic move guard
             if ! mv -n "${job}" "${target}" 2>/dev/null; then
                 continue
             fi
@@ -110,7 +141,7 @@ echo "→ Launching Command Queue / Supervisor Worker..."
 PIDS+=($!)
 
 echo "=================================================="
-echo "✅ All workers running in background."
+echo "✅ All workers & neural services running."
 echo "📋 Logs streaming to: ${LOG_DIR}/"
 echo "Press [CTRL+C] to stop all processes."
 echo "=================================================="

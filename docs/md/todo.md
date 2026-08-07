@@ -95,3 +95,18 @@ While `TerminalController` logged the incoming HTTP requests, `TerminalModel::al
 - [ ] **Verify Queue Output:** Confirm that issuing a `curl` request to an alias endpoint writes a valid job file into `storage/cmd/jobs/waiting/`.
 - [ ] **Verify Worker Execution:** Confirm that `start_workers.sh` processes the job file, moves it to `processing/`, executes it, and archives the output log in `completed/`.
 - [ ] **Test `@maxie` Provisioning:** Test `maxie-keygen` and verify `id_ed25519.pub` is generated successfully on `@maxie`.
+
+## Health Center & Diagnostics
+
+- [ ] **Fix Ollama ORM Integration (`Orm.php`)**
+  - Update model payload tag to `llama3:latest` to match local engine tags.
+  - Verify endpoint URL targets `http://127.0.0.1:11434/api/generate` with `stream: false`.
+
+- [ ] **Populate RAG Health Payload (`TestController.php`)**
+  - Bind ping check to local RAG endpoint (`http://127.0.0.1:8000/health`) so `$data['RAG']` returns status instead of `null`.
+
+- [ ] **Format Process Output in UI (`health_controller.js`)**
+  - Update `renderTree()` to render multiline strings (like `process_check`) inside `<pre class="tree-val mb-0 text-wrap">` tags.
+
+- [ ] **Background Supervisor Execution**
+  - Verify `ingestion_worker.py` and `cmd_worker` are running via `./start_workers.sh`.

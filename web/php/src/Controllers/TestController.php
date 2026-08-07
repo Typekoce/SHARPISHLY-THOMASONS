@@ -16,29 +16,37 @@ class TestController extends BaseController {
         'class'         => __CLASS__,
         'function'      => __FUNCTION__,
         'google_api'    => $this->decodeJsonRequest('googleapi'),
-        'hotmail_api'    => $this->decodeJsonRequest('hotmailapi'),
-        'azure_api'    => $this->decodeJsonRequest('azureapi'),
-        'aws_api'    => $this->decodeJsonRequest('awsapi'),
+        'hotmail_api'   => $this->decodeJsonRequest('hotmailapi'),
+        'azure_api'     => $this->decodeJsonRequest('azureapi'),
+        'aws_api'       => $this->decodeJsonRequest('awsapi'),
+        'process_check' => shell_exec('ps aux | grep -E "ollama|rag_service|ingestion_worker|cmd_worker" | grep -v grep'),
+        'ollama'        => json_decode(shell_exec('curl -s http://127.0.0.1:11434/api/tags')),
+        'RAG'           => shell_exec('curl -s http://127.0.0.1:8000/health'),
         'recent_work'   => array(
             'ssl_setup'     => 'setup-local-ssl.sh',
             'installer'     => 'build-installer.sh',
             'controllers'   => array(
+                'MobileAgentController.php',
                 'AzureFoundryController.php',
                 'BaseCloudController.php',
                 'GoogleapiController.php',
                 'HotmailapiController.php',
             ),
+            'services'  => array(
+                'Orm.php'
+            ),
             'documentation' => array(
                 'docs/CONTRIBUTORS.md',
                 'todo.md',
             ),
+            'logs'      => shell_exec('tail -n 20 storage/logs/*.log')
         ),
     );
 
         // Bind ORM execution results into the data array
         $data = $this->orm($data);
 
-        $this->json($data); //[cite: 3]
+        $this->json($data);
     }
 
     /**
@@ -46,7 +54,7 @@ class TestController extends BaseController {
      */
     public function decodeJsonRequest($url){
 
-        $gmailRaw = file_get_contents('http://sharpishly.dev/php/' . $url ); //
+        $gmailRaw = file_get_contents('http://sharpishly.dev/php/' . $url );
 
         return json_decode($gmailRaw, true);
 

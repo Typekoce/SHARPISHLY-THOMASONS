@@ -57,12 +57,18 @@ class TerminalModel extends BaseModel {
 
             // deploy Sharpishly repo to maxie@192.168.0.90
             //'maxie-deploy-sharpishly'   => 'ssh -o BatchMode=yes maxie@192.168.0.90 "rm -rf sharpishly && git clone git@github.com:Typekoce/SHARPISHLY-THOMASONS.git sharpishly && cd sharpishly && chmod +x final_installation.sh && ./final_installation.sh"',
-'maxie-deploy-sharpishly' => 'ssh -o BatchMode=yes maxie@192.168.0.90 "rm -rf sharpishly && git clone git@github.com:Typekoce/SHARPISHLY-THOMASONS.git sharpishly && cd sharpishly && chmod +x final_installation.sh && ./final_installation.sh"',
+            'maxie-deploy-sharpishly' => 'ssh -o BatchMode=yes maxie@192.168.0.90 "rm -rf sharpishly && git clone git@github.com:Typekoce/SHARPISHLY-THOMASONS.git sharpishly && cd sharpishly && chmod +x final_installation.sh && ./final_installation.sh"',
 
             // Deployment support aliases
             'maxie-setup-sudoers' => 'ssh -t maxie@192.168.0.90 "echo \"maxie ALL=(ALL) NOPASSWD: ALL\" | sudo tee /etc/sudoers.d/maxie > /dev/null && sudo chmod 0440 /etc/sudoers.d/maxie"',
             'maxie-prep-ollama'   => 'ssh -o BatchMode=yes maxie@192.168.0.90 "ollama pull llama3 && ollama pull jina/jina-embeddings-v2-small-en"',
-            'maxie-health-check'  => 'ssh -o BatchMode=yes maxie@192.168.0.90 "db-check && sudo systemctl status nginx"'
+            'maxie-health-check'  => 'ssh -o BatchMode=yes maxie@192.168.0.90 "db-check && sudo systemctl status nginx"',
+
+            // TestController
+            'test-controller'   => 'curl -i http://localhost/php/test/test',
+
+            // HealthController
+            'health-controller'   => 'curl -i http://localhost/php/health',
         );
 
         if (isset($terminal[$command])) {

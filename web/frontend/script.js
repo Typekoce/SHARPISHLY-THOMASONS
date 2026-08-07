@@ -1078,8 +1078,9 @@ const HealthController = {
             const data = await res.json();
 
             // Normalize data from response
-            this.rag(data.rag_service || 'offline');
+            this.rag(data.rag_service);
             this.ollama(data.ollama);
+            this.worker(data.worker);
             this.models(data.models);
 
         } catch (e) {
@@ -1099,8 +1100,9 @@ const HealthController = {
             if (!res.ok) return;
             
             const data = await res.json();
-            this.rag(data.rag_service || 'offline');
+            this.rag(data.rag_service);
             this.ollama(data.ollama);
+            this.worker(data.worker);
             this.models(data.models);
         } catch (e) {
             console.error('Health poll error:', e);
@@ -1129,7 +1131,7 @@ const HealthController = {
         }
     },
 
-async testSuite() {
+    async testSuite() {
         console.log('HealthController.testSuite: Starting suite execution...');
 
         const healthContainer = document.getElementById('health');
@@ -1194,37 +1196,6 @@ async testSuite() {
         }
     },
 
-    // Test Suite integration
-    async old_testSuite() {
-        App.spinner();
-        try {
-            const res = await fetch(App.url('test/test'));
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            
-            const data = await res.json();
-            const healthContainer = document.getElementById('health');
-            if (!healthContainer) return;
-
-            let suiteContainer = document.getElementById('health-test-suite');
-            if (!suiteContainer) {
-                suiteContainer = document.createElement('div');
-                suiteContainer.id = 'health-test-suite';
-                suiteContainer.className = 'card shadow-sm border-0 mt-4 p-4';
-                healthContainer.appendChild(suiteContainer);
-            }
-
-            suiteContainer.innerHTML = `
-                <h3 class="fw-bold mb-3 fs-5">Test Suite Output</h3>
-                ${this.renderTree(data)}
-            `;
-        } catch (e) {
-            console.error("Test suite execution failed:", e);
-            App.flash(`Health Center Error: Test suite unreachable`);
-        } finally {
-            App.clearSpinner();
-        }
-    },
-
     // Recursive object tree renderer
     renderTree(nodes) {
         if (nodes === null || nodes === undefined) return '<span class="tree-null">null</span>';
@@ -1252,46 +1223,56 @@ async testSuite() {
     },
 
     // Core Status Updaters
-    async rag(statusOverride) {
+    rag(data) {
         if (!this.elements.rag) return;
 
-        if (statusOverride && statusOverride !== 'check') {
-            const isOnline = (statusOverride === 'online' || statusOverride === 'success');
-            this.elements.rag.innerText = isOnline ? 'ONLINE' : statusOverride.toUpperCase();
-            this.elements.rag.style.color = isOnline ? '#28a745' : '#dc3545';
-            return;
+        let statusStr = 'OFFLINE';
+        if (typeof data === 'string') {
+            statusStr = data;
+        } else if (data && typeof data === 'object') {
+            statusStr = (data.status === 'online' || data.rag_service === 'online') ? 'online' : (data.status || 'offline');
         }
 
-        try {
-            const response = await fetch(App.url('rag/check'));
-            const data = await response.json();
-            const isOnline = (data.rag_service === 'online');
-
-            this.elements.rag.innerText = isOnline ? 'ONLINE' : 'UNREACHABLE';
-            this.elements.rag.style.color = isOnline ? '#28a745' : '#dc3545';
-        } catch (e) {
-            console.error("RAG status check failed:", e);
-            this.elements.rag.innerText = 'UNREACHABLE';
-            this.elements.rag.style.color = '#dc3545';
-            App.flash('RAG Service: Unreachable');
-        }
+        const isOnline = (statusStr.toLowerCase() === 'online' || statusStr.toLowerCase() === 'success');
+        this.elements.rag.innerText = isOnline ? 'ONLINE' : statusStr.toUpperCase();
+        this.elements.rag.style.color = isOnline ? '#059669' : '#dc2626';
     },
 
     ollama(data) {
         if (!this.elements.ollama) return;
-        const active = data?.active === true;
-        this.elements.ollama.innerText = active ? 'ONLINE' : 'OFFLINE';
-        this.elements.ollama.style.color = active ? '#28a745' : '#dc3545';
+
+        let isOnline = false;
+        if (data && typeof data === 'object') {
+            isOnline = data.active === true || data.status === 'online';
+        } else if (typeof data === 'string') {
+            isOnline = data.toLowerCase() === 'online';
+        }
+
+        this.elements.ollama.innerText = isOnline ? 'ONLINE' : 'OFFLINE';
+        this.elements.ollama.style.color = isOnline ? '#059669' : '#dc2626';
+    },
+
+    worker(data) {
+        if (!this.elements.worker) return;
+
+        let isOnline = false;
+        if (data && typeof data === 'object') {
+            isOnline = data.status === 'online' || data.active === true;
+        } else if (typeof data === 'string') {
+            isOnline = data.toLowerCase() === 'online';
+        }
+
+        this.elements.worker.innerText = isOnline ? 'ONLINE' : 'OFFLINE';
+        this.elements.worker.style.color = isOnline ? '#059669' : '#dc2626';
     },
 
     models(models) {
         if (!this.elements.models) return;
-        this.elements.models.innerHTML = (models && models.length > 0) 
+        this.elements.models.innerHTML = (models && Array.isArray(models) && models.length > 0) 
             ? models.map(m => `<li>${this.escapeHtml(m.name || m)}</li>`).join('') 
             : '<li>No models detected</li>';
     },
 
-    worker(status) { /* Placeholder for worker status */ },
     emails(status) { /* Placeholder for email queue status */ },
     async chat(userQuery) { /* Placeholder for chat logic */ }
 };/** snapshots_controller.js */
