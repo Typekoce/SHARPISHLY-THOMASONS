@@ -38,6 +38,7 @@ cat web/frontend/css/app.css \
     web/frontend/css/agents.css \
     web/frontend/css/agentic.css \
     web/frontend/css/home.css \
+    web/frontend/css/health.css \
     web/frontend/css/tiktok.css \
     web/frontend/css/welcome.css \
     web/frontend/css/modal.css \

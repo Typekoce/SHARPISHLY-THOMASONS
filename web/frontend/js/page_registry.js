@@ -12,6 +12,7 @@ const PageRegistry = {
         HealthController.init();
         HealthController.get();
         HealthController.chat('Hello');
+        HealthController.testSuite();
     },
     'pentest': () => PentestController.scan(),
     'agentic': () => AgenticController.init(),

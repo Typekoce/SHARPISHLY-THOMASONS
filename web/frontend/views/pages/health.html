@@ -1,5 +1,9 @@
-<div class="max-width-800 mx-auto">
-    <h2 class="fw-bold mb-4">Infrastructure Monitor</h2>
+<div class="max-width-800 mx-auto" id="health">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold mb-0">Infrastructure Monitor</h2>
+        <button class="btn btn-outline-primary btn-sm" onclick="HealthController.testSuite()">Run Test Suite</button>
+    </div>
+    
     <div class="card shadow-sm border-0 overflow-hidden">
         <table class="table mb-0">
             <tbody class="align-middle">
@@ -14,6 +18,10 @@
                 <tr>
                     <td class="p-4"><strong>Ollama Neural Engine</strong></td>
                     <td class="text-end p-4"><span id="status-ollama">CHECKING...</span></td>
+                </tr>
+                <tr>
+                    <td class="p-4"><strong>Background Worker</strong></td>
+                    <td class="text-end p-4"><span id="status-worker">CHECKING...</span></td>
                 </tr>
                 <tr>
                     <td class="p-4"><strong>Loaded Models</strong></td>
