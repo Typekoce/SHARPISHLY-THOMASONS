@@ -26,11 +26,11 @@ class TestController extends BaseController {
             'ssl_setup'     => 'setup-local-ssl.sh',
             'installer'     => 'build-installer.sh',
             'controllers'   => array(
-                'MobileAgentController.php',
-                'AzureFoundryController.php',
-                'BaseCloudController.php',
-                'GoogleapiController.php',
-                'HotmailapiController.php',
+                'MobileAgentController.php' => 'Active',
+                'AzureFoundryController.php' => 'Pending',
+                'BaseCloudController.php'  => 'Pending',
+                'GoogleapiController.php'  => 'Pending',
+                'HotmailapiController.php'  => 'Pending',
             ),
             'services'  => array(
                 'Orm.php'
