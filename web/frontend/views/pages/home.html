@@ -1,17 +1,92 @@
-<div class="py-5 text-center" id="home">
-    <h1 class="display-3 fw-bold mb-3">Sharpishly<span class="text-primary">V3</span></h1>
-    <p class="lead text-muted mb-5">Neural Document Intelligence & Vector Pipeline</p>
-    <div class="row g-4 justify-content-center">
-        <div class="col-md-5" data-page="llm" style="cursor:pointer">
-            <div class="card p-5 border-0 shadow-sm hover-lift bg-white">
+<div class="container py-5" id="home">
+    <div class="text-center mb-5">
+        <h1 class="display-3 fw-bold mb-2">Sharpishly<span class="text-primary">V3</span></h1>
+        <p class="lead text-muted">Neural Document Intelligence & Vector Pipeline</p>
+    </div>
+
+    <!-- Main Navigation Cards -->
+    <div class="row g-4 justify-content-center mb-5">
+        <div class="col-md-4" data-page="llm" style="cursor:pointer">
+            <div class="card h-100 p-4 border-0 shadow-sm hover-lift bg-white text-center">
+                <div class="mb-3 text-primary">
+                    <svg width="32" height="32" fill="currentColor" class="bi bi-file-earmark-code" viewBox="0 0 16 16"><path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5z"/></svg>
+                </div>
                 <h4 class="fw-bold">Neural Intake</h4>
-                <p class="text-muted">Push documents to NATS & Ollama</p>
+                <p class="text-muted mb-0">Push documents to vector store & Ollama</p>
             </div>
         </div>
-        <div class="col-md-5" data-page="health" style="cursor:pointer">
-            <div class="card p-5 border-0 shadow-sm hover-lift bg-white">
+
+        <div class="col-md-4" data-page="health" style="cursor:pointer">
+            <div class="card h-100 p-4 border-0 shadow-sm hover-lift bg-white text-center">
+                <div class="mb-3 text-primary">
+                    <svg width="32" height="32" fill="currentColor" class="bi bi-activity" viewBox="0 0 16 16"><path d="M6 2a.5.5 0 0 1 .47.33L9 11.03l1.47-3.011A.5.5 0 0 1 11 7.75h3.5a.5.5 0 0 1 0 1H11.21l-1.68 3.44a.5.5 0 0 1-.9.08L6 3.97 4.53 7.03a.5.5 0 0 1-.9.08L2.5 5.25H.5a.5.5 0 0 1 0-1h2.29l1.18 2.36L5.53 2.33A.5.5 0 0 1 6 2"/></svg>
+                </div>
                 <h4 class="fw-bold">System Health</h4>
-                <p class="text-muted">Monitor VM Infrastructure</p>
+                <p class="text-muted mb-0">Monitor host & VM Infrastructure</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Deployment Monitor Section -->
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card border-0 shadow-sm bg-white p-4">
+                <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
+                    <div>
+                        <h4 class="fw-bold mb-1">Target Host Deployment</h4>
+                        <span class="text-muted small">Target: <code>maxie@192.168.0.90</code></span>
+                    </div>
+                    <button id="btn-trigger-deploy" type="button" onclick="HomeController.deploy()" class="btn btn-primary px-4 fw-bold">
+                        Start Deployment
+                    </button>
+                </div>
+
+                <!-- Pipeline Progress Bars -->
+                <div class="vstack gap-3">
+                    <!-- Step 1: Sudoers -->
+                    <div>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="fw-semibold text-dark small">1. Sudoers Authorization</span>
+                            <span id="badge-sudoers" class="badge bg-secondary" aria-live="polite">Pending</span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div id="bar-sudoers" class="progress-bar" role="progressbar" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Step 2: App Deploy -->
+                    <div>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="fw-semibold text-dark small">2. Repo Provisioning & Installation</span>
+                            <span id="badge-app" class="badge bg-secondary" aria-live="polite">Pending</span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div id="bar-app" class="progress-bar" role="progressbar" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Step 3: Ollama Pull -->
+                    <div>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="fw-semibold text-dark small">3. Neural Models Pull (Llama3 & Jina)</span>
+                            <span id="badge-ollama" class="badge bg-secondary" aria-live="polite">Pending</span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div id="bar-ollama" class="progress-bar" role="progressbar" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Step 4: Health Check -->
+                    <div>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="fw-semibold text-dark small">4. System & Database Health Check</span>
+                            <span id="badge-health" class="badge bg-secondary" aria-live="polite">Pending</span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div id="bar-health" class="progress-bar" role="progressbar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

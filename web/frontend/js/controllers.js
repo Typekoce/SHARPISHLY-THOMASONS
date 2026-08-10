@@ -1,9 +1,6 @@
 /** controllers.js **/
 
-/**
- * Home Controller
- */
-const HomeController = {};
+
 
 /**
  * Rag Controller
