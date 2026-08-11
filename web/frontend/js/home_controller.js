@@ -14,14 +14,9 @@ const HomeController = {
             this.setStatus(id, 'running');
 
             try {
-                const res = await fetch('/php/terminal/execute', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ command: alias })
-                });
-                const data = await res.json();
+                const res = await fetch(`/php/terminal/load/${encodeURIComponent(alias)}`);
 
-                if (!res.ok || data.error) {
+                if (!res.ok) {
                     this.setStatus(id, 'failed');
                     break;
                 }

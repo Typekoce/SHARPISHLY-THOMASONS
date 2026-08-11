@@ -110,3 +110,14 @@ While `TerminalController` logged the incoming HTTP requests, `TerminalModel::al
 
 - [ ] **Background Supervisor Execution**
   - Verify `ingestion_worker.py` and `cmd_worker` are running via `./start_workers.sh`.
+
+  # On the Mobile Demo page
+  * Create a link that hides the header banner
+  * Add RAG
+  * Add RUN button
+
+  # Back database to Google Drive
+
+  # Header UU
+  * Enable burger collapse, etc
+
