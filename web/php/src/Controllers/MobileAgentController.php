@@ -30,34 +30,39 @@ class MobileAgentController extends BaseController
     public function create(): void
     {
         $raw = file_get_contents('php://input');
-        $input = json_decode($raw, true) ?? [];
+        $input = json_decode($raw ?: '', true) ?? [];
         $instruction = trim((string) ($input['instruction'] ?? ''));
 
-        if (empty($instruction)) {
+        if ($instruction === '') {
             $this->json(['status' => 'error', 'error' => 'Instruction cannot be empty'], 400);
+            return;
         }
 
         try {
             $agentModel = new AgentModel();
-
             $prompt = new PromptService();
 
+            // Structural parse (local)
             $content = $prompt->read($instruction);
-            
+
+            // RAG-enriched conditions (remote + local)
+            $conditions = $prompt->promptToConditions($instruction);
+
             $inserted = $agentModel->create([
                 'agent_name'  => 'Sharpishly Agent',
                 'description' => $instruction,
                 'content'     => json_encode($content),
+                'pref'        => json_encode($conditions),
                 'status'      => 'pending',
-                'created_at'  => $this->now()
+                'created_at'  => $this->now(),
             ]);
 
-            if ($inserted) {
-                $this->json(['status' => 'success', 'data' => ['id' => $inserted]]);
+            if (!$inserted) {
+                $this->json(['status' => 'error', 'error' => 'Database insertion failed.'], 500);
+                return;
             }
 
-            $this->json(['status' => 'error', 'error' => 'Database insertion failed.'], 500);
-
+            $this->json(['status' => 'success', 'data' => ['id' => $inserted]]);
         } catch (Throwable $e) {
             $this->logger->error('Failed to create agent: ' . $e->getMessage());
             $this->json(['status' => 'error', 'error' => $e->getMessage()], 500);

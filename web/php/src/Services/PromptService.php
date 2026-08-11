@@ -99,7 +99,7 @@ class PromptService
         }
 
         // C. Semantic & NLP (Unicode-safe Tokenization & Cleaning)
-        $normalized = strtolower(preg_replace('/[^\w\s]/u', '', $segment));
+        $normalized = strtolower((string) preg_replace('/[^\w\s]/u', '', $segment));
         $tokens     = array_values(array_filter(explode(' ', $normalized), static fn($t) => $t !== ''));
 
         $analysis['nlp'] = [
@@ -108,5 +108,50 @@ class PromptService
         ];
 
         return $analysis;
+    }
+
+    /**
+     * Converts a prompt instruction into DB/ORM condition key-value pairs via RAG service lookup.
+     */
+    public function promptToConditions(string $prompt = ''): array
+    {
+        $prompt = trim($prompt);
+        if ($prompt === '') {
+            return [];
+        }
+
+        // 1. Query RAG microservice endpoint
+        $url = 'http://127.0.0.1:8765/rag/ask?query=' . urlencode($prompt);
+        $context = stream_context_create([
+            'http' => [
+                'method'  => 'GET',
+                'timeout' => 5,
+                'header'  => "Accept: application/json\r\n",
+            ],
+        ]);
+
+        $rawResponse = @file_get_contents($url, false, $context);
+        $ragData = ($rawResponse !== false) ? (json_decode($rawResponse, true) ?? []) : [];
+
+        // 2. Synthesize baseline conditions from structural parse pass
+        $parsedPrompt = $this->read($prompt);
+        $conditions = [
+            'status' => 'pending',
+        ];
+
+        if (isset($parsedPrompt['action']) && $parsedPrompt['action'] !== 'GENERIC_QUERY') {
+            $conditions['action'] = $parsedPrompt['action'];
+        }
+
+        // 3. Extract and merge criteria returned by the RAG response
+        if (is_array($ragData) && !empty($ragData)) {
+            if (isset($ragData['filters']) && is_array($ragData['filters'])) {
+                $conditions = array_merge($conditions, $ragData['filters']);
+            } elseif (!empty($ragData['answer']) && is_string($ragData['answer'])) {
+                $conditions['rag_context'] = $ragData['answer'];
+            }
+        }
+
+        return $conditions;
     }
 }
