@@ -48,8 +48,11 @@ class MobileAgentController extends BaseController
             // RAG-enriched conditions (remote + local)
             $conditions = $prompt->promptToConditions($instruction);
 
+            // Generate dynamic agent name from parsed content payload
+            $agentName = $this->createAgentName($content);
+
             $inserted = $agentModel->create([
-                'agent_name'  => 'Sharpishly Agent',
+                'agent_name'  => $agentName,
                 'description' => $instruction,
                 'content'     => json_encode($content),
                 'pref'        => json_encode($conditions),
@@ -62,11 +65,48 @@ class MobileAgentController extends BaseController
                 return;
             }
 
-            $this->json(['status' => 'success', 'data' => ['id' => $inserted]]);
+            $this->json(['status' => 'success', 'data' => ['id' => $inserted, 'agent_name' => $agentName]]);
         } catch (Throwable $e) {
             $this->logger->error('Failed to create agent: ' . $e->getMessage());
             $this->json(['status' => 'error', 'error' => $e->getMessage()], 500);
         }
+    }
+
+    /**
+     * Create Agent name from $content array or JSON payload
+     * 
+     * @param array|string $content Parsed prompt output from PromptService
+     * @return string
+     */
+    public function createAgentName($content): string
+    {
+        if (is_string($content)) {
+            $content = json_decode($content, true) ?? [];
+        }
+
+        $action = $content['action'] ?? 'GENERIC_QUERY';
+        $table  = $content['table'] ?? 'queries';
+
+        // 1. Derive from action route (e.g., DISPATCH_SMS -> "Sharpishly Dispatch Sms Agent")
+        if ($action !== 'GENERIC_QUERY') {
+            $formattedAction = ucwords(strtolower(str_replace('_', ' ', $action)));
+            return "Sharpishly {$formattedAction} Agent";
+        }
+
+        // 2. Derive from target table (e.g., agent_tasks -> "Sharpishly Agent Tasks Processor")
+        if ($table !== 'queries') {
+            $formattedTable = ucwords(strtolower(str_replace('_', ' ', $table)));
+            return "Sharpishly {$formattedTable} Processor";
+        }
+
+        // 3. Fallback to NLP tokens from sentence 1 clause 1
+        $firstClause = $content['payload']['sentence_1']['clause_1'] ?? [];
+        if (!empty($firstClause['nlp']['tokens'])) {
+            $keywords = array_slice($firstClause['nlp']['tokens'], 0, 3);
+            return 'Sharpishly ' . ucwords(implode(' ', $keywords)) . ' Agent';
+        }
+
+        return 'Sharpishly General Agent';
     }
 
     /**
