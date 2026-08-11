@@ -22,6 +22,7 @@ cat web/frontend/js/app.js \
     web/frontend/js/pentest_controller.js \
     web/frontend/js/page_registry.js \
     web/frontend/js/mobile_controller.js \
+     web/frontend/js/home_controller.js \
     web/frontend/js/model.js \
     web/frontend/js/view.js >> $OUTPUT
 
