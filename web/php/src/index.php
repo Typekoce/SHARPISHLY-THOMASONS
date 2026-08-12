@@ -45,7 +45,10 @@ $aliases = [
 
     // Mobile Demo
     'mobile-agent'          => ['MobileAgent','index'],
-    'mobile-agent-create' => ['MobileAgent', 'create'],
+    'mobile-agent-create'   => ['MobileAgent', 'create'],
+
+    // Agent Workers
+    'agent-execute'         => ['AgentExecute','start']
     
     // 'chat-stream'        => ['Chat', 'stream'],
 ];

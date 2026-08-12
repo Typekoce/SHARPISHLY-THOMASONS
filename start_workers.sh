@@ -140,6 +140,21 @@ echo "→ Launching Command Queue / Supervisor Worker..."
 ) >> "${LOG_DIR}/cmd_worker.log" 2>&1 &
 PIDS+=($!)
 
+# ---------------------------------------------------------------------
+# 5. Agent Execute Worker Loop
+# ---------------------------------------------------------------------
+echo "→ Launching Agent Execution Trigger..."
+(
+    while true; do
+        # Example: Triggering execution via local HTTP route for pending jobs
+        curl -s -X POST "http://127.0.0.1/php/agent-execute/start" \
+             -H "Content-Type: application/json" \
+             -d '{}' >/dev/null 2>&1 || true
+        sleep 2
+    done
+) >> "${LOG_DIR}/agent_execute.log" 2>&1 &
+PIDS+=($!)
+
 echo "=================================================="
 echo "✅ All workers & neural services running."
 echo "📋 Logs streaming to: ${LOG_DIR}/"
