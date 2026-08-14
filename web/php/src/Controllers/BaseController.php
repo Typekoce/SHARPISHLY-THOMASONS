@@ -36,8 +36,9 @@ abstract class BaseController
      * Can be overridden in child controllers.
      */
     protected const REQUIRED_MODELS = [
-        'llama3.1:latest',
+        'llama3:latest',
         'nomic-embed-text:latest',
+        'jina/jina-embeddings-v2-small-en:latest'
         // 'phi3:latest',
         // 'all-minilm:latest'
     ];

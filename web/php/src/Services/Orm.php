@@ -1,12 +1,9 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Services;
 
-/**
- * Orm
- * Minimalist HTTP service router for external APIs and AI model providers.
- */
 class Orm extends BaseService
 {
     private array $endpoints = [
@@ -23,6 +20,22 @@ class Orm extends BaseService
         'Ollama'       => 'http://localhost:11434/api/generate',
         'Mistral'      => 'https://api.mistral.ai/v1/chat/completions',
         'Cohere'       => 'https://api.cohere.com/v2/chat',
+
+        // Dhillon's Operational System Endpoints
+        'Square'       => 'https://connect.squareup.com/v2/reports/sales',
+        'OpenTable'    => 'https://api.opentable.com/v2/bookings',
+        'Eventbrite'   => 'https://www.eventbriteapi.com/v3/organizations/me/events/',
+        'ClickUp'      => 'https://api.clickup.com/api/v2/team',
+        'GoogleCal'    => 'https://www.googleapis.com/calendar/v3/calendars/primary/events',
+
+        // Add Endpoints
+        // Hotmail
+        // TiKTok
+        // Nefflix
+        // Manchester City Council
+        // Disney plus
+        // NHS
+        // Manchester University
     ];
 
     private array $actions = [
@@ -32,9 +45,6 @@ class Orm extends BaseService
         'delete' => 'DELETE',
     ];
 
-    /**
-     * Executes an API request based on $conditions.
-     */
     public function execute(array $conditions): array
     {
         $source = $conditions['source'] ?? null;
@@ -52,7 +62,6 @@ class Orm extends BaseService
         if (isset($conditions['model'])) {
             $url = str_replace('{model}', $conditions['model'], $url);
         }
-
         if (!empty($conditions['endpoint'])) {
             $url = rtrim($url, '/') . '/' . ltrim($conditions['endpoint'], '/');
         }
@@ -80,8 +89,24 @@ class Orm extends BaseService
             }
         }
 
-        $response = $this->curlRequest($url, $method, $headers, $conditions['data'] ?? []);
+        return $this->curlRequest($url, $method, $headers, $conditions['data'] ?? []) ?? ['error' => 'request_failed'];
+    }
 
-        return $response ?? ['error' => 'request_failed'];
+    /**
+     * Executes requests across mapped endpoints using BaseService::curlRequest().
+     */
+    public function executeParallel(array $sources): array
+    {
+        $results = [];
+
+        foreach ($sources as $alias => $source) {
+            $key = is_string($alias) ? $alias : $source;
+            $url = $this->endpoints[$source] ?? $source;
+
+            // Explicitly pass string $url to BaseService::curlRequest()
+            $results[$key] = $this->curlRequest($url, 'GET');
+        }
+
+        return $results;
     }
 }

@@ -121,3 +121,21 @@ While `TerminalController` logged the incoming HTTP requests, `TerminalModel::al
   # Header UU
   * Enable burger collapse, etc
 
+  ### Active Bugs & Technical Debt (From Log Analysis)
+
+- [ ] **Fix Empty Body Handling in `AgentExecuteController`**
+  - **Issue:** `POST /php/agent-execute/start` is receiving an empty JSON payload (`php://input: {} | DATA: []`), causing `AgentExecuteController::start()` to fail payload validation and throw HTTP 400 errors.
+  - **Task:** Verify payload format on client dispatch or update `AgentExecuteController` to handle fallback defaults when receiving `{}`.
+
+- [ ] **Pull or Update Ollama Target Model (`llama3.1:latest`)**
+  - **Issue:** Gateway queries to Dhillon's Brewery return synthesis error: `{"synthesis":{"error":"model 'llama3.1:latest' not found"}}`.
+  - **Task:** Run `ollama pull llama3.1:latest` locally or update `REQUIRED_MODELS` / fallback logic in `BaseController` and `DhillonsController`.
+
+- [ ] **Refactor or Terminate `ingestion_worker.py` Process**
+  - **Issue:** Background worker continuously crashes with `ImportError: cannot import name 'IngestionController' from 'app.controllers.nats_controller'`.
+  - **Task:** Fix module imports in `pymvc/app/ingestion_worker.py` or disable the supervisor daemon/service managing this process.
+
+- [ ] **Investigate RAG Service Connection Dropouts (`BrokenPipeError`)**
+  - **Issue:** Python HTTP server in `pymvc/app/rag_service.py` encounters `[Errno 32] Broken pipe` during client write.
+  - **Task:** Increase cURL timeout limits in `BaseController::respond()` or handle socket write disconnects cleanly in `rag_service.py`.
+
