@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Controllers;
@@ -12,6 +13,8 @@ use App\Services\Location;
 use App\Services\Smarty;
 use App\Services\Logger;
 use App\Services\Session;
+use App\Services\PromptService;
+use App\Services\Orm;
 use Throwable;
 
 abstract class BaseController
@@ -23,8 +26,10 @@ abstract class BaseController
     public $logger;
     protected $model;
     public $session;
-    protected const RAG_SERVICE_URL = 'http://localhost:8765/rag/ask';
+    public $prompt;
+    public $orm;
 
+    protected const RAG_SERVICE_URL = 'http://localhost:8765/rag/ask';
 
     /**
      * Default Neural Stack for Thomasons V3.
@@ -39,21 +44,23 @@ abstract class BaseController
 
     public function __construct()
     {
-        $this->loc      = new \App\Services\Location();
-        $this->location = new \App\Services\Location();
-        $this->smarty   = new \App\Services\Smarty();
-        $this->logger   = new \App\Services\Logger();
-        $this->session  = \App\Services\Session::getInstance();
-        // Safety check: if DB isn't in GLOBALS, we force a grounded instantiation
-        if (!$this->db) {
-            $this->db = new \App\Services\Db(get_env(), $this->logger);
-        }        
+        $this->loc      = new Location();
+        $this->location = new Location();
+        $this->smarty   = new Smarty();
+        $this->logger   = new Logger();
+        $this->session  = Session::getInstance();
+        $this->prompt   = new PromptService();
+        $this->orm      = new Orm();
 
+        // Safety check: if DB isn't in GLOBALS, force a grounded instantiation
+        if (!$this->db) {
+            $this->db = new Db(get_env(), $this->logger);
+        }        
     }
 
     /**
      * Safely executes diagnostic shell scripts.
-     * * @param string $scriptName The filename in the scripts/ directory.
+     * @param string $scriptName The filename in the scripts/ directory.
      * @return array A standardized JSON response.
      */
     protected function runDiagnosticScript(string $scriptName): array 
@@ -84,7 +91,6 @@ abstract class BaseController
         ];
     }
 
-
     /**
      * Centralized File Path Resolver for Ingestion Handshakes.
      * Diagnostic mode: Tracks file metadata layout configurations in app.log.
@@ -93,7 +99,7 @@ abstract class BaseController
     {
         $cleanName = $filename ? basename($filename) : 'EMPTY';
 
-        // Log the structural validation check cleanly using your standard trace format
+        // Log the structural validation check cleanly using standard trace format
         $this->logger->log("NP Base Handshake: Path resolution diagnostic triggered for file [{$cleanName}]", 'INFO');
 
         return [
@@ -113,16 +119,15 @@ abstract class BaseController
         // Log the structural event tracking line cleanly
         $this->logger->log("NP Base Handshake: Resolving path configurations for file: " . ($filename ?: 'EMPTY'), 'INFO');
 
-        // Return empty structure for now to keep child signatures happy without altering disk state
+        // Return empty structure to keep child signatures happy without altering disk state
         return [
             'upload_dir'      => '',
             'target_file'     => '',
             'nats_ingest_dir' => '',
             'filename'        => $filename ? basename($filename) : null,
         ];
-    }	
+    }   
 
-    
     /**
      * Standardized JSON Response Handler
      */
@@ -228,100 +233,68 @@ abstract class BaseController
         return $this->smarty->render($template, $data);
     }
 
-    /**
-     * Helper for quick variable dumping.
-     */
-    public function dBug($debug){
-        echo "<pre>";
-        print_r($debug);
-        echo "</pre>";
+
+    public function now()
+    {
+        return date('Y-m-d h:m:s');
     }
 
-   public function now(){
-    return date('Y-m-d h:m:s');
-   }
-
-    // In BaseController.php
     public function timestamp(): string
     {
         return date('Y-m-d H:i:s');
     }
 
-  /**
-  * Request method
-  **/
-  public function old_request($post){
+    /**
+     * Legacy Request method
+     */
+    public function old_request($post)
+    {
+        if (empty($post)) {
+            $post = file_get_contents('php://input');
+        }
 
-   // 1. If $post is empty, try to get the raw body
-    if (empty($post)) {
-        $post = file_get_contents('php://input');
+        if (empty($post)) {
+            $this->json(['error' => 'No data received']);
+            return;
+        }
+
+        $conditions = json_decode($post, true);
+
+        if (!$conditions) {
+            $this->json(['error' => 'Invalid JSON']);
+            return;
+        }
+        return $conditions;
     }
-
-    // 2. Debugging: Log what is actually arriving
-    if (empty($post)) {
-        $this->json(['error' => 'No data received']);
-        return;
-    }
-
-    $data = array('id' => '');
-    $conditions = json_decode($post, true);
-
-    // 3. Ensure JSON decoded correctly
-    if (!$conditions) {
-        $this->json(['error' => 'Invalid JSON']);
-        return;
-    }
-    return $conditions;
-
-  }
-
 
     /**
      * Unified Request Handler
-     * Place this in your BaseController
+     * Parses JSON or superglobals safely without restricting to a mandatory 'query' key.
      */
-    public function request($key = null) {
-
-        // Log requests
+    public function request($key = null) 
+    {
         $postData = json_encode($_POST);
-        $getData = json_encode($_GET);
-        
-    
-        // 1. Check for JSON input
+        $getData  = json_encode($_GET);
+
         $raw = file_get_contents('php://input');
-        $decoded = json_decode($raw, true);
+        $decoded = json_decode((string)$raw, true);
 
-        $request = "POST REQUEST METHOD: " . 
-        $postData . 
-        " | GET REQUEST METHOD: " . 
-        $getData . 
-        "php://input" . $raw .
-        "DECODED:" .$decoded;
-
-        // ... after your existing decoding logic ...
-        $this->logger->log("DEBUG: Controller reached decoding success", 'INFO');
-
-        // 1. Verify access to the array key
-        if (!isset($decoded['query'])) {
-            $this->logger->log("DEBUG: 'query' key missing in array", 'ERROR');
-            return; // Or handle appropriately
-        }
-        $this->logger->log("DEBUG: Query key accessed successfully", 'INFO');
-
-        // 2. If valid JSON, use it; otherwise, fall back to $_REQUEST
+        // Standardized data extraction: prefer decoded JSON if valid array, otherwise $_REQUEST
         $data = (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) 
                 ? $decoded 
                 : $_REQUEST;
 
-        $request .= " DATA: " . json_encode($data);
+        $logMsg = "POST REQUEST METHOD: " . $postData . 
+                  " | GET REQUEST METHOD: " . $getData . 
+                  " | php://input: " . $raw . 
+                  " | DATA: " . json_encode($data);
 
-        $this->logger->log($request, 'INFO');
+        $this->logger->log($logMsg, 'INFO');
 
-
-        // 3. Return specific key or entire dataset
-        if ($key) {
+        if ($key !== null) {
             return $data[$key] ?? null;
         }
+
         return $data;
     }
 
@@ -341,10 +314,9 @@ abstract class BaseController
 
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $error = curl_error($ch);
+        $error    = curl_error($ch);
         curl_close($ch);
 
-        // Visibility patch: Log failure details to app.log for transport/protocol analysis
         if ($httpCode !== 200 || !empty($error)) {
             $this->logger->log("Respond Error: HTTP $httpCode | CURL Error: $error", 'ERROR');
         }
@@ -352,4 +324,50 @@ abstract class BaseController
         return ($httpCode === 200) ? $response : false;
     }
 
-}// end of class
+    /**
+     * Reusable parallel HTTP fetch helper using native cURL multi handling.
+     */
+    public function curlRequest(array $endpoints): array
+    {
+        $mh = curl_multi_init();
+        $handles = [];
+
+        foreach ($endpoints as $key => $url) {
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT        => 3,
+                CURLOPT_HTTPHEADER     => ['Accept: application/json'],
+            ]);
+            curl_multi_add_handle($mh, $ch);
+            $handles[$key] = $ch;
+        }
+
+        $running = null;
+        do {
+            $mrc = curl_multi_exec($mh, $running);
+        } while ($mrc === CURLM_CALL_MULTI_PERFORM);
+
+        while ($running > 0 && $mrc === CURLM_OK) {
+            if (curl_multi_select($mh, 0.2) !== -1) {
+                do {
+                    $mrc = curl_multi_exec($mh, $running);
+                } while ($mrc === CURLM_CALL_MULTI_PERFORM);
+            }
+        }
+
+        $results = [];
+        foreach ($handles as $key => $ch) {
+            $raw = curl_multi_getcontent($ch);
+            $decoded = json_decode((string)$raw, true);
+
+            $results[$key] = is_array($decoded) ? $decoded : ['raw' => trim((string)$raw)];
+
+            curl_multi_remove_handle($mh, $ch);
+            curl_close($ch);
+        }
+
+        curl_multi_close($mh);
+        return $results;
+    }
+}

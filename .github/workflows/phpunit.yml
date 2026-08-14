@@ -1,0 +1,25 @@
+name: Sharpishly PHPUnit Pipeline
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP Environment
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: phpunit
+          extensions: curl, json, mbstring
+
+      - name: Run Test Suite
+        run: phpunit --bootstrap test/bootstrap.php test/
