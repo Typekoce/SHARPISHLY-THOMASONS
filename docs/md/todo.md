@@ -139,3 +139,6 @@ While `TerminalController` logged the incoming HTTP requests, `TerminalModel::al
   - **Issue:** Python HTTP server in `pymvc/app/rag_service.py` encounters `[Errno 32] Broken pipe` during client write.
   - **Task:** Increase cURL timeout limits in `BaseController::respond()` or handle socket write disconnects cleanly in `rag_service.py`.
 
+# Wire up DhillonsController.php to the front-end
+* Create new icon in mobile phone screen
+* Deploy this project ASAP
