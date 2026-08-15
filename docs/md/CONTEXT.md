@@ -59,3 +59,8 @@ Now that the context is accurate and the "Registry Ghost" is exorcised:
 3.  **Start the Build:** Run `make clean` (the new scorched-earth version) then `make up`.
 
 **What is the IP address? I need to know if we're on a Bridged or NAT network to predict our next SSH hurdle.**
+
+### 📁 DURABLE STORAGE & ASYNC WORKER ARCHITECTURE
+- **`storage/` Staging Buffer:** Serves as the durable landing zone for RAG document ingestion (PDFs, raw datasets) prior to text extraction, chunking, and vector database insertion.
+- **Async Isolation:** Long-running compute (vectorization) and rate-limited side-effects (Email, SMS, queued background tasks) belong in asynchronous queues serviced by dedicated workers.
+- **Web Lifecycle Boundary:** Keeps HTTP API endpoints thin, fast, and strictly synchronous, avoiding PHP timeouts and memory spikes.

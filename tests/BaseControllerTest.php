@@ -24,6 +24,16 @@ class ConcreteBaseController extends BaseController
     {
         return $this->runDiagnosticScript($scriptName);
     }
+
+    public function callBaseUpload(string $filename = ''): array
+    {
+        return $this->baseUpload($filename);
+    }
+
+    public function callOldBaseUpload(string $filename = ''): array
+    {
+        return $this->old_baseUpload($filename);
+    }
 }
 
 class BaseControllerTest extends TestCase
@@ -40,6 +50,7 @@ class BaseControllerTest extends TestCase
         $this->assertInstanceOf(\App\Services\PromptService::class, $this->controller->prompt);
         $this->assertInstanceOf(\App\Services\Orm::class, $this->controller->orm);
         $this->assertInstanceOf(\App\Services\Logger::class, $this->controller->logger);
+        $this->assertInstanceOf(\App\Services\Diagnostics::class, $this->controller->diagnostics);
     }
 
     public function testTimestampFormatting(): void
@@ -55,6 +66,25 @@ class BaseControllerTest extends TestCase
         $this->assertIsArray($result);
         $this->assertEquals('error', $result['status']);
         $this->assertEquals('Unauthorized script execution attempt.', $result['message']);
+    }
+
+    public function testBaseUploadReturnsStandardStructure(): void
+    {
+        $result = $this->controller->callBaseUpload('test_document.pdf');
+
+        $this->assertIsArray($result);
+        $this->assertArrayHasKey('upload_dir', $result);
+        $this->assertArrayHasKey('target_file', $result);
+        $this->assertArrayHasKey('nats_ingest_dir', $result);
+        $this->assertEquals('test_document.pdf', $result['filename']);
+    }
+
+    public function testOldBaseUploadReturnsStandardStructure(): void
+    {
+        $result = $this->controller->callOldBaseUpload('legacy_file.txt');
+
+        $this->assertIsArray($result);
+        $this->assertEquals('legacy_file.txt', $result['filename']);
     }
 
     public function testRequestReturnsArrayByDefault(): void

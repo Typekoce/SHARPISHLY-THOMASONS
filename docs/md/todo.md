@@ -142,3 +142,17 @@ While `TerminalController` logged the incoming HTTP requests, `TerminalModel::al
 # Wire up DhillonsController.php to the front-end
 * Create new icon in mobile phone screen
 * Deploy this project ASAP
+
+#### **Diagnostics & Gateway Stability**
+- [x] **Integrate `Diagnostics` in `BaseController`:** Instantiate `App\Services\Diagnostics` in `BaseController` to capture file names, line numbers, exception class types, and stack traces on failures.
+- [ ] **Expose Detailed Error Payloads:** Replace opaque error strings (`request_failed`) across gateway endpoints with detailed diagnostic traces for rapid debugging.
+- [ ] **Verify Ollama Model Tag:** Ensure Ollama gateway calls reference active local model tags (`llama3:latest` / `llama3.1:latest`).
+
+# Deploy to @maxie
+* React Native, Expo, NPM, Node, Tailwind, Docker packe
+* PureShare via Docker
+* Use TerminalModel.php
+```
+ 'react-native' => 'docker compose...'
+```
+

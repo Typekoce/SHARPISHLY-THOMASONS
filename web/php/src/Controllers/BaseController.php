@@ -15,6 +15,7 @@ use App\Services\Logger;
 use App\Services\Session;
 use App\Services\PromptService;
 use App\Services\Orm;
+use App\Services\Diagnostics;
 use Throwable;
 
 abstract class BaseController
@@ -28,6 +29,7 @@ abstract class BaseController
     public $session;
     public $prompt;
     public $orm;
+    public $diagnostics;
 
     protected const RAG_SERVICE_URL = 'http://localhost:8765/rag/ask';
 
@@ -45,13 +47,14 @@ abstract class BaseController
 
     public function __construct()
     {
-        $this->loc      = new Location();
-        $this->location = new Location();
-        $this->smarty   = new Smarty();
-        $this->logger   = new Logger();
-        $this->session  = Session::getInstance();
-        $this->prompt   = new PromptService();
-        $this->orm      = new Orm();
+        $this->logger      = new Logger();
+        $this->diagnostics = new Diagnostics($this->logger);
+        $this->loc         = new Location();
+        $this->location    = new Location();
+        $this->smarty      = new Smarty();
+        $this->session     = Session::getInstance();
+        $this->prompt      = new PromptService();
+        $this->orm         = new Orm();
 
         // Safety check: if DB isn't in GLOBALS, force a grounded instantiation
         if (!$this->db) {
@@ -73,8 +76,8 @@ abstract class BaseController
             return ['status' => 'error', 'message' => 'Unauthorized script execution attempt.'];
         }
 
-        // 2. Path Construction: Base directory enforced.
-        $scriptPath = "/home/seaview/Documents/SHARPISHLY-THOMASONS/pymvc/app/scripts/" . $scriptName;
+        // 2. Path Construction: Base directory resolved dynamically via Location service.
+        $scriptPath = $this->loc->baseDir() . "pymvc/app/scripts/" . $scriptName;
         
         // 3. Execution: Use escapeshellarg to prevent injection, capture stdout.
         $output = shell_exec("bash " . escapeshellarg($scriptPath));
