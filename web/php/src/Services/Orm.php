@@ -7,26 +7,27 @@ namespace App\Services;
 class Orm extends BaseService
 {
     private array $endpoints = [
-        'AWS'          => 'https://ec2.us-east-1.amazonaws.com',
-        'Xero'         => 'https://api.xero.com/api.xro/2.0',
-        'Azure'        => 'https://management.azure.com',
-        'AzureFoundry' => 'https://{resource}.openai.azure.com/openai/v1',
-        'ChatGPT'      => 'https://api.openai.com/v1/chat/completions',
-        'Claude'       => 'https://api.anthropic.com/v1/messages',
-        'Gemini'       => 'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent',
-        'Grok'         => 'https://api.x.ai/v1/chat/completions',
-        'Kimi'         => 'https://api.moonshot.cn/v1/chat/completions',
-        'DeepSeek'     => 'https://api.deepseek.com/v1/chat/completions',
-        'Ollama'       => 'http://localhost:11434/api/generate',
-        'Mistral'      => 'https://api.mistral.ai/v1/chat/completions',
-        'Cohere'       => 'https://api.cohere.com/v2/chat',
+        'AWS'           => 'https://ec2.us-east-1.amazonaws.com',
+        'AwsHelloWorld' => 'https://w4ygtkgcmijy7noprpz4mvxofq0qecmu.lambda-url.eu-north-1.on.aws/',
+        'Xero'          => 'https://api.xero.com/api.xro/2.0',
+        'Azure'         => 'https://management.azure.com',
+        'AzureFoundry'  => 'https://{resource}.openai.azure.com/openai/v1',
+        'ChatGPT'       => 'https://api.openai.com/v1/chat/completions',
+        'Claude'        => 'https://api.anthropic.com/v1/messages',
+        'Gemini'        => 'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent',
+        'Grok'          => 'https://api.x.ai/v1/chat/completions',
+        'Kimi'          => 'https://api.moonshot.cn/v1/chat/completions',
+        'DeepSeek'      => 'https://api.deepseek.com/v1/chat/completions',
+        'Ollama'        => 'http://localhost:11434/api/generate',
+        'Mistral'       => 'https://api.mistral.ai/v1/chat/completions',
+        'Cohere'        => 'https://api.cohere.com/v2/chat',
 
         // Dhillon's Operational System Endpoints
-        'Square'       => 'https://connect.squareup.com/v2/reports/sales',
-        'OpenTable'    => 'https://api.opentable.com/v2/bookings',
-        'Eventbrite'   => 'https://www.eventbriteapi.com/v3/organizations/me/events/',
-        'ClickUp'      => 'https://api.clickup.com/api/v2/team',
-        'GoogleCal'    => 'https://www.googleapis.com/calendar/v3/calendars/primary/events',
+        'Square'        => 'https://connect.squareup.com/v2/reports/sales',
+        'OpenTable'     => 'https://api.opentable.com/v2/bookings',
+        'Eventbrite'    => 'https://www.eventbriteapi.com/v3/organizations/me/events/',
+        'ClickUp'       => 'https://api.clickup.com/api/v2/team',
+        'GoogleCal'     => 'https://www.googleapis.com/calendar/v3/calendars/primary/events',
 
         // Add Endpoints
         // Hotmail
