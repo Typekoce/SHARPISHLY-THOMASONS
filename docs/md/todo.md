@@ -222,4 +222,8 @@ class TerminalController extends BaseController
     }
 }
 ```
-
+- [ ] **Azure Functions Setup & Infra Verification**
+  - **Resource Group Location Constraint:** `rg-sharpishly` is bound to `uksouth`. Ensure all CLI commands target `uksouth` for the resource group or use a new RG name (e.g., `rg-sharpishly-ne`) if deploying to `northeurope`.
+  - **Namespace Registration:** Register the `Microsoft.CloudShell` resource provider on subscription `09e3bedf-2add-4a8a-917e-27e642ba8660` via `az provider register --namespace Microsoft.CloudShell`.
+  - **Node Runtime:** Deploy using Node.js version 24 (`--runtime-version 24`), as Node 20 reached EOL on 2026-04-30.
+  - **Deployment Target:** Finalize deployment of `sharpishly-azure-hello` endpoint and map URL inside `App/Services/Orm.php` for integration testing.

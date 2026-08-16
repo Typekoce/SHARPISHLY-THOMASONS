@@ -31,7 +31,9 @@ class TestController extends BaseController
                 'ssl_setup'     => 'setup-local-ssl.sh',
                 'installer'     => 'build-installer.sh',
                 'controllers'   => [
-                    'MobileAgentController.php' => 'Active',
+                    'MobileAgentController.php' => 'Completed',
+                    'AwsController.php' => 'active',
+                    'AzureController.php' => 'active',
                     'AzureFoundryController.php' => 'Pending',
                     'BaseCloudController.php'   => 'Pending',
                     'GoogleapiController.php'   => 'Pending',

@@ -75,6 +75,53 @@ Now that the context is accurate and the "Registry Ghost" is exorcised:
 * All autoloading handled by bootstrap.php
 
 
+# API request using Orm.php
+```
+<?php
+
+declare(strict_types=1);
+
+namespace App\Controllers;
+
+use Throwable;
+
+class AwsController extends BaseController
+{
+    public function hello(string $id = ''): void
+    {
+        $userInput   = $this->request('user') ?? 'Paul';
+        $actionInput = $this->request('action') ?? 'test';
+
+        $data = [
+            'id' => $id,
+        ];
+
+        try {
+            $conditions = [
+                'source' => 'AwsHelloWorld',
+                'method' => 'POST',
+                'data'   => [
+                    'user'   => $userInput,
+                    'action' => $actionInput,
+                    'id'     => $id,
+                ],
+            ];
+
+            $response = $this->orm->execute($conditions);
+
+            $data[__FUNCTION__] = $response;
+            $this->json(['status' => 'success', 'data' => $data]);
+        } catch (Throwable $e) {
+            $this->logger->error("AwsController Error: " . $e->getMessage());
+            $this->json([
+                'status'  => 'error',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+}
+```
+
 # Autoloader bootstrap.php
 ```
 <?php
@@ -759,4 +806,46 @@ abstract class BaseController
         return $results;
     }
 }
+```
+
+# PYMVC-V1
+```
+from urllib.parse import urlparse
+from controllers.home_controller import HomeController
+from controllers.about_controller import AboutController
+
+class Router:
+    def __init__(self):
+        self.routes = {
+            "/": (HomeController, "index"),
+            "/about": (AboutController, "index")
+        }
+
+    def dispatch(self, url):
+        path = urlparse(url).path
+        if path in self.routes:
+            cls, action = self.routes[path]
+            return getattr(cls(), action)()
+        return "404 Not Found"
+
+class App:
+    def run(self, request_url="/"):
+        router = Router()
+        return router.dispatch(request_url)
+
+if __name__ == "__main__":
+    app = App()
+    print(app.run("/"))       # Output: Home Page Content
+    print(app.run("/about"))  # Output: About Us Content
+
+# About Controller
+from models.about_model import AboutModel
+
+class AboutController:
+    def index(self):
+        return AboutModel().get()
+
+class AboutModel:
+    def get(self):
+        return "About Us Content"
 ```
