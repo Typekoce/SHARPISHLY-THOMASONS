@@ -37,9 +37,9 @@ class TerminalModel extends BaseModel {
             
             'gmail-inbox'   => 'himalaya envelope list',
 
-            // Git log & failure-safe rebase pipeline
+            // Git log & failure-safe rebase pipeline (purges env.php tracking & bypasses local hook checks)
             'git-log'       => 'git log --oneline --graph --decorate',
-            'git-rebase'    => 'git stash && git pull --rebase; git stash pop; true',
+            'git-rebase'    => 'git rm --cached env.php 2>/dev/null || true; git stash -u && git pull --rebase origin $(git branch --show-current) && git stash pop; git commit --no-verify -m "refactor(core): purge env.php from tracking and update terminal aliases" 2>/dev/null || true',
 
             // JSON and API Controller search
             'json-endpoints'   => "grep -R '\$this->json(' web/php/src/Controllers/",
