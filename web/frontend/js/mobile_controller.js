@@ -24,7 +24,15 @@ const MobileController = {
     /**
      * Builds and returns a DOM element card matching #agentic markup template
      */
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
     cardHTML(title, category, text, ts, prompt = null) {
+=======
+    cardHTML(title, category, text, ts, output = '') {
+>>>>>>> Stashed changes
+=======
+    cardHTML(title, category, text, ts, output = '') {
+>>>>>>> Stashed changes
         const card = document.createElement('div');
         card.className = 'job-card';
         card.setAttribute('data-category', category);
@@ -70,7 +78,15 @@ const MobileController = {
         btn.textContent = 'View Agent';
         btn.onclick = (e) => {
             e.stopPropagation();
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
             this.showDetail(title, text, ts, prompt);
+=======
+            this.showDetail(title, text, ts, output);
+>>>>>>> Stashed changes
+=======
+            this.showDetail(title, text, ts, output);
+>>>>>>> Stashed changes
         };
 
         footer.appendChild(timestamp);
@@ -111,6 +127,7 @@ const MobileController = {
             this.openScreen('screen-agentic');
         } catch (err) {
             console.error('Error dispatching agent:', err);
+            alert('Failed to dispatch agent plan.');
         }
     },
 
@@ -119,6 +136,8 @@ const MobileController = {
             const response = await fetch(App.url('mobile-agent'));
             const res = await response.json();
 
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
             if (res.records && Array.isArray(res.records)) {
                 const agentList = document.getElementById('agentic-list');
                 if (!agentList) return;
@@ -134,21 +153,60 @@ const MobileController = {
                     const card = this.cardHTML(title, category, text, ts, prompt);
                     agentList.appendChild(card);
                 });
+=======
+            if (!res.records || !Array.isArray(res.records)) {
+                return;
+>>>>>>> Stashed changes
+=======
+            if (!res.records || !Array.isArray(res.records)) {
+                return;
+>>>>>>> Stashed changes
             }
+
+            const agentList = document.getElementById('agentic-list');
+            if (!agentList) return;
+
+            agentList.innerHTML = '';
+            res.records.forEach(item => {
+                const title = item.agent_name || item.title || 'Sharpishly Agent';
+                const category = item.role || item.category || 'career';
+                const text = item.description || item.message || item.summary || '';
+                const ts = item.created_at || '';
+                const output = item.output ?? item.result ?? item.parsed ?? item.instruction ?? item.prompt ?? '';
+
+                const card = this.cardHTML(title, category, text, ts, output);
+                agentList.appendChild(card);
+            });
         } catch (err) {
             console.error('Failed to fetch agent records:', err);
         }
     },
 
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
     showDetail(title, text, ts, prompt = null) {
         const titleEl = document.getElementById('detail-title');
         const summaryEl = document.getElementById('detail-summary');
         const tsEl = document.getElementById('detail-timestamp');
+=======
+=======
+>>>>>>> Stashed changes
+    showDetail(title, text, ts, output = '') {
+        const titleEl = document.getElementById('detail-title');
+        const summaryEl = document.getElementById('detail-summary');
+        const tsEl = document.getElementById('detail-timestamp');
+        const outputEl = document.getElementById('detail-output');
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
 
         if (titleEl) titleEl.textContent = title;
         if (summaryEl) summaryEl.textContent = text;
         if (tsEl) tsEl.textContent = ts;
 
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
         const screenDetail = document.getElementById('screen-agent-detail');
         if (screenDetail) {
             let promptEl = document.getElementById('detail-prompt');
@@ -162,19 +220,45 @@ const MobileController = {
             }
 
             const mockPrompt = {
+=======
+        if (outputEl) {
+            const fallbackPrompt = {
+>>>>>>> Stashed changes
+=======
+        if (outputEl) {
+            const fallbackPrompt = {
+>>>>>>> Stashed changes
                 action: 'dispatch_agent',
                 target: title,
                 instruction: text || 'Execute standard automated workflow',
                 status: 'active_pipeline'
             };
 
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
             const payload = (data && typeof data === 'object') ? data : mockPrompt;
             promptEl = this.formatPrompt(payload);
             screenDetail.appendChild(promptEl);
+=======
+=======
+>>>>>>> Stashed changes
+            const activeOutput = output || fallbackPrompt;
+
+            outputEl.textContent = typeof activeOutput === 'object'
+                ? JSON.stringify(activeOutput, null, 2)
+                : String(activeOutput);
+
+            outputEl.style.display = 'block';
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
         }
 
         this.openScreen('screen-agent-detail');
     },
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
 
     formatPrompt(data) {
         const container = document.createElement('div');
@@ -221,4 +305,8 @@ const MobileController = {
 
         return container;
     }
+=======
+>>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
 };

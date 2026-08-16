@@ -10,6 +10,9 @@
 .env
 .env.local
 .env.*.local
+client_secret.json
+storage/google/token.json
+env.php
 
 # --- Centralized Storage ---
 storage/*
@@ -19,7 +22,6 @@ storage/ollama/
 storage/qdrant/
 chroma_db_heavy/
 mysql_data/
-chroma_db_heavy/
 
 # --- Python / AI Infrastructure ---
 __pycache__/
@@ -44,9 +46,3 @@ bin/
 # --- Logs ---
 *.log
 storage/log/*.log
-EOF
-
-# --- secrets ---
-client_secret.json
-storage/google/token.json
-env.php

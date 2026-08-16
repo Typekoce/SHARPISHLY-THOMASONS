@@ -4,7 +4,6 @@ namespace App\Models;
 
 class TerminalModel extends BaseModel {
 
-
     public function alias($command)
     {
         $terminal = array(
@@ -12,15 +11,15 @@ class TerminalModel extends BaseModel {
             'history'        => 'history',
             'history-update' => "history | grep 'update'",
             
-            // Project maintenance & logs
-            'logs-app'       => 'tail -f storage/log/*.* storage/logs/*.*',
+            // Project maintenance & logs (resilient log tailing)
+            'logs-app'       => 'find storage -type f -name "*.log" | xargs tail -f 2>/dev/null',
             'logs-nginx'     => 'tail -f /var/log/nginx/sharpishly_access.log',
             'db-migrate'     => 'curl -i http://localhost/php/scaffold/migrate',
             
             // Safety-first cleanup: targeting job-specific files
             'cleanup'          => 'find storage/cmd/jobs/waiting -type f -name "job_*" -delete',
             'cleanup-jobs'     => 'find storage/cmd/jobs/waiting -type f -name "job_*" -delete',
-            'cleanup-jobs-all' => 'find storage/cmd/jobs/{waiting,processing,completed} -type f -name "job_*" -delete',
+            'cleanup-jobs-all' => 'bash -c "find storage/cmd/jobs/{waiting,processing,completed} -type f -name \"job_*\" -delete"',
             
             // Deterministic service check
             'status'         => 'sh -lc "systemctl status mariadb; systemctl status nginx"',
@@ -32,14 +31,15 @@ class TerminalModel extends BaseModel {
             'maxie-authorize-host' => 'ssh-copy-id maxie@192.168.0.90',
             'maxie-test-auth'      => 'ssh -o BatchMode=yes maxie@192.168.0.90 "echo Auth Success"',
 
-            // test docker on @maxie
-            'docker-maxie' => 'ssh -o ConnectTimeout=5 maxie "docker ps --format \'table {{.ID}}\t{{.Image}}\t{{.Status}}\t{{.Names}}\'"',
-            'docker-maxie-status'   => 'echo "YOUR_PASSWORD" | ssh -t maxie "sudo -S systemctl status docker"',
+            // Docker management on @maxie (Passwordless execution via sudoers)
+            'docker-maxie'        => 'ssh -o ConnectTimeout=5 maxie "docker ps --format \'table {{.ID}}\t{{.Image}}\t{{.Status}}\t{{.Names}}\'"',
+            'docker-maxie-status' => 'ssh -o BatchMode=yes maxie@192.168.0.90 "sudo systemctl status docker"',
             
             'gmail-inbox'   => 'himalaya envelope list',
 
-            // Git log
+            // Git log & failure-safe rebase pipeline
             'git-log'       => 'git log --oneline --graph --decorate',
+            'git-rebase'    => 'git stash && git pull --rebase; git stash pop; true',
 
             // JSON and API Controller search
             'json-endpoints'   => "grep -R '\$this->json(' web/php/src/Controllers/",
@@ -55,8 +55,7 @@ class TerminalModel extends BaseModel {
             'maxie-get-key'       => 'ssh maxie@192.168.0.90 "cat ~/.ssh/id_ed25519.pub"',
             'maxie-verify-github' => 'ssh -o BatchMode=yes maxie@192.168.0.90 "ssh -T -o StrictHostKeyChecking=accept-new git@github.com"',
 
-            // deploy Sharpishly repo to maxie@192.168.0.90
-            //'maxie-deploy-sharpishly'   => 'ssh -o BatchMode=yes maxie@192.168.0.90 "rm -rf sharpishly && git clone git@github.com:Typekoce/SHARPISHLY-THOMASONS.git sharpishly && cd sharpishly && chmod +x final_installation.sh && ./final_installation.sh"',
+            // Deploy Sharpishly repo to maxie@192.168.0.90
             'maxie-deploy-sharpishly' => 'ssh -o BatchMode=yes maxie@192.168.0.90 "rm -rf sharpishly && git clone git@github.com:Typekoce/SHARPISHLY-THOMASONS.git sharpishly && cd sharpishly && chmod +x final_installation.sh && ./final_installation.sh"',
 
             // Deployment support aliases
@@ -68,7 +67,7 @@ class TerminalModel extends BaseModel {
             'test-controller'   => 'curl -i http://localhost/php/test/test',
 
             // HealthController
-            'health-controller'   => 'curl -i http://localhost/php/health',
+            'health-controller' => 'curl -i http://localhost/php/health',
         );
 
         if (isset($terminal[$command])) {
@@ -77,6 +76,4 @@ class TerminalModel extends BaseModel {
 
         return false;
     }
-
-
 }

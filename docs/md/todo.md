@@ -156,3 +156,70 @@ While `TerminalController` logged the incoming HTTP requests, `TerminalModel::al
  'react-native' => 'docker compose...'
 ```
 
+# Security for TerminalController.php
+
+```
+<?php
+
+declare(strict_types=1);
+
+namespace App\Controllers;
+
+use App\Models\TerminalModel;
+
+class TerminalController extends BaseController
+{
+    private TerminalModel $terminalModel;
+
+    /**
+     * Strict whitelist of safe diagnostic commands permitted for HTTP execution.
+     */
+    private const ALLOWED_HTTP_ALIASES = [
+        'status',
+        'git-log',
+        'health-controller',
+        'test-controller',
+        'schema-check',
+        'nginx-header-check'
+    ];
+
+    public function __construct()
+    {
+        parent::__construct();
+        $this->terminalModel = new TerminalModel();
+    }
+
+    /**
+     * Executes whitelisted terminal aliases and returns JSON output.
+     */
+    public function execute(): void
+    {
+        $command = $this->request('cmd');
+
+        if (!$command || !in_array($command, self::ALLOWED_HTTP_ALIASES, true)) {
+            $this->json([
+                'status'  => 'error',
+                'message' => 'Unauthorized or restricted terminal command.'
+            ], 400);
+        }
+
+        $execString = $this->terminalModel->alias($command);
+
+        if (!$execString) {
+            $this->json([
+                'status'  => 'error',
+                'message' => 'Command alias mapping failed.'
+            ], 404);
+        }
+
+        $output = shell_exec($execString . ' 2>&1');
+
+        $this->json([
+            'status'  => 'success',
+            'command' => $command,
+            'output'  => trim((string)$output)
+        ]);
+    }
+}
+```
+
