@@ -34,6 +34,9 @@ if [ -f "$target_file" ]; then
     mv "$target_file" "$ignore/"
 fi
 
+#
+git status
+
 # 4. Stage changes
 git add .
 
