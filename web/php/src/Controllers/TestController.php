@@ -13,19 +13,6 @@ use Throwable;
  * - GET /php/test/health -> System health snapshot with aggregated status.
  * - GET /php/test/llm    -> Target ORM & Neural LLM diagnostics.
  * - GET /php/test/test   -> Legacy alias routing to health().
- *
- * Example JSON response (/php/test/health):
- * {
- *   "status": "healthy",
- *   "status_detail": { "ok_count": 4, "total_checks": 4 },
- *   "google_api": { "status": "success", "data": {...} },
- *   "hotmail_api": { "status": "success", "data": {...} },
- *   "azure_api": { "status": "success", "data": {...} },
- *   "aws-hello": { "status": "success", "data": {...} },
- *   "process_check": "ollama running...",
- *   "ollama": { "active": true, "synced": true, "models": {...} },
- *   "RAG": "OK"
- * }
  */
 class TestController extends BaseController
 {
@@ -39,27 +26,27 @@ class TestController extends BaseController
             return;
         }
 
-        // Parallel multi-cURL execution (3-second timeout managed by BaseController::curlRequest)
+        // Parallel multi-cURL execution
         $endpoints = [
-            'google_api'  => 'http://127.0.0.1/php/googleapi',
-            'hotmail_api' => 'http://127.0.0.1/php/hotmailapi',
-            'azure_api'   => 'http://127.0.0.1/php/azureapi',
-            'aws-hello'   => 'http://127.0.0.1/php/aws/hello',
+            'google_api'        => 'http://127.0.0.1/php/googleapi',
+            'hotmail_api'       => 'http://127.0.0.1/php/hotmailapi',
+            'azure-hello-world' => 'http://127.0.0.1/php/azure/hello',
+            'aws-hello'         => 'http://127.0.0.1/php/aws/hello',
         ];
 
         $subResults = $this->curlRequest($endpoints);
 
-        $google  = $this->normalizeSubResult($subResults['google_api'] ?? null);
-        $hotmail = $this->normalizeSubResult($subResults['hotmail_api'] ?? null);
-        $azure   = $this->normalizeSubResult($subResults['azure_api'] ?? null);
-        $aws     = $this->normalizeSubResult($subResults['aws-hello'] ?? null);
+        $google     = $this->normalizeSubResult($subResults['google_api'] ?? null);
+        $hotmail    = $this->normalizeSubResult($subResults['hotmail_api'] ?? null);
+        $azureHello = $this->normalizeSubResult($subResults['azure-hello-world'] ?? null);
+        $aws        = $this->normalizeSubResult($subResults['aws-hello'] ?? null);
 
         // Compute overall cluster health
         $subServices = [
-            'google_api'  => $google,
-            'hotmail_api' => $hotmail,
-            'azure_api'   => $azure,
-            'aws-hello'   => $aws,
+            'google_api'        => $google,
+            'hotmail_api'       => $hotmail,
+            'azure-hello-world' => $azureHello,
+            'aws-hello'         => $aws,
         ];
 
         $okCount = 0;
@@ -73,23 +60,23 @@ class TestController extends BaseController
         $logPath = escapeshellarg(PROJECT_ROOT . '/storage/logs/*.log');
 
         $data = [
-            'status'        => ($okCount === count($subServices)) ? 'healthy' : 'degraded',
-            'status_detail' => [
+            'status'            => ($okCount === count($subServices)) ? 'healthy' : 'degraded',
+            'status_detail'     => [
                 'ok_count'     => $okCount,
                 'total_checks' => count($subServices),
             ],
-            'class'         => __CLASS__,
-            'function'      => __FUNCTION__,
-            'google_api'    => $google,
-            'hotmail_api'   => $hotmail,
-            'azure_api'     => $azure,
-            'aws-hello'     => $aws,
-            'process_check' => $this->safeShellExec(
+            'class'             => __CLASS__,
+            'function'          => __FUNCTION__,
+            'google_api'        => $google,
+            'hotmail_api'       => $hotmail,
+            'azure-hello-world' => $azureHello,
+            'aws-hello'         => $aws,
+            'process_check'     => $this->safeShellExec(
                 'ps aux | grep -E "ollama|rag_service" | grep -v grep'
             ),
-            'ollama'        => $this->getNeuralStatus(),
-            'RAG'           => $this->safeHttpHealth('http://127.0.0.1:8000/health'),
-            'recent_work'   => [
+            'ollama'            => $this->getNeuralStatus(),
+            'RAG'               => $this->safeHttpHealth('http://127.0.0.1:8000/health'),
+            'recent_work'       => [
                 'ssl_setup'     => 'setup-local-ssl.sh',
                 'installer'     => 'build-installer.sh',
                 'controllers'   => [
@@ -199,6 +186,17 @@ class TestController extends BaseController
             $rs['Ollama'] = $response;
         } catch (Throwable $e) {
             $rs['Ollama'] = ['error' => $e->getMessage()];
+        }
+
+        // 3. AzureHelloWorld call
+        try {
+            $response = $this->orm->execute([
+                'source' => 'AzureHelloWorld',
+                'action' => 'read',
+            ]);
+            $rs['AzureHelloWorld'] = $response;
+        } catch (Throwable $e) {
+            $rs['AzureHelloWorld'] = ['error' => $e->getMessage()];
         }
 
         return $rs;

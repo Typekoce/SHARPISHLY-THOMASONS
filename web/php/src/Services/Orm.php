@@ -11,6 +11,7 @@ class Orm extends BaseService
         'AwsHelloWorld' => 'https://w4ygtkgcmijy7noprpz4mvxofq0qecmu.lambda-url.eu-north-1.on.aws/',
         'Xero'          => 'https://api.xero.com/api.xro/2.0',
         'Azure'         => 'https://management.azure.com',
+        'AzureHelloWorld'   => 'https://app-sharpishly-azure.azurewebsites.net/api/health',
         'AzureFoundry'  => 'https://{resource}.openai.azure.com/openai/v1',
         'ChatGPT'       => 'https://api.openai.com/v1/chat/completions',
         'Claude'        => 'https://api.anthropic.com/v1/messages',
@@ -40,6 +41,9 @@ class Orm extends BaseService
         // Bug Bounty
         // Docker
         // Go
+        // Jira
+        // Trello
+        // GitHub
     ];
 
     private array $actions = [
