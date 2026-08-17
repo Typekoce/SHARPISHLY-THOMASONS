@@ -4,9 +4,29 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
-use App\Services\Orm;
 use Throwable;
 
+/**
+ * TestController – System health & ORM diagnostics.
+ *
+ * Routes:
+ * - GET /php/test/health -> System health snapshot with aggregated status.
+ * - GET /php/test/llm    -> Target ORM & Neural LLM diagnostics.
+ * - GET /php/test/test   -> Legacy alias routing to health().
+ *
+ * Example JSON response (/php/test/health):
+ * {
+ *   "status": "healthy",
+ *   "status_detail": { "ok_count": 4, "total_checks": 4 },
+ *   "google_api": { "status": "success", "data": {...} },
+ *   "hotmail_api": { "status": "success", "data": {...} },
+ *   "azure_api": { "status": "success", "data": {...} },
+ *   "aws-hello": { "status": "success", "data": {...} },
+ *   "process_check": "ollama running...",
+ *   "ollama": { "active": true, "synced": true, "models": {...} },
+ *   "RAG": "OK"
+ * }
+ */
 class TestController extends BaseController
 {
     /**
@@ -14,26 +34,68 @@ class TestController extends BaseController
      */
     public function health(): void
     {
+        if (!defined('PROJECT_ROOT')) {
+            $this->json(['status' => 'error', 'message' => 'PROJECT_ROOT constant is undefined.'], 500);
+            return;
+        }
+
+        // Parallel multi-cURL execution (3-second timeout managed by BaseController::curlRequest)
+        $endpoints = [
+            'google_api'  => 'http://127.0.0.1/php/googleapi',
+            'hotmail_api' => 'http://127.0.0.1/php/hotmailapi',
+            'azure_api'   => 'http://127.0.0.1/php/azureapi',
+            'aws-hello'   => 'http://127.0.0.1/php/aws/hello',
+        ];
+
+        $subResults = $this->curlRequest($endpoints);
+
+        $google  = $this->normalizeSubResult($subResults['google_api'] ?? null);
+        $hotmail = $this->normalizeSubResult($subResults['hotmail_api'] ?? null);
+        $azure   = $this->normalizeSubResult($subResults['azure_api'] ?? null);
+        $aws     = $this->normalizeSubResult($subResults['aws-hello'] ?? null);
+
+        // Compute overall cluster health
+        $subServices = [
+            'google_api'  => $google,
+            'hotmail_api' => $hotmail,
+            'azure_api'   => $azure,
+            'aws-hello'   => $aws,
+        ];
+
+        $okCount = 0;
+        foreach ($subServices as $service) {
+            $status = $service['status'] ?? '';
+            if ($status === 'ok' || $status === 'success' || ($service['statusCode'] ?? 0) === 200) {
+                $okCount++;
+            }
+        }
+
+        $logPath = escapeshellarg(PROJECT_ROOT . '/storage/logs/*.log');
+
         $data = [
-            'status'        => 'ok',
+            'status'        => ($okCount === count($subServices)) ? 'healthy' : 'degraded',
+            'status_detail' => [
+                'ok_count'     => $okCount,
+                'total_checks' => count($subServices),
+            ],
             'class'         => __CLASS__,
             'function'      => __FUNCTION__,
-            'google_api'    => $this->decodeJsonRequest('googleapi'),
-            'hotmail_api'   => $this->decodeJsonRequest('hotmailapi'),
-            'azure_api'     => $this->decodeJsonRequest('azureapi'),
-            'aws_api'       => $this->decodeJsonRequest('awsapi'),
+            'google_api'    => $google,
+            'hotmail_api'   => $hotmail,
+            'azure_api'     => $azure,
+            'aws-hello'     => $aws,
             'process_check' => $this->safeShellExec(
                 'ps aux | grep -E "ollama|rag_service" | grep -v grep'
             ),
-            'ollama'        => $this->safeOllamaTags(),
+            'ollama'        => $this->getNeuralStatus(),
             'RAG'           => $this->safeHttpHealth('http://127.0.0.1:8000/health'),
             'recent_work'   => [
                 'ssl_setup'     => 'setup-local-ssl.sh',
                 'installer'     => 'build-installer.sh',
                 'controllers'   => [
                     'MobileAgentController.php' => 'Completed',
-                    'AwsController.php' => 'active',
-                    'AzureController.php' => 'active',
+                    'AwsController.php'          => 'active',
+                    'AzureController.php'        => 'active',
                     'AzureFoundryController.php' => 'Pending',
                     'BaseCloudController.php'   => 'Pending',
                     'GoogleapiController.php'   => 'Pending',
@@ -44,7 +106,7 @@ class TestController extends BaseController
                     'docs/CONTRIBUTORS.md',
                     'todo.md',
                 ],
-                'logs'          => $this->safeShellExec('tail -n 20 storage/logs/*.log 2>/dev/null'),
+                'logs'          => $this->safeShellExec("tail -n 20 {$logPath} 2>/dev/null"),
             ],
         ];
 
@@ -74,48 +136,46 @@ class TestController extends BaseController
     }
 
     /**
-     * Decode JSON request from internal endpoint.
+     * Guarantees all sub-endpoint execution responses return as standardized arrays.
      */
-    private function decodeJsonRequest(string $path): ?array
+    private function normalizeSubResult(mixed $result): array
     {
-        try {
-            $context = stream_context_create([
-                'http' => [
-                    'method'  => 'GET',
-                    'timeout' => 3,
-                ],
-                'ssl' => [
-                    'verify_peer'      => false,
-                    'verify_peer_name' => false,
-                ],
-            ]);
-
-            $url = 'https://127.0.0.1/php/' . $path;
-            $raw = @file_get_contents($url, false, $context);
-            if ($raw === false) {
-                return null;
+        if (is_array($result)) {
+            if (isset($result['raw']) && is_string($result['raw'])) {
+                $decoded = json_decode($result['raw'], true);
+                if (is_array($decoded)) {
+                    return $decoded;
+                }
             }
-
-            return json_decode($raw, true);
-        } catch (Throwable $e) {
-            return null;
+            return $result;
         }
+
+        if (is_string($result)) {
+            $decoded = json_decode($result, true);
+            if (is_array($decoded)) {
+                return $decoded;
+            }
+        }
+
+        return [
+            'status' => 'unreachable',
+            'raw'    => $result,
+        ];
     }
 
     /**
-     * Run ORM/LLM diagnostics.
+     * Run ORM/LLM diagnostics using inherited $this->orm and environment secrets.
      */
     private function runOrmDiagnostics(): array
     {
-        $orm = new Orm();
-        $rs  = [];
+        $rs = [];
 
         // 1. ChatGPT call
         try {
-            $response = $orm->execute([
+            $response = $this->orm->execute([
                 'source'  => 'ChatGPT',
                 'action'  => 'create',
-                'api_key' => 'YOUR_API_KEY',
+                'api_key' => getenv('OPENAI_API_KEY') ?: 'YOUR_API_KEY',
                 'data'    => [
                     'model'    => 'gpt-4o',
                     'messages' => [['role' => 'user', 'content' => 'Hello!']],
@@ -128,7 +188,7 @@ class TestController extends BaseController
 
         // 2. Ollama call
         try {
-            $response = $orm->execute([
+            $response = $this->orm->execute([
                 'source' => 'Ollama',
                 'action' => 'create',
                 'data'   => [
@@ -145,40 +205,20 @@ class TestController extends BaseController
     }
 
     /**
-     * Safe shell execution wrapper.
+     * Safe shell execution wrapper with max buffer trimming.
      */
-    private function safeShellExec(string $cmd): ?string
+    private function safeShellExec(string $cmd, int $maxBytes = 8192): ?string
     {
         $out = @shell_exec($cmd);
-        return $out === false ? null : trim((string)$out);
-    }
-
-    /**
-     * Safe Ollama tags fetch.
-     */
-    private function safeOllamaTags(): ?array
-    {
-        try {
-            $ctx = stream_context_create([
-                'http' => [
-                    'method'  => 'GET',
-                    'timeout' => 3,
-                ],
-            ]);
-
-            $raw = @file_get_contents('http://127.0.0.1:11434/api/tags', false, $ctx);
-            if ($raw === false) {
-                return null;
-            }
-
-            return json_decode($raw, true);
-        } catch (Throwable $e) {
+        if ($out === false || $out === null) {
             return null;
         }
+        $trimmed = trim((string)$out);
+        return mb_substr($trimmed, 0, $maxBytes);
     }
 
     /**
-     * Safe HTTP health check.
+     * Safe HTTP health check stream fetch.
      */
     private function safeHttpHealth(string $url): ?string
     {
