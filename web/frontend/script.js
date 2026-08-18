@@ -1477,15 +1477,7 @@ const MobileController = {
     /**
      * Builds and returns a DOM element card matching #agentic markup template
      */
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-    cardHTML(title, category, text, ts, prompt = null) {
-=======
     cardHTML(title, category, text, ts, output = '') {
->>>>>>> Stashed changes
-=======
-    cardHTML(title, category, text, ts, output = '') {
->>>>>>> Stashed changes
         const card = document.createElement('div');
         card.className = 'job-card';
         card.setAttribute('data-category', category);
@@ -1531,15 +1523,7 @@ const MobileController = {
         btn.textContent = 'View Agent';
         btn.onclick = (e) => {
             e.stopPropagation();
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-            this.showDetail(title, text, ts, prompt);
-=======
             this.showDetail(title, text, ts, output);
->>>>>>> Stashed changes
-=======
-            this.showDetail(title, text, ts, output);
->>>>>>> Stashed changes
         };
 
         footer.appendChild(timestamp);
@@ -1589,31 +1573,8 @@ const MobileController = {
             const response = await fetch(App.url('mobile-agent'));
             const res = await response.json();
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-            if (res.records && Array.isArray(res.records)) {
-                const agentList = document.getElementById('agentic-list');
-                if (!agentList) return;
-
-                agentList.innerHTML = '';
-                res.records.forEach(item => {
-                    const title = item.agent_name || item.title || 'Sharpishly Agent';
-                    const category = item.role || item.category || 'career';
-                    const text = item.description || item.message || item.summary || '';
-                    const ts = item.created_at || '';
-                    const prompt = item.content || null;
-
-                    const card = this.cardHTML(title, category, text, ts, prompt);
-                    agentList.appendChild(card);
-                });
-=======
             if (!res.records || !Array.isArray(res.records)) {
                 return;
->>>>>>> Stashed changes
-=======
-            if (!res.records || !Array.isArray(res.records)) {
-                return;
->>>>>>> Stashed changes
             }
 
             const agentList = document.getElementById('agentic-list');
@@ -1635,66 +1596,24 @@ const MobileController = {
         }
     },
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-    showDetail(title, text, ts, prompt = null) {
-        const titleEl = document.getElementById('detail-title');
-        const summaryEl = document.getElementById('detail-summary');
-        const tsEl = document.getElementById('detail-timestamp');
-=======
-=======
->>>>>>> Stashed changes
     showDetail(title, text, ts, output = '') {
         const titleEl = document.getElementById('detail-title');
         const summaryEl = document.getElementById('detail-summary');
         const tsEl = document.getElementById('detail-timestamp');
         const outputEl = document.getElementById('detail-output');
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
         if (titleEl) titleEl.textContent = title;
         if (summaryEl) summaryEl.textContent = text;
         if (tsEl) tsEl.textContent = ts;
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-        const screenDetail = document.getElementById('screen-agent-detail');
-        if (screenDetail) {
-            let promptEl = document.getElementById('detail-prompt');
-            if (promptEl) {
-                promptEl.remove();
-            }
-
-            let data = prompt;
-            if (typeof prompt === 'string') {
-                try { data = JSON.parse(prompt); } catch (e) {}
-            }
-
-            const mockPrompt = {
-=======
         if (outputEl) {
             const fallbackPrompt = {
->>>>>>> Stashed changes
-=======
-        if (outputEl) {
-            const fallbackPrompt = {
->>>>>>> Stashed changes
                 action: 'dispatch_agent',
                 target: title,
                 instruction: text || 'Execute standard automated workflow',
                 status: 'active_pipeline'
             };
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-            const payload = (data && typeof data === 'object') ? data : mockPrompt;
-            promptEl = this.formatPrompt(payload);
-            screenDetail.appendChild(promptEl);
-=======
-=======
->>>>>>> Stashed changes
             const activeOutput = output || fallbackPrompt;
 
             outputEl.textContent = typeof activeOutput === 'object'
@@ -1702,61 +1621,9 @@ const MobileController = {
                 : String(activeOutput);
 
             outputEl.style.display = 'block';
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
         }
 
         this.openScreen('screen-agent-detail');
-    },
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-
-    formatPrompt(data) {
-        const container = document.createElement('div');
-        container.id = 'detail-prompt';
-        container.style.cssText = 'margin: 1rem 0; padding: 0.75rem; background: #f4f5f7; border-radius: 6px; font-size: 0.85rem; border: 1px solid #e5e7eb;';
-
-        const buildNode = (obj) => {
-            const wrapper = document.createElement('div');
-
-            for (const [key, val] of Object.entries(obj)) {
-                const row = document.createElement('div');
-                row.style.cssText = 'margin-bottom: 0.4rem; display: flex; flex-direction: column;';
-
-                const label = document.createElement('strong');
-                label.textContent = key.toUpperCase();
-                label.style.cssText = 'color: #374151; font-size: 0.75rem; letter-spacing: 0.05em; margin-bottom: 0.1rem;';
-
-                row.appendChild(label);
-
-                if (val !== null && typeof val === 'object') {
-                    const nestedContainer = document.createElement('div');
-                    nestedContainer.style.cssText = 'padding-left: 0.5rem; border-left: 2px solid #cbd5e1; margin-top: 0.2rem;';
-                    nestedContainer.appendChild(buildNode(val));
-                    row.appendChild(nestedContainer);
-                } else {
-                    const valueEl = document.createElement('span');
-                    valueEl.textContent = String(val);
-                    valueEl.style.cssText = 'color: #1f2937; background: #ffffff; padding: 0.25rem 0.5rem; border-radius: 4px; border: 1px solid #d1d5db; font-family: monospace; word-break: break-word;';
-                    row.appendChild(valueEl);
-                }
-
-                wrapper.appendChild(row);
-            }
-            return wrapper;
-        };
-
-        if (data && typeof data === 'object') {
-            container.appendChild(buildNode(data));
-        } else {
-            const fallback = document.createElement('span');
-            fallback.textContent = String(data);
-            container.appendChild(fallback);
-        }
-
-        return container;
     }
 };const HomeController = {
     steps: [
@@ -1803,10 +1670,6 @@ const MobileController = {
         if (bar)   { bar.style.width = config.width; bar.className = config.bar; }
         if (badge) { badge.className = config.badge; badge.textContent = config.text; }
     }
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 };/** model.js */
 
 /**
