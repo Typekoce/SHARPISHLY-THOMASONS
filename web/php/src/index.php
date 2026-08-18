@@ -11,20 +11,6 @@ $logger = new Logger();
  * 2. Define Route Aliases
  * Maps the URL slug to the [ControllerName, MethodName]
  */
-// $aliases = [
-//     'upload'     => ['Upload', 'index'],
-//     'job-status' => ['Upload', 'status'],
-//     'search'     => ['Search', 'query'],
-//     'chat'       => ['Chat', 'ask'],
-//     'upload'     => ['Upload', 'index'], 
-//     'pentest-diagnostics'   => ['PentestDianostics','index']  
-//     // 'chat-stream'=> ['Chat', 'stream'],
-// ];
-
-/**
- * 2. Define Route Aliases
- * Maps the URL slug to the [ControllerName, MethodName]
- */
 $aliases = [
     'upload'               => ['Upload', 'index'],
     'job-status'           => ['Upload', 'status'],
@@ -57,8 +43,9 @@ $aliases = [
 $requestUri = $_SERVER['REQUEST_URI'] ?? '/';
 $uriPath = parse_url($requestUri, PHP_URL_PATH) ?? '/';
 
-$parts = explode('/', trim($uriPath, '/'));
-//echo "<pre>";
+// Filter empty segments so root '/' results in an empty array
+$parts = array_values(array_filter(explode('/', trim($uriPath, '/'))));
+
 // 4. Strip prefixes (/php/ or /api/)
 if (isset($parts[0]) && ($parts[0] === 'php' || $parts[0] === 'api')) {
     array_shift($parts);
