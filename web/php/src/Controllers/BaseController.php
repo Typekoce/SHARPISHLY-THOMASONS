@@ -338,9 +338,18 @@ abstract class BaseController
 
         foreach ($endpoints as $key => $url) {
             $ch = curl_init($url);
+            
+            // Allow self-signed certs on loopback and local network IPs
+            $isLocal = str_contains($url, '127.0.0.1') 
+                    || str_contains($url, 'localhost') 
+                    || str_contains($url, '192.168.');
+
             curl_setopt_array($ch, [
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_TIMEOUT        => 3,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_SSL_VERIFYPEER => !$isLocal,
+                CURLOPT_SSL_VERIFYHOST => $isLocal ? 0 : 2,
                 CURLOPT_HTTPHEADER     => ['Accept: application/json'],
             ]);
             curl_multi_add_handle($mh, $ch);
