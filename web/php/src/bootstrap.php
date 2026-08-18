@@ -75,7 +75,7 @@ function initializeServices(): void {
     $logger = new \App\Services\Logger();
     $GLOBALS['logger'] = $logger;
 
-    Gatekeeper();
+    //Gatekeeper();
     
     $logger->info("Initializing Database connection...");
 
