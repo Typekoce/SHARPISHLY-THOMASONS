@@ -60,10 +60,11 @@ class TestController extends BaseController
         $logPath = escapeshellarg(PROJECT_ROOT . '/storage/logs/*.log');
 
         $data = [
+            'server'            => $_SERVER,
             'status'            => ($okCount === count($subServices)) ? 'healthy' : 'degraded',
             'status_detail'     => [
-                'ok_count'     => $okCount,
-                'total_checks' => count($subServices),
+                'ok_count'      => $okCount,
+                'total_checks'  => count($subServices),
             ],
             'class'             => __CLASS__,
             'function'          => __FUNCTION__,
