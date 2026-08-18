@@ -2,6 +2,12 @@ This is the definitive update to the **CONTEXT.md**. I have stripped the "God Ob
 
 ---
 
+# PHP, Js, Python, Guidelines: 
+  1. Do not remove critical functionality.
+  2. Do not over-engineer solutions.
+  3. Do not nest IDs.
+  4. No inline HTML strings in JS—use pure DOM construction (`document.createElement`).
+
 # SHARPISHLY-THOMASONS V3: PROJECT CONTEXT
 **Current Version:** 3.1.0 (Post-Registry)
 **Last Audit:** April 9, 2026

@@ -9,273 +9,51 @@
                 <span>5G 🔋</span>
             </div>
 
-            <!-- Screen 1: Home Screen Grid -->
-            <div id="screen-home" class="screen active">
+            <!-- Home Screen -->
+            <div id="screen-home" class="screen active" role="region" aria-label="Home Screen">
                 <div class="app-grid">
                     <div class="app-icon" onclick="MobileController.openScreen('screen-sharpishly')">
                         <div class="icon-box icon-sharpishly">S</div>
                         <span class="app-name">Sharpishly</span>
                     </div>
-
                     <div class="app-icon" onclick="MobileController.openScreen('screen-agentic')">
                         <div class="icon-box" style="background:#6f42c1;">⚡</div>
                         <span class="app-name">Agentic</span>
                     </div>
-
-                    <div class="app-icon">
-                        <div class="icon-box" style="background:#ea4335;">✉️</div>
-                        <span class="app-name">GMail</span>
-                    </div>
-
-                    <div class="app-icon">
-                        <div class="icon-box" style="background:#34a853;">📅</div>
-                        <span class="app-name">Calendar</span>
-                    </div>
                 </div>
             </div>
 
-            <!-- Screen 2: Sharpishly Input Screen -->
-            <div id="screen-sharpishly" class="screen">
+            <!-- Input Screen -->
+            <div id="screen-sharpishly" class="screen" role="region" aria-label="Dispatch Screen">
                 <div class="app-header">
-                    <button class="back-btn" onclick="MobileController.openScreen('screen-home')">← Back</button>
-                    <h3 style="margin:0; font-size: 0.95rem;">Dispatch Agent</h3>
+                    <button type="button" class="back-btn" aria-label="Go back to home screen" onclick="MobileController.openScreen('screen-home')">← Back</button>
+                    <h3>Dispatch Agent</h3>
                 </div>
                 <div class="app-body">
-                    <p style="font-size:0.8rem; color:#6b7280; margin:0;">
-                        Enter an instruction to construct a new platform agent:
-                    </p>
-                    <textarea id="agent-instruction" class="agent-input" placeholder="e.g. Schedule GP doctors appointment for next Thursday or pay council tax bill..."></textarea>
-                    <button class="btn-dispatch" onclick="MobileController.generateAgent()">Convert to Agent</button>
+                    <textarea id="agent-instruction" class="agent-input" placeholder="e.g. Schedule GP doctors appointment..."></textarea>
+                    <button type="button" class="btn-dispatch" onclick="MobileController.generateAgent()">Convert to Agent</button>
                 </div>
             </div>
 
-            <!-- Screen 3: Agentic Hub Template Screen -->
-            <div id="screen-agentic" class="screen">
-                <div id="agentic">
-                    <div class="window-container">
-                        <header class="window-header" style="display:flex; justify-content:space-between; align-items:center;">
-                            <div>
-                                <h1>Agentic Hub</h1>
-                                <p>Platform Workflows</p>
-                            </div>
-                            <button class="back-btn" onclick="MobileController.openScreen('screen-home')">Home</button>
-                        </header>
-
-                        <!-- Static Template Cards List -->
-                        <div id="agentic-list" class="job-list">
-                            
-                            <!-- Job Applications -->
-                            <div class="job-card" data-category="career">
-                                <div class="job-header-row">
-                                    <h2>GMail</h2>
-                                    <span class="badge success">Applied</span>
-                                </div>
-                                <h3 class="company-name">TechCorp Global <span>via LinkedIn</span></h3>
-                                <p class="job-summary">
-                                    CV tailored to emphasize zero-dependency MVC architecture, custom shell scripts, and raw API integrations.
-                                </p>
-                                <div class="job-footer">
-                                    <span class="timestamp">Applied: 24 Oct 2026</span>
-                                    <button class="btn btn-primary">View Tailored CV</button>
-                                </div>
-                            </div>
-
-                            <div class="job-card" data-category="career">
-                                <div class="job-header-row">
-                                    <h2>Hotmail</h2>
-                                    <span class="badge success">Applied</span>
-                                </div>
-                                <h3 class="company-name">Innovate Solutions <span>via Direct Email</span></h3>
-                                <p class="job-summary">
-                                    Dispatched localized resume build for low-dependency systems engineer position.
-                                </p>
-                                <div class="job-footer">
-                                    <span class="timestamp">Applied: 28 Oct 2026</span>
-                                    <button class="btn btn-primary">View Email Dispatch</button>
-                                </div>
-                            </div>
-
-                            <!-- Subscriptions & TV -->
-                            <div class="job-card" data-category="subscription">
-                                <div class="job-header-row">
-                                    <h2>Virgin Media</h2>
-                                    <span class="badge info">Syncing</span>
-                                </div>
-                                <h3 class="company-name">Gig1 Fibre & TV Bundle <span>Direct Billing</span></h3>
-                                <p class="job-summary">
-                                    Agent retrieved monthly e-bill. Direct Debit confirmed for 1st of next month.
-                                </p>
-                                <div class="job-footer">
-                                    <span class="timestamp">Updated: 29 Oct 2026</span>
-                                    <button class="btn btn-primary">View Statement</button>
-                                </div>
-                            </div>
-
-                            <div class="job-card" data-category="subscription">
-                                <div class="job-header-row">
-                                    <h2>TV License</h2>
-                                    <span class="badge success">Active</span>
-                                </div>
-                                <h3 class="company-name">BBC / TV Licensing UK <span>Annual Direct Debit</span></h3>
-                                <p class="job-summary">
-                                    Agent validated automatic renewal confirmation and stored PDF receipt locally.
-                                </p>
-                                <div class="job-footer">
-                                    <span class="timestamp">Valid through: Oct 2027</span>
-                                    <button class="btn btn-primary">View Receipt</button>
-                                </div>
-                            </div>
-
-                            <div class="job-card" data-category="subscription">
-                                <div class="job-header-row">
-                                    <h2>Netflix</h2>
-                                    <span class="badge success">Active</span>
-                                </div>
-                                <h3 class="company-name">Premium UHD Tier <span>Standalone Subscription</span></h3>
-                                <p class="job-summary">
-                                    Agent verified active stream tokens and usage telemetry.
-                                </p>
-                                <div class="job-footer">
-                                    <span class="timestamp">Next Billing: 05 Nov 2026</span>
-                                    <button class="btn btn-primary">Manage Plan</button>
-                                </div>
-                            </div>
-
-                            <!-- Utilities & Municipal -->
-                            <div class="job-card" data-category="bills">
-                                <div class="job-header-row">
-                                    <h2>Manchester City Council</h2>
-                                    <span class="badge pending">Payment Queued</span>
-                                </div>
-                                <h3 class="company-name">Council Tax <span>Band C Monthly Installment</span></h3>
-                                <p class="job-summary">
-                                    Latest statement retrieved. Payment workflow queued for local authorization.
-                                </p>
-                                <div class="job-footer">
-                                    <span class="timestamp">Due: 01 Nov 2026</span>
-                                    <button class="btn btn-primary">Authorize Payment</button>
-                                </div>
-                            </div>
-
-                            <!-- Health & Medical -->
-                            <div class="job-card" data-category="health">
-                                <div class="job-header-row">
-                                    <h2>Doctors</h2>
-                                    <span class="badge accent">Scheduled</span>
-                                </div>
-                                <h3 class="company-name">NHS GP Practice <span>Routine Checkup</span></h3>
-                                <p class="job-summary">
-                                    Appointment booking confirmed via GP portal. Synced to local calendar store.
-                                </p>
-                                <div class="job-footer">
-                                    <span class="timestamp">Date: 12 Nov 2026 - 10:30 AM</span>
-                                    <button class="btn btn-primary">View Details</button>
-                                </div>
-                            </div>
-
-                            <div class="job-card" data-category="health">
-                                <div class="job-header-row">
-                                    <h2>Chemist</h2>
-                                    <span class="badge success">Ready for Pick-up</span>
-                                </div>
-                                <h3 class="company-name">Boots Pharmacy <span>Electronic Prescription Service</span></h3>
-                                <p class="job-summary">
-                                    Prescription status polled via NHS EPS token. Ready at local branch.
-                                </p>
-                                <div class="job-footer">
-                                    <span class="timestamp">Refreshed: 30 Oct 2026</span>
-                                    <button class="btn btn-primary">View Prescription</button>
-                                </div>
-                            </div>
-
-                            <!-- Productivity & Workspace -->
-                            <div class="job-card" data-category="workspace">
-                                <div class="job-header-row">
-                                    <h2>Google Docs</h2>
-                                    <span class="badge success">Updated</span>
-                                </div>
-                                <h3 class="company-name">Architecture Specification <span>Workspace Sync</span></h3>
-                                <p class="job-summary">
-                                    Agent generated technical documentation and pushed clean markdown export.
-                                </p>
-                                <div class="job-footer">
-                                    <span class="timestamp">Saved: 29 Oct 2026</span>
-                                    <button class="btn btn-primary">Open Document</button>
-                                </div>
-                            </div>
-
-                            <div class="job-card" data-category="workspace">
-                                <div class="job-header-row">
-                                    <h2>Google Calendar</h2>
-                                    <span class="badge success">Synced</span>
-                                </div>
-                                <h3 class="company-name">Schedule Engine <span>CalDAV Integration</span></h3>
-                                <p class="job-summary">
-                                    Automated conflict resolution completed across medical, billing, and interview events.
-                                </p>
-                                <div class="job-footer">
-                                    <span class="timestamp">Last Sync: 10 mins ago</span>
-                                    <button class="btn btn-primary">View Grid</button>
-                                </div>
-                            </div>
-
-                            <!-- AI Platform Integrations -->
-                            <div class="job-card" data-category="ai">
-                                <div class="job-header-row">
-                                    <h2>Gemini</h2>
-                                    <span class="badge accent">Active Pipeline</span>
-                                </div>
-                                <h3 class="company-name">Google AI Studio <span>REST Endpoint Handler</span></h3>
-                                <p class="job-summary">
-                                    Structured text processing and automated data extraction pipeline operational.
-                                </p>
-                                <div class="job-footer">
-                                    <span class="timestamp">Latency: 142ms</span>
-                                    <button class="btn btn-primary">Inspect Execution</button>
-                                </div>
-                            </div>
-
-                            <div class="job-card" data-category="ai">
-                                <div class="job-header-row">
-                                    <h2>Claude</h2>
-                                    <span class="badge accent">Active Pipeline</span>
-                                </div>
-                                <h3 class="company-name">Anthropic API <span>Refactoring & Code Audit</span></h3>
-                                <p class="job-summary">
-                                    Automated static codebase evaluation job completed successfully.
-                                </p>
-                                <div class="job-footer">
-                                    <span class="timestamp">Completed: 30 Oct 2026</span>
-                                    <button class="btn btn-primary">View Audit</button>
-                                </div>
-                            </div>
-
-                        </div>
-                    </div>
-                </div>
+            <!-- Agent Hub Screen -->
+            <div id="screen-agentic" class="screen" role="region" aria-label="Agentic Hub Screen">
+                <header class="window-header">
+                    <h1>Agentic Hub</h1>
+                    <button type="button" class="back-btn" aria-label="Go back to home screen" onclick="MobileController.openScreen('screen-home')">Home</button>
+                </header>
+                <div id="agentic-list" class="job-list"></div>
             </div>
 
 
-            <!-- Detail Screen -->
-            <div id="screen-agent-detail" class="screen">
-                <div class="detail-topbar">
-                    <button class="btn btn-secondary" onclick="MobileController.openScreen('screen-agentic')">&larr; Back</button>
-                    <span class="badge success">Active</span>
-                </div>
 
-                <div class="detail-card">
-                    <h2 id="detail-title"></h2>
-                    <p id="detail-summary"></p>
-                    <div id="detail-prompt" class="detail-output-box" style="margin: 1rem 0; padding: 0.75rem; background: #f4f5f7; border-radius: 6px; font-family: monospace; white-space: pre-wrap; font-size: 0.85rem;"></div>
-                    <small id="detail-timestamp"></small>
-                </div>
-            </div>
-
-            
-            <!-- Navigation Indicator -->
+            <!-- Bottom Nav Bar -->
             <div class="nav-bar">
                 <div class="home-indicator" onclick="MobileController.openScreen('screen-home')"></div>
             </div>
         </div>
     </div>
 </div>
+
+
+<!-- Debug Overlay Target -->
+<div id="debug-output" style="position: fixed; bottom: 0; left: 0; right: 0; max-height: 40vh; overflow-y: auto; background: #111; padding: 8px; z-index: 9999; font-family: monospace; font-size: 11px; color: #4ade80;"></div>

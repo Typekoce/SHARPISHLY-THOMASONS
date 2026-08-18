@@ -1,55 +1,66 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Controllers;
 
 use App\Models\AgentModel;
 use App\Services\PromptService;
 use Throwable;
 
-class MobileAgentController extends BaseController 
+class MobileAgentController extends BaseController
 {
     /**
-     * Display all agents
+     * GET /php/mobile-agent
      */
     public function index($id = ''): void
     {
-        $agent = new AgentModel();
+        try {
+            $agentModel = new AgentModel();
+            $rawRecords = $agentModel->all();
 
-        $this->json([
-            'id'      => $id,
-            'model'   => __CLASS__,
-            'action'  => __FUNCTION__,
-            'time'    => $this->now(),
-            'records' => $agent->all()
-        ]);
+            // Map database columns to the frontend schema expected by MobileController.js
+            $records = array_map(static function (array $item): array {
+                $content = !empty($item['content']) ? json_decode((string)$item['content'], true) : null;
+                $pref    = !empty($item['pref']) ? json_decode((string)$item['pref'], true) : null;
+
+                $item['parsed'] = $content ?? $pref;
+                $item['output'] = $content ?? $pref;
+                return $item;
+            }, $rawRecords);
+
+            $this->json([
+                'id'      => $id,
+                'model'   => __CLASS__,
+                'action'  => __FUNCTION__,
+                'time'    => $this->now(),
+                'records' => $records
+            ]);
+        } catch (Throwable $e) {
+            $this->logger->error("MobileAgentController index error: " . $e->getMessage());
+            $this->json(['status' => 'error', 'message' => 'Failed to retrieve agent records.', 'records' => []], 500);
+        }
     }
 
     /**
-     * Handle POST payload to generate and dispatch an agent plan
+     * POST /php/mobile-agent-create
      */
     public function create(): void
     {
-        $raw = file_get_contents('php://input');
-        $input = json_decode($raw ?: '', true) ?? [];
-        $instruction = trim((string) ($input['instruction'] ?? ''));
+        $instruction = trim((string)$this->request('instruction'));
 
-        if ($instruction === '') {
-            $this->json(['status' => 'error', 'error' => 'Instruction cannot be empty'], 400);
+        if (empty($instruction)) {
+            $this->json(['status' => 'error', 'error' => 'Instruction payload cannot be empty.'], 400);
             return;
         }
 
         try {
             $agentModel = new AgentModel();
-            $prompt = new PromptService();
+            $prompt     = new PromptService();
 
-            // Structural parse (local)
-            $content = $prompt->read($instruction);
-
-            // RAG-enriched conditions (remote + local)
+            $content    = $prompt->read($instruction);
             $conditions = $prompt->promptToConditions($instruction);
-
-            // Generate dynamic agent name from parsed content payload
-            $agentName = $this->createAgentName($content);
+            $agentName  = $this->createAgentName($content);
 
             $inserted = $agentModel->create([
                 'agent_name'  => $agentName,
@@ -57,7 +68,7 @@ class MobileAgentController extends BaseController
                 'content'     => json_encode($content),
                 'pref'        => json_encode($conditions),
                 'status'      => 'pending',
-                'created_at'  => $this->now(),
+                'created_at'  => $this->timestamp(),
             ]);
 
             if (!$inserted) {
@@ -67,16 +78,13 @@ class MobileAgentController extends BaseController
 
             $this->json(['status' => 'success', 'data' => ['id' => $inserted, 'agent_name' => $agentName]]);
         } catch (Throwable $e) {
-            $this->logger->error('Failed to create agent: ' . $e->getMessage());
+            $this->logger->error("MobileAgentController create error: " . $e->getMessage());
             $this->json(['status' => 'error', 'error' => $e->getMessage()], 500);
         }
     }
 
     /**
-     * Create Agent name from $content array or JSON payload
-     * 
-     * @param array|string $content Parsed prompt output from PromptService
-     * @return string
+     * Derive Agent name from parsed PromptService content payload
      */
     public function createAgentName($content): string
     {
@@ -87,19 +95,14 @@ class MobileAgentController extends BaseController
         $action = $content['action'] ?? 'GENERIC_QUERY';
         $table  = $content['table'] ?? 'queries';
 
-        // 1. Derive from action route (e.g., DISPATCH_SMS -> "Sharpishly Dispatch Sms Agent")
         if ($action !== 'GENERIC_QUERY') {
-            $formattedAction = ucwords(strtolower(str_replace('_', ' ', $action)));
-            return "Sharpishly {$formattedAction} Agent";
+            return "Sharpishly " . ucwords(strtolower(str_replace('_', ' ', $action))) . " Agent";
         }
 
-        // 2. Derive from target table (e.g., agent_tasks -> "Sharpishly Agent Tasks Processor")
         if ($table !== 'queries') {
-            $formattedTable = ucwords(strtolower(str_replace('_', ' ', $table)));
-            return "Sharpishly {$formattedTable} Processor";
+            return "Sharpishly " . ucwords(strtolower(str_replace('_', ' ', $table))) . " Processor";
         }
 
-        // 3. Fallback to NLP tokens from sentence 1 clause 1
         $firstClause = $content['payload']['sentence_1']['clause_1'] ?? [];
         if (!empty($firstClause['nlp']['tokens'])) {
             $keywords = array_slice($firstClause['nlp']['tokens'], 0, 3);
@@ -110,7 +113,7 @@ class MobileAgentController extends BaseController
     }
 
     /**
-     * Atomically fetch and claim the next pending agent record
+     * Claim next pending agent task
      */
     public function claimNextPending(): ?array
     {
