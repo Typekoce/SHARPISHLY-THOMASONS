@@ -31,7 +31,7 @@ if [ ! -f "$NGINX_AVAIL" ]; then
 server {
     listen 80;
     listen [::]:80;
-    server_name ${DOMAIN};
+    server_name ${DOMAIN} localhost;
     return 301 https://\$host\$request_uri;
 }
 
