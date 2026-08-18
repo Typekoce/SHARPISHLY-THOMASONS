@@ -30,6 +30,7 @@ class TerminalModel extends BaseModel {
             // Host-level SSH Key Authorization & Test
             'maxie-authorize-host' => 'ssh-copy-id maxie@192.168.0.90',
             'maxie-test-auth'      => 'ssh -o BatchMode=yes maxie@192.168.0.90 "echo Auth Success"',
+            'maxie-pull'      => 'ssh -o BatchMode=yes maxie@192.168.0.90 "cd sharpishly/ && git stash && git pull"',
 
             // Docker management on @maxie (Passwordless execution via sudoers)
             'docker-maxie'        => 'ssh -o ConnectTimeout=5 maxie "docker ps --format \'table {{.ID}}\t{{.Image}}\t{{.Status}}\t{{.Names}}\'"',
