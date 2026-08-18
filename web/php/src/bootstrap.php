@@ -88,8 +88,10 @@ function initializeServices(): void {
  * 3.1 Gatekeeper will be renamed GateKeeper after testing
  */
 function Gatekeeper(){
+    $isDev = defined('DEBUG') ? DEBUG : (defined('APP_DEV') && APP_DEV === 'dev');
+
     // Existing base security
-    if(DEBUG == TRUE){
+    if ($isDev) {
         \App\Security\Security::applyHeaders();
         $session = new \App\Security\Session();
     }
