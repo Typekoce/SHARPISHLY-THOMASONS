@@ -32,20 +32,9 @@ class Location {
         }
     }
 
-    public function old_construct() {
-        // 1. Establish Project Root (The Source of Truth)
-        // Fix: Added parentheses to resolve the unparenthesized ternary fatal error
-        $this->projectRoot = defined('PROJECT_ROOT') 
-            ? PROJECT_ROOT 
-            : (realpath(dirname(__DIR__, 4)) ?: '');
-
-        // 2. Establish Storage Base
-        $this->storageBase = $this->projectRoot . '/storage/';
-        
-        // Ensure the base storage exists immediately
-        if (!is_dir($this->storageBase)) {
-            mkdir($this->storageBase, 0775, true);
-        }
+    public function baseDir(): string
+    {
+        return defined('PROJECT_ROOT') ? PROJECT_ROOT . '/' : dirname(__DIR__, 3) . '/';
     }
 
     /**

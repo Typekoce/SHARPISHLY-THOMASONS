@@ -1,6 +1,3 @@
-Here is the fully updated `Orm.php` file, following all required coding standards (strict types, proper namespace, and clean execution flow without hardcoded switch statements).
-
-```php
 <?php
 
 declare(strict_types=1);
@@ -14,7 +11,7 @@ class Orm extends BaseService
         'AwsHelloWorld' => 'https://w4ygtkgcmijy7noprpz4mvxofq0qecmu.lambda-url.eu-north-1.on.aws/',
         'Xero'          => 'https://api.xero.com/api.xro/2.0',
         'Azure'         => 'https://management.azure.com',
-        'AzureHelloWorld'   => 'https://app-sharpishly-azure.azurewebsites.net/api/health',
+        'AzureHelloWorld' => 'https://app-sharpishly-azure.azurewebsites.net/api/health',
         'AzureFoundry'  => 'https://{resource}.openai.azure.com/openai/v1',
         'ChatGPT'       => 'https://api.openai.com/v1/chat/completions',
         'Claude'        => 'https://api.anthropic.com/v1/messages',
@@ -26,7 +23,6 @@ class Orm extends BaseService
         'Mistral'       => 'https://api.mistral.ai/v1/chat/completions',
         'Cohere'        => 'https://api.cohere.com/v2/chat',
 
-        // Operational System Endpoints
         'Square'          => 'https://connect.squareup.com/v2/reports/sales',
         'OpenTable'       => 'https://api.opentable.com/v2/bookings',
         'Eventbrite'      => 'https://www.eventbriteapi.com/v3/organizations/me/events/',
@@ -76,7 +72,6 @@ class Orm extends BaseService
 
         $headers = $conditions['headers'] ?? ['Content-Type: application/json'];
 
-        // Resolve token from conditions, defined constants, or environment bootstrap
         $envConfig = function_exists('get_env') ? get_env() : [];
         $token     = $conditions['token']
                   ?? $conditions['api_key']
@@ -94,9 +89,6 @@ class Orm extends BaseService
         return $this->curlRequest($url, $method, $headers, $conditions['data'] ?? []) ?? ['error' => 'request_failed'];
     }
 
-    /**
-     * Executes requests across mapped endpoints using BaseService::curlRequest().
-     */
     public function executeParallel(array $sources): array
     {
         $results = [];
@@ -111,5 +103,3 @@ class Orm extends BaseService
         return $results;
     }
 }
-
-```
