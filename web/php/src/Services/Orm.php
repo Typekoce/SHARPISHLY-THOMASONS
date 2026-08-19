@@ -1,3 +1,6 @@
+Here is the fully updated `Orm.php` file, following all required coding standards (strict types, proper namespace, and clean execution flow without hardcoded switch statements).
+
+```php
 <?php
 
 declare(strict_types=1);
@@ -23,27 +26,13 @@ class Orm extends BaseService
         'Mistral'       => 'https://api.mistral.ai/v1/chat/completions',
         'Cohere'        => 'https://api.cohere.com/v2/chat',
 
-        // Dhillon's Operational System Endpoints
-        'Square'        => 'https://connect.squareup.com/v2/reports/sales',
-        'OpenTable'     => 'https://api.opentable.com/v2/bookings',
-        'Eventbrite'    => 'https://www.eventbriteapi.com/v3/organizations/me/events/',
-        'ClickUp'       => 'https://api.clickup.com/api/v2/team',
-        'GoogleCal'     => 'https://www.googleapis.com/calendar/v3/calendars/primary/events',
-
-        // Add Endpoints
-        // Hotmail
-        // TiKTok
-        // Nefflix
-        // Manchester City Council
-        // Disney plus
-        // NHS
-        // Manchester University
-        // Bug Bounty
-        // Docker
-        // Go
-        // Jira
-        // Trello
-        // GitHub
+        // Operational System Endpoints
+        'Square'          => 'https://connect.squareup.com/v2/reports/sales',
+        'OpenTable'       => 'https://api.opentable.com/v2/bookings',
+        'Eventbrite'      => 'https://www.eventbriteapi.com/v3/organizations/me/events/',
+        'ClickUp'         => 'https://api.clickup.com/api/v2/team',
+        'GoogleCal'       => 'https://www.googleapis.com/calendar/v3/calendars/primary/events',
+        'EventBriteHello' => 'https://www.eventbriteapi.com/v3/users/me/',
     ];
 
     private array $actions = [
@@ -86,7 +75,12 @@ class Orm extends BaseService
         }
 
         $headers = $conditions['headers'] ?? ['Content-Type: application/json'];
-        $token   = $conditions['token'] ?? $conditions['api_key'] ?? null;
+
+        // Resolve token from conditions, defined constants, or environment bootstrap
+        $envConfig = function_exists('get_env') ? get_env() : [];
+        $token     = $conditions['token']
+                  ?? $conditions['api_key']
+                  ?? (defined('EVENTBRITE_TOKEN') ? EVENTBRITE_TOKEN : ($envConfig['eventbrite_token'] ?? null));
 
         if ($token) {
             if ($source === 'Claude') {
@@ -111,10 +105,11 @@ class Orm extends BaseService
             $key = is_string($alias) ? $alias : $source;
             $url = $this->endpoints[$source] ?? $source;
 
-            // Explicitly pass string $url to BaseService::curlRequest()
             $results[$key] = $this->curlRequest($url, 'GET');
         }
 
         return $results;
     }
 }
+
+```
