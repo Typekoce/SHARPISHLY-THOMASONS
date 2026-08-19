@@ -21,6 +21,8 @@ class TestControllerTest extends TestCase
         $this->assertArrayHasKey('google_api', $data);
         $this->assertArrayHasKey('recent_work', $data);
 
+        $this->assertArrayHasKey('llm', $data); // Added missing assertion
+
         $this->assertEquals('TestController', $data['class']);
         $this->assertIsArray($data['recent_work']['controllers']);
         $this->assertIsArray($data['recent_work']['documentation']);
