@@ -1328,7 +1328,8 @@ const HealthController = {
             'azure_api',
             'aws_api',
             'recent_work',
-            'orm'
+            'orm',
+            'llm'
         ];
 
         const placeholderItems = expectedKeys.map(key => 
@@ -1344,7 +1345,7 @@ const HealthController = {
         App.spinner();
 
         try {
-            const res = await fetch(App.url('test/test'));
+            const res = await fetch(App.url('test/health'));
             console.log(`HealthController.testSuite: Response received with HTTP status ${res.status}`);
 
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
