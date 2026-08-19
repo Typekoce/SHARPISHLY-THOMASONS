@@ -2,6 +2,15 @@ This is the definitive update to the **CONTEXT.md**. I have stripped the "God Ob
 
 ---
 
+### 🛠️ NEW ENVIRONMENT PROVISIONING & DEPLOYMENT
+
+When provisioning the project on a new workstation or server environment, observe the following rules:
+
+1. **Dynamic Path Resolution:** Never hardcode absolute user paths (e.g., `/home/username/`) in shell scripts or web configurations. All scripts (`14_post_install.sh`) must dynamically resolve `$ROOT_DIR` using relative path expansion (`dirname`).
+2. **Directory Traversal & Permissions:** Nginx requires execute (`755`) permissions on all parent directories up to the root folder. Standard web root files must be assigned `www-data` ownership with `755` (directories) and `644` (files). Storage directories require sticky/group write permissions (`2775`).
+3. **Loopback Endpoint Resolution:** The `BaseController::curlRequest()` helper automatically bypasses SSL verification for local loopbacks (`127.0.0.1`, `localhost`, `192.168.x.x`) and follows redirects. Ensure local Nginx site configs resolve to standard loopback IPs.
+4. **Environment Bootstrapping:** `env.php` must be loaded prior to `bootstrap.php`. Gatekeeper execution can be toggled inside `initializeServices()` for local dev isolation.
+
 # PHP, Js, Python, Guidelines: 
   1. Do not remove critical functionality.
   2. Do not over-engineer solutions.
