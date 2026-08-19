@@ -61,6 +61,16 @@ class TestController extends BaseController
 
         $data = [
             'server'            => $_SERVER,
+            'mysql' => [
+                'process' => $this->safeShellExec('pgrep -fa "mysqld|mariadbd"') ? 'running' : 'stopped',
+                'app'     => (function() {
+                    try {
+                        return $this->db->query("SELECT 1") ? 'connected' : 'error';
+                    } catch (\Throwable $e) {
+                        return 'disconnected';
+                    }
+                })(),
+            ],
             'status'            => ($okCount === count($subServices)) ? 'healthy' : 'degraded',
             'status_detail'     => [
                 'ok_count'      => $okCount,
