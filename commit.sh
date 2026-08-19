@@ -1,49 +1,89 @@
-#!/bin/bash
-set -euo pipefail
+#!/usr/bin/env bash
 
-# 1. Validate argument first before touching files
-if [ -z "${1:-}" ]; then
-    echo "❌ Error: No commit message provided!"
-    exit 1
+set -e
+
+DRY_RUN=0
+if [[ "${1:-}" == "--dry-run" || "${1:-}" == "-n" ]]; then
+    DRY_RUN=1
+    echo "=== DRY RUN MODE (No commits will be made) ==="
 fi
 
-ignore="$HOME/Documents/SHARPISHLY-IGNORE"
-home="$HOME/Documents/SHARPISHLY-THOMASONS"
-line="----------------------------"
-target_file="${TARGET_FILE:-env.php}"
+# Early exit if nothing to commit
+if [ -z "$(git status --porcelain)" ]; then
+    echo "No changes to commit."
+    exit 0
+fi
 
-# Ensure we operate from the repository root
-cd "$home" || exit 1
+# Map target directories directly to their commit scopes
+declare -A TARGETS=(
+    ["web/frontend"]="frontend"
+    ["web/php/src/Controllers"]="controllers"
+    ["web/php/src/Models"]="models"
+    ["web/php/src/Services"]="services"
+    ["web/php/src/Security"]="security"
+    ["web/php/src"]="php-core"
+    ["web/php"]="web-php"
+    ["web"]="web"
+    ["pymvc"]="pymvc"
+    ["pymvc-v1"]="pymvc-v1"
+    ["llm"]="llm"
+    ["infra"]="infra"
+    ["installation"]="installation"
+    ["diagnostics"]="diagnostics"
+    ["system"]="system"
+    ["docs"]="docs"
+    ["tests"]="tests"
+    [".config"]="config"
+    [".github"]="ci"
+)
 
-mkdir -p "$ignore"
+# Explicit execution order to stage specific subdirectories before parent paths
+ORDER=(
+    "web/frontend"
+    "web/php/src/Controllers"
+    "web/php/src/Models"
+    "web/php/src/Services"
+    "web/php/src/Security"
+    "web/php/src"
+    "web/php"
+    "web"
+    "pymvc"
+    "pymvc-v1"
+    "llm"
+    "infra"
+    "installation"
+    "diagnostics"
+    "system"
+    "docs"
+    "tests"
+    ".config"
+    ".github"
+)
 
-# 2. Guarantee file restoration even if git commands fail
-cleanup() {
-    if [ -f "$ignore/$target_file" ]; then
-        echo "$line"
-        echo "Moving $target_file to $home"
-        mv "$ignore/$target_file" "$home/"
+run_git() {
+    if [ "$DRY_RUN" -eq 1 ]; then
+        echo "  [dry-run] git $*"
+    else
+        git "$@"
     fi
 }
-trap cleanup EXIT
 
-# 3. Quarantine target file if present
-if [ -f "$target_file" ]; then
-    echo "$line"
-    echo "Moving $target_file to ignore folder"
-    mv "$target_file" "$ignore/"
+# Loop through each mapped directory and commit changes atomically
+for dir in "${ORDER[@]}"; do
+    scope="${TARGETS[$dir]}"
+    
+    if [ -d "$dir" ] && [ -n "$(git status --porcelain "$dir")" ]; then
+        echo "--> [$scope] Committing changes in $dir..."
+        run_git add "$dir"
+        run_git commit -m "chore($scope): update $scope files"
+    fi
+done
+
+# Catch-all for remaining top-level root files, explicitly ignoring storage
+if [ -n "$(git status --porcelain -- ':!storage')" ]; then
+    echo "--> [root] Committing remaining project root files (excluding storage/)..."
+    run_git add . ':!storage'
+    run_git commit -m "chore(root): update project configuration and root files"
 fi
 
-#
-git status
-
-# 4. Stage changes
-git add .
-
-# 5. Commit only if staged changes exist to avoid set -e failure
-if ! git diff --cached --quiet; then
-    git commit -m "$1"
-    git push
-else
-    echo "⚠️  No changes to commit."
-fi
+echo "Done! All project directories processed."
