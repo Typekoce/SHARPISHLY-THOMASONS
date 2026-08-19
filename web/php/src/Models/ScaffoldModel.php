@@ -187,6 +187,53 @@ class ScaffoldModel extends BaseModel
                 'updated_at'    => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
             ],
 
+            'oauth_tokens' => [
+                'id'            => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'user_id'       => 'INT NOT NULL',
+                'provider'      => 'VARCHAR(50) NOT NULL',
+                'access_token'  => 'TEXT NOT NULL',
+                'refresh_token' => 'TEXT NULL',
+                'scopes'        => 'TEXT NULL',
+                'expires_at'    => 'TIMESTAMP NULL DEFAULT NULL',
+                'created_at'    => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+                'updated_at'    => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
+            ],
+
+            'hotmail_tokens' => [
+                'id'            => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'user_id'       => 'INT NOT NULL',
+                'access_token'  => 'TEXT NOT NULL',
+                'refresh_token' => 'TEXT NULL',
+                'expires_at'    => 'TIMESTAMP NULL DEFAULT NULL',
+                'created_at'    => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+            ],
+
+            'aws_tokens' => [
+                'id'            => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'user_id'       => 'INT NOT NULL',
+                'access_key'    => 'VARCHAR(255) NOT NULL',
+                'secret_key'    => 'TEXT NOT NULL',
+                'region'        => 'VARCHAR(50) DEFAULT "eu-west-1"',
+                'created_at'    => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+            ],
+
+            'indeed_tokens' => [
+                'id'            => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'user_id'       => 'INT NOT NULL',
+                'access_token'  => 'TEXT NOT NULL',
+                'expires_at'    => 'TIMESTAMP NULL DEFAULT NULL',
+                'created_at'    => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+            ],
+
+            'pentest_scans' => [
+                'id'            => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'target'        => 'VARCHAR(255) NOT NULL',
+                'scan_type'     => 'VARCHAR(100) DEFAULT "diagnostics"',
+                'results'       => 'LONGTEXT NULL DEFAULT NULL',
+                'status'        => 'VARCHAR(50) DEFAULT "pending"',
+                'created_at'    => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+            ],
+
             'terminal' => [
                 'id'         => 'INT AUTO_INCREMENT PRIMARY KEY',
                 'filename'   => 'VARCHAR(225)',
