@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Auto-generated consolidated installation script
-# Generated on Thu 20 Aug 16:18:47 BST 2026
+# Generated on Thu 20 Aug 16:19:47 BST 2026
 
 set -euo pipefail
 
