@@ -69,6 +69,10 @@ class TerminalModel extends BaseModel {
 
             // HealthController
             'health-controller' => 'curl -i http://localhost/php/health',
+
+            // @TODO: Remember to add actual digital ocean IP
+            // Digital Ocean Pro-visoion
+            'digital-ocean-provision'      => 'ssh -o BatchMode=yes maxie@192.168.0.90 "sudo apt-get update && sudo apt-get install -y software-properties-common && sudo add-apt-repository ppa:ondrej/php -y && sudo apt-get update"',
         );
 
         if (isset($terminal[$command])) {
