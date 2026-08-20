@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Auto-generated consolidated installation script
-# Generated on Fri 24 Jul 14:19:51 BST 2026
+# Generated on Thu 20 Aug 16:14:33 BST 2026
 
 set -euo pipefail
 
@@ -33,10 +33,19 @@ MYSQL_ROOT_PASS=""
 DOMAIN="${DOMAIN:-sharpishly.dev}"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WEB_ROOT="${ROOT_DIR}/web/php/src"
-PHP_VERSION="8.3"
 STORAGE_PATH="${ROOT_DIR}/storage"
 VENV="${ROOT_DIR}/venv"
 CURRENT_USER="$(whoami)"
+
+# Shared Runtime Environment File
+RUNTIME_ENV="/run/myapp-runtime.env"
+
+# Array definition for CLI utilities
+CLI_TOOLS=(
+  "tmux" "vim" "zsh" "git" "htop" "curl" "wget" 
+  "pass" "jq" "ripgrep" "fzf" "mtr" "nmap" "tree" 
+  "mariadb-client" "sqlmap"
+)
 # --- End of 2_config.sh ---
 
 # --- Start of 3_parse_arguements.sh ---
@@ -57,18 +66,104 @@ done
 # --- End of 3_parse_arguements.sh ---
 
 # --- Start of 4_system_dependencies.sh ---
-# ===================== SYSTEM DEPENDENCIES =====================
-echo -e "\n=== Installing System Dependencies ==="
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=2_config.sh
+source "${SCRIPT_DIR}/2_config.sh"
+
+echo -e "\n=== [1/3] Pre-Flight OS Validation ==="
+if [[ -r /etc/os-release ]]; then
+    . /etc/os-release
+else
+    echo "ERROR: Cannot read /etc/os-release." >&2
+    exit 1
+fi
+
+case "${ID:-}:${VERSION_ID:-}" in
+    ubuntu:25.04)
+        echo "ERROR: Ubuntu 25.04 reached End-of-Life on January 15, 2026. Deployment refused." >&2
+        exit 1
+        ;;
+    ubuntu:22.04|ubuntu:24.04|debian:12)
+        echo "Platform supported: ${PRETTY_NAME:-$ID $VERSION_ID}"
+        ;;
+    *)
+        echo "ERROR: Unsupported platform: ${PRETTY_NAME:-$ID $VERSION_ID}" >&2
+        exit 1
+        ;;
+esac
+
+echo -e "\n=== [2/3] Installing System Dependencies ==="
 export DEBIAN_FRONTEND=noninteractive
-CLI_TOOLS=("tmux" "vim" "zsh" "git" "htop" "curl" "wget" "pass" "jq" "ripgrep" "fzf" "mtr" "nmap" "tree" "mariadb-client" "sqlmap")
 
 sudo apt-get update -qq
-sudo apt-get install -yq \
-  ca-certificates apt-transport-https lsb-release gnupg curl nginx mariadb-server default-jdk \
-  php${PHP_VERSION}-fpm php${PHP_VERSION}-mysql php${PHP_VERSION}-curl php${PHP_VERSION}-mbstring php${PHP_VERSION}-xml php${PHP_VERSION}-zip \
-  python3-venv python3-pip "${CLI_TOOLS[@]}"
 
-sudo systemctl enable --now "php${PHP_VERSION}-fpm"
+packages=(
+    ca-certificates
+    apt-transport-https
+    lsb-release
+    gnupg
+    curl
+    nginx
+    mariadb-server
+    default-jdk
+    php-fpm
+    php-mysql
+    php-curl
+    php-mbstring
+    php-xml
+    php-zip
+    python3-venv
+    python3-pip
+)
+
+sudo apt-get install -yq "${packages[@]}" "${CLI_TOOLS[@]}"
+
+echo -e "\n=== [3/3] Service & Socket Discovery ==="
+# Discover FPM unit name
+PHP_FPM_SERVICE="$(
+    systemctl list-unit-files \
+        --type=service \
+        --no-legend \
+        'php*-fpm.service' |
+    awk 'NR == 1 { print $1 }'
+)"
+
+if [[ -z "${PHP_FPM_SERVICE}" ]]; then
+    echo "ERROR: No PHP-FPM service was found after package installation." >&2
+    exit 1
+fi
+
+sudo systemctl enable --now "${PHP_FPM_SERVICE}"
+
+# Poll briefly for the UNIX socket to be created
+PHP_FPM_SOCKET=""
+for _ in {1..20}; do
+    PHP_FPM_SOCKET="$(
+        find /run/php -maxdepth 1 -type s \
+            -name 'php*-fpm.sock' \
+            -print -quit 2>/dev/null || true
+    )"
+
+    [[ -n "${PHP_FPM_SOCKET}" ]] && break
+    sleep 1
+done
+
+if [[ -z "${PHP_FPM_SOCKET}" ]]; then
+    echo "ERROR: PHP-FPM socket was not created under /run/php." >&2
+    sudo systemctl status "${PHP_FPM_SERVICE}" --no-pager || true
+    exit 1
+fi
+
+# Persist state securely
+sudo install -m 600 /dev/null "${RUNTIME_ENV}"
+sudo tee "${RUNTIME_ENV}" >/dev/null <<EOF
+PHP_FPM_SERVICE=$(printf '%q' "${PHP_FPM_SERVICE}")
+PHP_FPM_SOCKET=$(printf '%q' "${PHP_FPM_SOCKET}")
+EOF
+
+echo "Discovered PHP-FPM Service : ${PHP_FPM_SERVICE}"
+echo "Discovered FastCGI Socket : ${PHP_FPM_SOCKET}"
 # --- End of 4_system_dependencies.sh ---
 
 # --- Start of 5_mariadb.sh ---
@@ -108,12 +203,12 @@ fi
 # --- End of 6_env_php.sh ---
 
 # --- Start of 7_nginx.sh ---
-
 # ===================== NGINX SITE CONFIG & SSL (DOMAIN-SPECIFIC) =====================
 NGINX_AVAIL="/etc/nginx/sites-available/${DOMAIN}"
 NGINX_ENABLE="/etc/nginx/sites-enabled/${DOMAIN}"
 SSL_CERT="/etc/nginx/ssl/${DOMAIN}.crt"
 SSL_KEY="/etc/nginx/ssl/${DOMAIN}.key"
+FRONTEND_ROOT="${ROOT_DIR}/web/frontend"
 
 # Remove default site if still enabled
 if [ -f "/etc/nginx/sites-available/default" ] || [ -L "/etc/nginx/sites-enabled/default" ]; then
@@ -135,20 +230,19 @@ if [ ! -f "$SSL_CERT" ] || [ ! -f "$SSL_KEY" ]; then
     sudo chmod 644 "$SSL_CERT"
 fi
 
-if [ ! -f "$NGINX_AVAIL" ]; then
-    echo "Creating Nginx configuration for ${DOMAIN}..."
-    sudo cat <<EOF | sudo tee "$NGINX_AVAIL" > /dev/null
+echo "Creating Nginx configuration for ${DOMAIN}..."
+sudo cat <<EOF | sudo tee "$NGINX_AVAIL" > /dev/null
 server {
     listen 80;
     listen [::]:80;
-    server_name ${DOMAIN};
+    server_name ${DOMAIN} localhost 127.0.0.1;
     return 301 https://\$host\$request_uri;
 }
 
 server {
     listen 443 ssl;
     listen [::]:443 ssl;
-    server_name ${DOMAIN};
+    server_name ${DOMAIN} localhost 127.0.0.1;
 
     client_max_body_size 64M;
 
@@ -157,27 +251,46 @@ server {
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_ciphers HIGH:!aNULL:!MD5;
 
+    # Primary PHP root
     root ${WEB_ROOT};
     index index.php index.html;
 
+    # 1. Root / serves index.html from frontend
+    location = / {
+        root ${FRONTEND_ROOT};
+        try_files /index.html =404;
+    }
+
+    # 2. Static assets (CSS, JS, images, fonts, etc.)
+    location ~* \.(css|js|ico|png|jpg|jpeg|svg|woff|woff2|ttf|eot)\$ {
+        root ${FRONTEND_ROOT};
+        try_files \$uri =404;
+    }
+
+    # 3. SPA templates/views under /views/
+    location /views/ {
+        root ${FRONTEND_ROOT};
+        try_files \$uri =404;
+    }
+
+    # 4. General fallback -> PHP front controller
     location / {
         try_files \$uri \$uri/ /index.php?\$query_string;
     }
 
+    # 5. PHP-FPM execution engine
     location ~ \.php\$ {
         include fastcgi_params;
         fastcgi_pass unix:/run/php/php${PHP_VERSION}-fpm.sock;
         fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
+        fastcgi_param SCRIPT_NAME \$fastcgi_script_name;
+        fastcgi_param REQUEST_URI \$request_uri;
     }
 }
 EOF
-    sudo ln -sf "$NGINX_AVAIL" "$NGINX_ENABLE"
-    sudo nginx -t && sudo systemctl reload nginx
-else
-    echo "Skipping Nginx config creation (site '${DOMAIN}' already exists)."
-fi
 
-
+sudo ln -sf "$NGINX_AVAIL" "$NGINX_ENABLE"
+sudo nginx -t && sudo systemctl reload nginx
 # --- End of 7_nginx.sh ---
 
 # --- Start of 8_web_storage_permissions.sh ---
@@ -399,3 +512,38 @@ echo "  - Certificate: $SSL_DIR/dev.crt"
 echo "  - Root CA:     $SSL_DIR/rootCA.crt"
 
 # --- End of 15_local_ssl_setup.sh ---
+
+# --- Start of 15_post_install.sh ---
+# Dynamically resolve root and parent directories
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+WEB_ROOT="${ROOT_DIR}/web/php/src"
+STORAGE_PATH="${ROOT_DIR}/storage"
+PARENT_DIR="$(dirname "$ROOT_DIR")"
+HOME_DIR="$(dirname "$PARENT_DIR")"
+CURRENT_USER="$(whoami)"
+
+echo "=== Applying Parent Directory Traversal Permissions ==="
+chmod 755 "$HOME_DIR"
+chmod 755 "$PARENT_DIR"
+chmod 755 "$ROOT_DIR"
+
+echo "=== Setting Web Root Ownership & Modes (${WEB_ROOT}) ==="
+if [ -d "$WEB_ROOT" ]; then
+    sudo chown -R "${CURRENT_USER}:www-data" "$WEB_ROOT"
+    find "$WEB_ROOT" -type d -exec chmod 755 {} \;
+    find "$WEB_ROOT" -type f -exec chmod 644 {} \;
+else
+    echo "Warning: Web root directory does not exist at ${WEB_ROOT}"
+fi
+
+echo "=== Setting Storage Directory Permissions (${STORAGE_PATH}) ==="
+mkdir -p "${STORAGE_PATH}"/{logs,vectors,uploads/queue/{ingest,process,archive,fail}}
+sudo chown -R "${CURRENT_USER}:www-data" "${STORAGE_PATH}"
+sudo chmod -R 2775 "${STORAGE_PATH}"
+
+echo "=== Verifying Nginx & Reloading Service ==="
+sudo nginx -t
+sudo systemctl reload nginx
+
+echo "Post-install setup complete."
+# --- End of 15_post_install.sh ---
