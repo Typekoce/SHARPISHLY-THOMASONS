@@ -37,6 +37,11 @@ $aliases = [
     'agent-execute'         => ['AgentExecute','start']
     
     // 'chat-stream'        => ['Chat', 'stream'],
+
+    // Dhillon's Brewery Venue Pipeline Routes
+    'dhillons-query'   => ['Dhillons', 'query'],
+    'dhillons-agent'   => ['Dhillons', 'createAgent'],
+    'dhillons-direct'  => ['Dhillons', 'direct'],
 ];
 
 // 3. Parse the URI (CLI-aware fallback)
