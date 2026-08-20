@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Auto-generated consolidated installation script
-# Generated on Thu 20 Aug 16:14:33 BST 2026
+# Generated on Thu 20 Aug 16:18:47 BST 2026
 
 set -euo pipefail
 
@@ -69,7 +69,7 @@ done
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=2_config.sh
-source "${SCRIPT_DIR}/2_config.sh"
+source "${SCRIPT_DIR}/installation/2_config.sh"
 
 echo -e "\n=== [1/3] Pre-Flight OS Validation ==="
 if [[ -r /etc/os-release ]]; then
