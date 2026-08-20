@@ -9,10 +9,36 @@ use Throwable;
 
 class DhillonsController extends BaseController
 {
+    private const ALLOWED_SOURCES = [
+        'Square',
+        'OpenTable',
+        'Eventbrite',
+        'ClickUp',
+        'GoogleCal',
+    ];
+
+    /**
+     * Map lowercase key aliases to exact gateway casing.
+     */
+    private function normalizeSource(string $source): string
+    {
+        $map = [
+            'square'     => 'Square',
+            'opentable'  => 'OpenTable',
+            'eventbrite' => 'Eventbrite',
+            'clickup'    => 'ClickUp',
+            'googlecal'  => 'GoogleCal',
+            'google'     => 'GoogleCal',
+        ];
+
+        $key = strtolower(trim($source));
+        return $map[$key] ?? ucfirst($key);
+    }
+
     /**
      * Register an operational background agent.
      */
-    public function createAgent(string $instruction = ''): ?array
+    public function createAgent(string $instruction = ''): array
     {
         $instruction = $instruction ?: (string) ($this->request('instruction') ?? 'Automate venue operational sync');
 
@@ -30,10 +56,21 @@ class DhillonsController extends BaseController
                 'created_at'  => $this->timestamp(),
             ]);
 
-            return $id ? ['id' => $id, 'agent_name' => $agentName, 'status' => 'pending'] : null;
+            if (!$id) {
+                return ['status' => 'error', 'message' => 'Failed to persist agent'];
+            }
+
+            return [
+                'status'     => 'pending',
+                'id'         => $id,
+                'agent_name' => $agentName,
+            ];
         } catch (Throwable $e) {
             $this->logger->error('Agent creation failed: ' . $e->getMessage());
-            return null;
+            return [
+                'status'  => 'error',
+                'message' => $e->getMessage(),
+            ];
         }
     }
 
@@ -47,19 +84,35 @@ class DhillonsController extends BaseController
             'Automate multi-venue operational sync: Compare Square POS sales, check OpenTable bookings, and sync ClickUp tasks.'
         );
 
+        $requestedSources = $this->request('sources');
+
         try {
             $conditions = $this->prompt->promptToConditions($promptText);
 
-            // Parallel dispatch via Orm endpoint keys
-            $aggregatedData = $this->orm->executeParallel([
+            $allTargets = [
                 'square'     => 'Square',
                 'opentable'  => 'OpenTable',
                 'eventbrite' => 'Eventbrite',
                 'clickup'    => 'ClickUp',
                 'google'     => 'GoogleCal',
-            ]);
+            ];
 
-            // Synthesize via Ollama
+            $targets = $allTargets;
+            if (is_array($requestedSources) && !empty($requestedSources)) {
+                $validKeys = array_intersect($requestedSources, array_keys($allTargets));
+                $targets   = array_intersect_key($allTargets, array_flip($validKeys));
+
+                if (empty($targets)) {
+                    $this->json([
+                        'status'  => 'error',
+                        'message' => 'No valid sources requested.',
+                    ], 400);
+                    return;
+                }
+            }
+
+            $aggregatedData = $this->orm->executeParallel($targets);
+
             $synthesis = $this->orm->execute([
                 'source' => 'Ollama',
                 'action' => 'create',
@@ -69,7 +122,6 @@ class DhillonsController extends BaseController
                 ],
             ]);
 
-            // Save history
             $this->db->save('queries', [
                 'query'      => $promptText,
                 'response'   => json_encode($synthesis, JSON_UNESCAPED_SLASHES),
@@ -88,6 +140,48 @@ class DhillonsController extends BaseController
         } catch (Throwable $e) {
             $this->logger->error("Dhillon's Gateway query failed: " . $e->getMessage());
             $this->json(['status' => 'error', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Direct endpoint helper for targeted sub-system checks.
+     */
+    public function direct(string $source = ''): void
+    {
+        $sourceName = $this->normalizeSource($source);
+
+        if (!in_array($sourceName, self::ALLOWED_SOURCES, true)) {
+            $this->json([
+                'status'  => 'error',
+                'message' => "Unsupported source: {$source}",
+            ], 400);
+            return;
+        }
+
+        try {
+            $token  = $this->request('token');
+            $params = $this->request('params');
+
+            $conditions = [
+                'source' => $sourceName,
+                'method' => 'GET',
+                'params' => is_array($params) ? $params : [],
+            ];
+
+            if ($token) {
+                $conditions['token'] = $token;
+            }
+
+            $response = $this->orm->execute($conditions);
+
+            $this->json([
+                'status' => 'success',
+                'source' => $sourceName,
+                'data'   => $response,
+            ]);
+        } catch (Throwable $e) {
+            $this->logger->error("Dhillons Direct Endpoint Error [{$sourceName}]: " . $e->getMessage());
+            $this->json(['status' => 'error', 'message' => $e->getMessage()], 500);
         }
     }
 }
