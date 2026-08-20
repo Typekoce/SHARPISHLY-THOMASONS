@@ -227,3 +227,12 @@ class TerminalController extends BaseController
   - **Namespace Registration:** Register the `Microsoft.CloudShell` resource provider on subscription `09e3bedf-2add-4a8a-917e-27e642ba8660` via `az provider register --namespace Microsoft.CloudShell`.
   - **Node Runtime:** Deploy using Node.js version 24 (`--runtime-version 24`), as Node 20 reached EOL on 2026-04-30.
   - **Deployment Target:** Finalize deployment of `sharpishly-azure-hello` endpoint and map URL inside `App/Services/Orm.php` for integration testing.
+
+  # Add close button for App.dBug()
+  *
+  ``
+
+<!-- Debug Overlay Target -->
+<div id="debug-output" style="position: fixed; bottom: 0; left: 0; right: 0; max-height: 40vh; overflow-y: auto; background: #111; padding: 8px; z-index: 9999; font-family: monospace; font-size: 11px; color: #4ade80;"></div>
+
+```
