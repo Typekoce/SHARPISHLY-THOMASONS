@@ -1,209 +1,170 @@
-Here's a much more **readable, professional, and user-friendly** `README.md` version for your project:
+That is a sharp, crisp refinement. The architectural narrative is locked in, and the interview pitch hits every single tent-pole with zero fluff.
+
+Here is the complete, single-file **README.md** incorporating the ASCII flow diagram and your tightened specs, fully formatted and ready to drop into the repository root:
+
+```markdown
+# SHARPISHLY-THOMASONS V3: NEURAL PIPELINE
+
+A high-performance, custom-built Model-View-Controller (MVC) engine pairing a lightweight, zero-dependency PHP backend with a Python/LangChain cognition layer for local vector processing and RAG inference.
 
 ---
 
-# 🧬 Temporal GraphRAG Knowledge Organism
+## 📐 System Flow Diagram
 
-A production-grade Retrieval-Augmented Generation (RAG) system that intelligently handles **document versions** and **temporal evolution** using a hybrid architecture:
+```text
+  [ Client SPA ] (Vanilla JS / Pure DOM)
+        │
+        │ Synchronous HTTP / JSON
+        ▼
+  [ PHP MVC Brain ] ──── (PDO / Prepared Statements) ────► [ MariaDB 10.11 ]
+   - index.php / bootstrap.php
+   - BaseController & Orm Service
+   - Storage Mapping ($this->loc)
+        │
+        │ HTTP / REST API
+        ▼
+  [ Python Cognition Layer ] ──► [ Ollama / Qdrant / LangChain ]
 
-- **PHP** – System of Record (web backend)
-- **Python + LangGraph** – The intelligent "Brain"
-- **Neo4j** – Temporal Knowledge Graph
-- **MariaDB** – Structured metadata and business data
-
----
-
-## 📋 Overview
-
-This system solves the common "Version Hell" problem in RAG applications. Instead of blindly retrieving chunks, it understands:
-- Which document version is the **latest/current**
-- How documents **supersede** older ones over time
-- User intent (Fact, Summary, or Action)
-- Contradictions via an **Antagonist Agent**
-
-The result is a reliable, self-correcting Knowledge Organism that stays accurate even as your documents evolve.
+```
 
 ---
 
-## 🏗️ Project Structure
+## 📐 Key Architectural Tent-Poles
+
+* **Pure Native MVC:** Zero Composer or NPM dependencies locally. Runs entirely on native Vanilla JS and custom PSR-style PHP autoloading.
+* **Direct Service Injection (Post-Registry):** Eliminates single-point-of-failure "God Objects." Services (`Logger`, `Orm`, `Location`) are explicitly instantiated or accessed via clean singletons.
+* **Decoupled Cognition Layer:** Synchronous, thin PHP web controllers offload long-running compute, vector embeddings, and RAG execution to local Python services.
+* **Strict Prepared Queries:** Raw SQL is strictly prohibited. All data access is routed through models (`App\Models`) and the `Orm` abstraction using PDO prepared statements.
+
+---
+
+## 📁 System Architecture & Directory Map
+
+```text
+├── web/
+│   ├── frontend/             # Vanilla JS SPA (The Skin)
+│   │   ├── index.html
+│   │   ├── script.js
+│   │   └── styles.css
+│   └── php/                  # Framework Engine (The Brain)
+│       └── src/
+│           ├── index.php     # Entry point & route dispatch
+│           ├── bootstrap.php # Env init, PSR-4 autoloader, global handlers
+│           ├── Controllers/  # Action controllers
+│           ├── Models/       # DB entities & prepared PDO wrappers
+│           └── Services/     # Core infra (Db, Logger, Orm, Location, ...)
+├── ai/                       # Python + LangChain pipelines (Cognition)
+├── infra/                    # Nginx, MariaDB, PHP-FPM provisioning
+└── storage/                  # Durable storage layer
+    ├── uploads/              # Ingestion staging buffer
+    ├── temp/                 # Intermediate pipeline artifacts
+    └── logs/                 # Runtime application logs
+
+```
+
+---
+
+## 🛠️ Core Services & Technical Breakdown
+
+### Routing & Bootstrap
+
+* **`web/php/src/bootstrap.php`**: Loads environment variables (`env.php`), registers the PSR-4 autoloader, sets global exception/error handlers, and bootstraps core security and logging services.
+* **`web/php/src/index.php`**: Parses incoming request URIs, maps route slugs to target controller classes, and safely dispatches methods with dynamic parameters.
+
+### Controller Hierarchy
+
+All action controllers extend `App\Controllers\BaseController`:
+
+* **`BaseController`**: Exposes core utilities (`Logger`, `Location`, `Session`, `Orm`, `Db`) and helper methods (`json()`, `curlRequest()`, `getNeuralStatus()`).
+* **`AgentExecuteController`**: Executes queued agent jobs via `Orm::execute()` and persists execution traces for auditing.
+* **`JobController`**: Handles CSV and document ingestion while coordinating file handshakes and vector chunking.
+* **`PentestDiagnosticsController`**: Aggregates threat evaluations and correlates security jobs with runtime logs.
+
+---
+
+## 🚀 Environment Setup & Provisioning
+
+### 1. Prerequisites
+
+* PHP 8.2+ with `pdo_mysql`
+* Nginx Web Server
+* MariaDB 10.11+
+* Python 3.10+
+* Ollama (serving at least `llama3:latest` and `nomic-embed-text:latest`)
+
+### 2. Configuration (`env.php`)
+
+Create an `env.php` file in the project root prior to execution:
+
+```php
+<?php
+define('DB_HOST', '127.0.0.1');
+define('DB_NAME', 'sharpishly_db');
+define('DB_USER', 'sharpishly_user');
+define('DB_PASS', 'secure_password');
+define('APP_DEV', 'development');
+define('DEBUG', true);
+
+```
+
+### 3. File & Directory Permissions
+
+Align ownership and path permissions with the web server execution user (`www-data`):
 
 ```bash
-.
-├── docker-compose.yml
-├── .env
-├── CONTEXT.md
-├── bin/
-├── web/                 # PHP Backend (System of Record)
-├── ai-engine/           # Python Neural Layer (The Brain)
-│   ├── app.py
-│   ├── organism.py
-│   ├── processor.py
-│   └── nodes/
-├── database/
-├── dashboard/           # Streamlit visualization
-└── README.md
+# Storage directory permissions
+sudo chown -R www-data:www-data /var/www/html/storage
+sudo chmod -R 2775 /var/www/html/storage
+
+# Web root permissions
+find /var/www/html/web -type d -exec chmod 755 {} +
+find /var/www/html/web -type f -exec chmod 644 {} +
+
 ```
 
 ---
 
-## 🚀 Quick Start
+## 💻 API & Usage Examples
 
-### 1. Environment Setup
+### Executing Queries via `Orm.php`
 
-Copy and configure the environment variables:
+Controllers never write raw SQL directly; they route queries through `Orm::execute()`:
 
-```bash
-cp .env.example .env
-```
+```php
+namespace App\Controllers;
 
-Edit `.env` with your credentials (API keys, database passwords, etc.).
+use Throwable;
 
-### 2. Start All Services
+class QueryExampleController extends BaseController
+{
+    public function fetch(string $id = ''): void
+    {
+        try {
+            $conditions = [
+                'source' => 'UserDataStore',
+                'method' => 'GET',
+                'data'   => ['id' => $id]
+            ];
 
-```bash
-docker compose up --build -d
-```
+            $response = $this->orm->execute($conditions);
+            $this->json(['status' => 'success', 'data' =>$response]);
+        } catch (Throwable $e) {$this->logger->error("Query Execution Failed: " . $e->getMessage());
+            $this->json(['status' => 'error', 'message' =>$e->getMessage()], 500);
+        }
+    }
+}
 
-Services will be available at:
-- **PHP App**: http://localhost:8080
-- **AI Engine API**: http://localhost:8000
-- **Dashboard**: http://localhost:8501
-- **Neo4j Browser**: http://localhost:7474
-
-### 3. Ingest Documents
-
-Use the ingestion endpoint or PHP upload interface to add documents. The system will automatically:
-- Chunk the documents
-- Generate embeddings
-- Create temporal relationships (`SUPERSEDES` edges)
-- Store metadata in MariaDB and the graph in Neo4j
-
-### 4. Ask Questions
-
-You can query the system via:
-- The PHP frontend
-- Direct API call to `/query`
-- The Streamlit dashboard
-
----
-
-## 🔧 Core Components
-
-### Knowledge Graph (Neo4j)
-
-The heart of the system. It tracks document versions and their relationships using `SUPERSEDES` edges.
-
-**Example: Finding the latest version of a document**
-
-```python
-from neo4j import GraphDatabase
-import os
-
-class KnowledgeRetriever:
-    def __init__(self):
-        self.driver = GraphDatabase.driver(
-            os.getenv("NEO4J_URI", "bolt://neo4j:7687"),
-            auth=(
-                os.getenv("NEO4J_USER", "neo4j"),
-                os.getenv("NEO4J_PASSWORD")
-            )
-        )
-
-    def get_latest_version(self, doc_id: str):
-        """
-        Returns the most recent version of a document by following the graph.
-        Only returns chunks that are not superseded by any newer version.
-        """
-        query = """
-        MATCH (c:Chunk {document_id: $doc_id})
-        WHERE NOT (c)<-[:SUPERSEDES]-()
-        RETURN c.content AS content, 
-               c.valid_from AS valid_from,
-               c.version_id AS version_id,
-               c.llm_note AS note
-        """
-
-        with self.driver.session() as session:
-            result = session.run(query, doc_id=doc_id)
-            return result.data()
-
-    def close(self):
-        """Close the Neo4j driver connection."""
-        self.driver.close()
-```
-
-**Usage example:**
-
-```python
-retriever = KnowledgeRetriever()
-latest = retriever.get_latest_version("contract_2026_v3")
-print(latest)
-retriever.close()
 ```
 
 ---
 
-## ✨ Key Features
+## 🔒 Code Conventions & Design Rules
 
-- **Temporal Awareness** — Automatically tracks document versions and superseding relationships
-- **Intent-Based Retrieval** — Routes queries to Fact, Summary, or Action vectors
-- **Antagonist Agent** — Actively tries to find contradictions and triggers re-retrieval when needed
-- **Self-Correcting LangGraph** — Loops until the context is reliable
-- **Multi-Representation** — Stores Fact / Summary / Action embeddings per chunk
-- **Full Traceability** — Every answer includes temporal provenance and antagonist feedback
+1. **Inheritance:** All controllers must extend `App\Controllers\BaseController`. All models must extend `App\Models\BaseModel`.
+2. **Path Resolution:** Never hardcode paths. Dynamic paths must be resolved via `$this->loc->storage()`, `$this->location`, or `PROJECT_ROOT`.
+3. **DOM Construction:** The Vanilla JS frontend uses `document.createElement` and dataset attributes exclusively—no `innerHTML` string concatenation.
+4. **No Raw SQL:** All database interaction occurs strictly through `App\Models` or the `Orm` abstraction using PDO prepared statements.
 
----
-
-## 📊 Monitoring & Visualization
-
-Visit the **Dashboard** at `http://localhost:8501` to:
-- Visualize the knowledge graph and `SUPERSEDES` relationships
-- See live ingestion status
-- Test queries with full transparency
-
----
-
-## 🛠️ Development
-
-### Rebuilding Services
-
-```bash
-# Rebuild only the AI engine
-docker compose build ai-engine
-
-# Restart everything
-docker compose down && docker compose up --build -d
 ```
 
-### Running Tests
-
-```bash
-# PHP tests
-docker compose exec php ./bin/console test
-
-# Python evaluation
-docker compose exec ai-engine python -m pytest
 ```
-
----
-
-## 📖 Learn More
-
-- `CONTEXT.md` — Global architectural rules and source of truth
-- `ai-engine/` — All LangGraph, retrieval, and agent logic
-- `web/src/` — PHP controllers and services
-
----
-
-**Made with ❤️ for reliable, version-aware AI assistance**
-
----
-
-### How to use this README
-
-1. Save the content above as `README.md` in your project root.
-2. (Optional) Create an `.env.example` file with all the variables used in `.env`.
-
-Would you like me to also create a clean `.env.example` file and improve any other documentation (like `CONTEXT.md` or inline docstrings in the Python files)?
-
-Just say the word and I'll refine anything else!
