@@ -42,6 +42,11 @@ $aliases = [
     'dhillons-query'   => ['Dhillons', 'query'],
     'dhillons-agent'   => ['Dhillons', 'createAgent'],
     'dhillons-direct'  => ['Dhillons', 'direct'],
+
+    // Phd
+    'phd-tasks'      => ['Phd', 'tasks'],
+    'phd-save-task'  => ['Phd', 'saveTask'],
+    'phd-literature' => ['Phd', 'queryLiterature'],
 ];
 
 // 3. Parse the URI (CLI-aware fallback)
