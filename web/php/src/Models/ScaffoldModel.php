@@ -243,6 +243,68 @@ class ScaffoldModel extends BaseModel
                 'content'    => 'LONGTEXT NULL DEFAULT NULL',
                 'status'     => 'VARCHAR(255)'
             ],
+            // Phd start
+            'phd_projects' => [
+                'id'                    => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'user_id'               => 'INT NOT NULL',
+                'title'                 => 'VARCHAR(255) NOT NULL',
+                'research_theme'        => 'VARCHAR(100) NOT NULL',
+                'methodology'           => 'VARCHAR(100) DEFAULT NULL',
+                'ethical_review_status' => "ENUM('not_required', 'pending', 'approved') DEFAULT 'not_required'",
+                'created_at'            => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+                'updated_at'            => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
+                'pref'                  => 'VARCHAR(255) DEFAULT NULL',
+                'content'               => 'LONGTEXT NULL DEFAULT NULL',
+                'status'                => 'VARCHAR(255)',
+            ],
+
+            'phd_research_sources' => [
+                'id'              => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'project_id'      => 'INT NOT NULL',
+                'title'           => 'VARCHAR(255) NOT NULL',
+                'authors'         => 'TEXT DEFAULT NULL',
+                'doi_url'         => 'VARCHAR(255) DEFAULT NULL',
+                'file_hash'       => 'VARCHAR(64) NOT NULL',
+                'access_status'   => 'VARCHAR(50) DEFAULT "open"',
+                'ingestion_state' => "ENUM('pending', 'queued', 'extracting', 'chunked', 'indexed', 'failed') DEFAULT 'pending'",
+                'created_at'      => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+                'updated_at'      => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
+                'pref'            => 'VARCHAR(255) DEFAULT NULL',
+                'content'         => 'LONGTEXT NULL DEFAULT NULL',
+                'status'          => 'VARCHAR(255)',
+            ],
+
+            'phd_literature_chunks' => [
+                'id'              => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'source_id'       => 'INT NOT NULL',
+                'chunk_index'     => 'INT NOT NULL',
+                'chunk_text'      => 'TEXT NOT NULL',
+                'page_number'     => 'INT DEFAULT NULL',
+                'vector_id'       => 'VARCHAR(128) NOT NULL',
+                'embedding_model' => 'VARCHAR(64) NOT NULL',
+                'checksum'        => 'VARCHAR(32) NOT NULL',
+                'created_at'      => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+                'pref'            => 'VARCHAR(255) DEFAULT NULL',
+                'content'         => 'LONGTEXT NULL DEFAULT NULL',
+                'status'          => 'VARCHAR(255)',
+            ],
+
+            'phd_research_notes' => [
+                'id'                => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'project_id'        => 'INT NOT NULL',
+                'source_id'         => 'INT NOT NULL',
+                'chunk_id'          => 'INT DEFAULT NULL',
+                'note_type'         => "ENUM('claim', 'methodology_critique', 'data_point', 'supervisor_feedback') DEFAULT 'claim'",
+                'claim'             => 'TEXT NOT NULL',
+                'evidence_location' => 'VARCHAR(100) DEFAULT NULL',
+                'tags'              => 'VARCHAR(255) DEFAULT NULL',
+                'confidence_score'  => 'DECIMAL(3,2) DEFAULT 1.00',
+                'status'            => "ENUM('draft', 'verified', 'archived') DEFAULT 'draft'",
+                'created_at'        => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+                'pref'              => 'VARCHAR(255) DEFAULT NULL',
+                'content'           => 'LONGTEXT NULL DEFAULT NULL',
+            ],
+            // PhD end
         ];
     }
 }
