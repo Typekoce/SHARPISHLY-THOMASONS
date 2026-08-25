@@ -32,6 +32,7 @@ class TestController extends BaseController
             'hotmail_api'       => 'http://127.0.0.1/php/hotmailapi',
             'azure-hello-world' => 'http://127.0.0.1/php/azure/hello',
             'aws-hello'         => 'http://127.0.0.1/php/aws/hello',
+            'todo-read'         => 'http://127.0.0.1/php/todo/read',
         ];
 
         $subResults = $this->curlRequest($endpoints);
