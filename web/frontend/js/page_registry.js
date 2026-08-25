@@ -16,5 +16,6 @@ const PageRegistry = {
     },
     'pentest': () => PentestController.scan(),
     'agentic': () => AgenticController.init(),
-    'mobile': () => MobileController.init()
+    'mobile': () => MobileController.init(),
+    'todo': () => TodoController.init()
 };

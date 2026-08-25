@@ -63,6 +63,13 @@ const App = {
         flash.appendChild(alert);
     },
     getItem(e){return document.getElementById(e)},
+
+    async api(endpoint, method = 'GET', data = null) {
+        const options = { method, headers: { 'Content-Type': 'application/json' } };
+        if (data) options.body = JSON.stringify(data);
+        const res = await fetch(this.url(endpoint), options);
+        return await res.json();
+    }
 };
 
 
