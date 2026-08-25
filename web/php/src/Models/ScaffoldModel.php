@@ -243,7 +243,8 @@ class ScaffoldModel extends BaseModel
                 'content'    => 'LONGTEXT NULL DEFAULT NULL',
                 'status'     => 'VARCHAR(255)'
             ],
-            // Phd start
+
+            // PhD start
             'phd_projects' => [
                 'id'                    => 'INT AUTO_INCREMENT PRIMARY KEY',
                 'user_id'               => 'INT NOT NULL',
@@ -305,6 +306,18 @@ class ScaffoldModel extends BaseModel
                 'content'           => 'LONGTEXT NULL DEFAULT NULL',
             ],
             // PhD end
+
+            // todo
+            'todo' => [
+                'id'          => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'source_id'   => 'INT NULL DEFAULT 0',
+                'title'       => 'VARCHAR(255) DEFAULT NULL',
+                'description' => 'VARCHAR(255) DEFAULT NULL',
+                'status'      => 'VARCHAR(255) DEFAULT "pending"',
+                'created_at'  => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+                'pref'        => 'VARCHAR(255) DEFAULT NULL',
+                'content'     => 'LONGTEXT NULL DEFAULT NULL',
+            ],
         ];
     }
 }
