@@ -2,33 +2,31 @@
 
 namespace App\Controllers;
 
+use App\Models\TodoModel;
+
 class TodoController extends BaseController {
 
-    public $data = array('foo' => 'bar');
-    public $debug = TRUE;
+
+    public function __construct()
+    {
+        parent::__construct();
+
+        $this->model = new TodoModel();
+    }    
 
     public function create(){
 
-        if($this->debug == TRUE){
-            $data = array(
-                'title'       => 'foo',
-                'description' => 'bar',
-                'source_id' => 1,
-                'status'    => 'active'
-            );
-
-            $rs = $this->db->save('todo', $data);
-        }
-
-        $conditions = array(
-            'tbl'   => 'todo',
-            'order' => array('id' => 'DESC')
+        $data = array(
+            'function'  => __FUNCTION__,
+            'model'     => __CLASS__,
+            'method'    => __METHOD__
         );
 
-        $rs = $this->db->find($conditions);
+        $rs = $this->model->create();
 
-        $this->data['result'] = $rs;
-        $this->json($this->data);
+        $data['response'] = $rs;
+        
+        $this->json($data);
     }
 
     public function read(){
