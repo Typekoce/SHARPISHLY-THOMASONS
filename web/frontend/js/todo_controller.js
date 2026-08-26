@@ -3,7 +3,6 @@ const TodoController = {
         const recordsContainer = document.getElementById('todo-records');
         if (!recordsContainer) return;
 
-        // Ensure form is rendered only once above #todo-records
         let form = document.getElementById('todo-form');
         if (!form) {
             form = App.item('form');
@@ -24,7 +23,6 @@ const TodoController = {
 
             form.onsubmit = (e) => this.create(e);
 
-            // Insert form before the records div
             recordsContainer.parentNode.insertBefore(form, recordsContainer);
         }
 
@@ -70,7 +68,12 @@ const TodoController = {
             status: 'pending'
         };
 
-        if (!payload.title) return;
+        if (!payload.title) {
+            if (typeof App.flash === 'function') {
+                App.flash('Please provide a task title.', 'warning');
+            }
+            return;
+        }
 
         App.spinner();
         try {
@@ -83,7 +86,18 @@ const TodoController = {
 
             if (result.status === 'success') {
                 document.getElementById('todo-form').reset();
+                if (typeof App.flash === 'function') {
+                    App.flash('Task created successfully!', 'success');
+                }
                 await this.read();
+            } else {
+                if (typeof App.flash === 'function') {
+                    App.flash(result.message || 'Failed to create task.', 'danger');
+                }
+            }
+        } catch (err) {
+            if (typeof App.flash === 'function') {
+                App.flash('Network or server error during creation.', 'danger');
             }
         } finally {
             App.clearSpinner();
@@ -104,7 +118,6 @@ const TodoController = {
 
             let data = result.data || [];
 
-            // Apply status filtering if passed from SubMenuController
             if (params.status) {
                 data = data.filter(task => task.status === params.status);
             }
@@ -133,7 +146,6 @@ const TodoController = {
             data.forEach(task => {
                 const tr = App.item('tr');
 
-                // Title & Description
                 const titleTd = App.item('td');
                 const titleStrong = App.item('strong');
                 titleStrong.textContent = task.title;
@@ -146,15 +158,12 @@ const TodoController = {
                     titleTd.appendChild(descSmall);
                 }
 
-                // Category
                 const categoryTd = App.item('td');
                 categoryTd.textContent = task.category || 'internal';
 
-                // Status
                 const statusTd = App.item('td');
                 statusTd.textContent = task.status;
 
-                // Actions
                 const actionsTd = App.item('td');
 
                 const toggleBtn = App.item('button');
@@ -193,7 +202,13 @@ const TodoController = {
                 body: JSON.stringify({ status: newStatus })
             });
             const result = await res.json();
-            if (result.status === 'success') await this.read();
+
+            if (result.status === 'success') {
+                if (typeof App.flash === 'function') {
+                    App.flash(`Task status updated to ${newStatus}.`, 'info');
+                }
+                await this.read();
+            }
         } finally {
             App.clearSpinner();
         }
@@ -208,7 +223,13 @@ const TodoController = {
                 headers: { 'Content-Type': 'application/json' }
             });
             const result = await res.json();
-            if (result.status === 'success') await this.read();
+
+            if (result.status === 'success') {
+                if (typeof App.flash === 'function') {
+                    App.flash('Task deleted.', 'warning');
+                }
+                await this.read();
+            }
         } finally {
             App.clearSpinner();
         }
