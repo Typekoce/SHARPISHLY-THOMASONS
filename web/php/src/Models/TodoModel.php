@@ -9,20 +9,51 @@ use Throwable;
 class TodoModel extends BaseModel
 {
     public $debug = TRUE;
+    
     public $data = [];
 
-    public function create(): array
+    public function create()
     {
         if ($this->debug === TRUE) {
-            $data = array(
+            $save = array(
                 'title'       => 'AWS Queue',
                 'description' => 'Complete proposal to prospective companies',
                 'source_id'   => 1,
                 'status'      => 'active'
             );
 
-            $this->db->save('todo', $data);
+            $this->db->save('todo', $save);
         }
+
+        $rs = $this->read();
+
+        $this->data['result'] = $rs;
+
+        return $this->data;
+    }// end
+
+    public function update()
+    {
+        if ($this->debug === TRUE && $payload === null) {
+            $payload = [
+                'title'       => 'AWS Queue - Updated',
+                'description' => 'Complete proposal to prospective companies',
+                'source_id'   => 1,
+                'status'      => 'completed'
+            ];
+        }
+
+        if (!empty($payload)) {
+            $conditions = ['id' => $id];
+            $this->db->update('todo', $payload, $conditions);
+        }
+
+        $this->data['result'] = $this->read($id);
+
+        return $this->data;
+    }
+
+    public function read(){
 
         try {
             $conditions = array(
@@ -31,7 +62,9 @@ class TodoModel extends BaseModel
             );
 
             $rs = $this->db->find($conditions);
+
         } catch (Throwable $e) {
+            
             if (isset($this->logger)) {
                 $this->logger->error("TodoModel::create failed: " . $e->getMessage());
             }
@@ -41,9 +74,8 @@ class TodoModel extends BaseModel
                 'message' => $e->getMessage()
             );
         }
+        
+        return $rs;
 
-        $this->data['result'] = $rs;
-
-        return $this->data;
     }
 }
