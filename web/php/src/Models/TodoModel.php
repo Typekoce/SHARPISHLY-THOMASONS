@@ -8,35 +8,42 @@ use Throwable;
 
 class TodoModel extends BaseModel
 {
-
     public $debug = TRUE;
+    public $data = [];
 
-    public $data;
-
-    public function create(){
-
-        if($this->debug == TRUE){
-
+    public function create(): array
+    {
+        if ($this->debug === TRUE) {
             $data = array(
-                'title'       => 'Sharpishly Tender',
+                'title'       => 'AWS Queue',
                 'description' => 'Complete proposal to prospective companies',
-                'source_id' => 1,
-                'status'    => 'active'
+                'source_id'   => 1,
+                'status'      => 'active'
             );
 
-            $rs = $this->db->save('todo', $data);
+            $this->db->save('todo', $data);
         }
 
-        $conditions = array(
-            'tbl'   => 'todo',
-            'order' => array('id' => 'DESC')
-        );
+        try {
+            $conditions = array(
+                'tbl'   => 'todo',
+                'order' => array('id' => 'DESC')
+            );
 
-        $rs = $this->db->find($conditions);
+            $rs = $this->db->find($conditions);
+        } catch (Throwable $e) {
+            if (isset($this->logger)) {
+                $this->logger->error("TodoModel::create failed: " . $e->getMessage());
+            }
+
+            $rs = array(
+                'error'   => true,
+                'message' => $e->getMessage()
+            );
+        }
 
         $this->data['result'] = $rs;
 
         return $this->data;
     }
-
 }
