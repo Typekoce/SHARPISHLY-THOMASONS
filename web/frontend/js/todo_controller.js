@@ -1,38 +1,60 @@
 const TodoController = {
     async init() {
-        const container = App.getItem('todo');
-        if (!container) return;
+        const recordsContainer = document.getElementById('todo-records');
+        if (!recordsContainer) return;
 
-        container.textContent = '';
+        // Ensure form is rendered only once above #todo-records
+        let form = document.getElementById('todo-form');
+        if (!form) {
+            form = App.item('form');
+            form.id = 'todo-form';
+            form.className = 'mb-4';
 
-        const heading = App.item('h2');
-        heading.textContent = 'Todo Manager';
-        container.appendChild(heading);
+            const schema = {
+                'title': { id: 'todo-title', placeholder: 'Task title...' },
+                'category': { id: 'todo-category', placeholder: 'Category...' },
+                'description': { id: 'todo-desc', type: 'textarea', placeholder: 'Description...' }
+            };
+            App.eForm(form, schema);
 
-        const form = App.item('form');
-        form.id = 'todo-form';
-        form.className = 'mb-4';
+            const submitBtn = App.item('button');
+            submitBtn.type = 'submit';
+            submitBtn.textContent = 'Add Task';
+            form.appendChild(submitBtn);
 
-        const schema = {
-            'title': { id: 'todo-title', placeholder: 'Task title...' },
-            'category': { id: 'todo-category', placeholder: 'Category...' },
-            'description': { id: 'todo-desc', type: 'textarea', placeholder: 'Description...' }
-        };
-        App.eForm(form, schema);
+            form.onsubmit = (e) => this.create(e);
 
-        const submitBtn = App.item('button');
-        submitBtn.type = 'submit';
-        submitBtn.textContent = 'Add Task';
-        form.appendChild(submitBtn);
+            // Insert form before the records div
+            recordsContainer.parentNode.insertBefore(form, recordsContainer);
+        }
 
-        form.onsubmit = (e) => this.create(e);
-        container.appendChild(form);
-
-        const listDiv = App.item('div');
-        listDiv.id = 'todo-list';
-        container.appendChild(listDiv);
-
+        this.submenu();
         await this.read();
+    },
+
+    submenu() {
+        const menuItems = [
+            {
+                label: 'All Tasks',
+                action: () => TodoController.read()
+            },
+            {
+                label: 'Pending Tasks',
+                action: () => TodoController.read('', { status: 'pending' })
+            },
+            {
+                label: 'Completed Tasks',
+                action: () => TodoController.read('', { status: 'completed' })
+            },
+            {
+                label: 'Refresh',
+                class: 'btn btn-sm btn-outline-primary me-2',
+                action: () => TodoController.init()
+            }
+        ];
+
+        App.dBug(menuItems);
+        SubMenuController.menu(menuItems);
     },
 
     async create(e) {
@@ -68,21 +90,29 @@ const TodoController = {
         }
     },
 
-    async read() {
-        const listDiv = document.getElementById('todo-list');
-        if (!listDiv) return;
+    async read(id = '', params = {}) {
+        const recordsDiv = document.getElementById('todo-records');
+        if (!recordsDiv) return;
 
         App.spinner();
         try {
-            const res = await fetch(App.url('todo/read'));
+            const endpoint = id ? `todo/read/${id}` : 'todo/read';
+            const res = await fetch(App.url(endpoint));
             const result = await res.json();
 
-            listDiv.textContent = '';
+            recordsDiv.textContent = '';
 
-            if (result.status !== 'success' || !result.data || result.data.length === 0) {
+            let data = result.data || [];
+
+            // Apply status filtering if passed from SubMenuController
+            if (params.status) {
+                data = data.filter(task => task.status === params.status);
+            }
+
+            if (result.status !== 'success' || data.length === 0) {
                 const emptyMsg = App.item('p');
                 emptyMsg.textContent = 'No tasks found.';
-                listDiv.appendChild(emptyMsg);
+                recordsDiv.appendChild(emptyMsg);
                 return;
             }
 
@@ -100,7 +130,7 @@ const TodoController = {
             table.appendChild(thead);
 
             const tbody = App.item('tbody');
-            result.data.forEach(task => {
+            data.forEach(task => {
                 const tr = App.item('tr');
 
                 // Title & Description
@@ -147,7 +177,7 @@ const TodoController = {
             });
 
             table.appendChild(tbody);
-            listDiv.appendChild(table);
+            recordsDiv.appendChild(table);
         } finally {
             App.clearSpinner();
         }
@@ -182,5 +212,5 @@ const TodoController = {
         } finally {
             App.clearSpinner();
         }
-    },
+    }
 };
