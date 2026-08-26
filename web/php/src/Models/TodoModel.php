@@ -8,7 +8,7 @@ use Throwable;
 
 class TodoModel extends BaseModel
 {
-    public bool $debug = true;
+    public bool $debug = FALSE;
 
     public function create(array $payload = []): array
     {
@@ -20,6 +20,11 @@ class TodoModel extends BaseModel
                 'status'      => 'active'
             ];
         }
+
+    // Provide a default source_id if missing from the incoming request payload
+    if (!isset($payload['source_id'])) {
+        $payload['source_id'] = 1;
+    }
 
         $this->db->save('todo', $payload);
         return ['result' => $this->read()];
