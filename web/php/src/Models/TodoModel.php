@@ -8,33 +8,26 @@ use Throwable;
 
 class TodoModel extends BaseModel
 {
-    public $debug = TRUE;
-    
-    public $data = [];
+    public bool $debug = true;
 
-    public function create()
+    public function create(array $payload = []): array
     {
-        if ($this->debug === TRUE) {
-            $save = array(
+        if ($this->debug === true && empty($payload)) {
+            $payload = [
                 'title'       => 'AWS Queue',
                 'description' => 'Complete proposal to prospective companies',
                 'source_id'   => 1,
                 'status'      => 'active'
-            );
-
-            $this->db->save('todo', $save);
+            ];
         }
 
-        $rs = $this->read();
+        $this->db->save('todo', $payload);
+        return ['result' => $this->read()];
+    }
 
-        $this->data['result'] = $rs;
-
-        return $this->data;
-    }// end
-
-    public function update()
+    public function update(string $id = '', array $payload = []): array
     {
-        if ($this->debug === TRUE && $payload === null) {
+        if ($this->debug === true && empty($payload)) {
             $payload = [
                 'title'       => 'AWS Queue - Updated',
                 'description' => 'Complete proposal to prospective companies',
@@ -43,39 +36,52 @@ class TodoModel extends BaseModel
             ];
         }
 
-        if (!empty($payload)) {
-            $conditions = ['id' => $id];
-            $this->db->update('todo', $payload, $conditions);
+        if (!empty($id) && !empty($payload)) {
+            // Include ID in payload for Db::save to perform an UPDATE instead of INSERT
+            $payload['id'] = $id;
+            $this->db->save('todo', $payload);
         }
 
-        $this->data['result'] = $this->read($id);
-
-        return $this->data;
+        return ['result' => $this->read($id)];
     }
 
-    public function read(){
-
+    public function read(string $id = ''): array
+    {
         try {
-            $conditions = array(
+            $conditions = [
                 'tbl'   => 'todo',
-                'order' => array('id' => 'DESC')
-            );
+                'order' => ['id' => 'DESC']
+            ];
 
-            $rs = $this->db->find($conditions);
-
-        } catch (Throwable $e) {
-            
-            if (isset($this->logger)) {
-                $this->logger->error("TodoModel::create failed: " . $e->getMessage());
+            if (!empty($id)) {
+                $conditions['where'] = ['id' => $id];
             }
 
-            $rs = array(
+            return $this->db->find($conditions);
+        } catch (Throwable $e) {
+            $logger = $GLOBALS['logger'] ?? null;
+            if ($logger) {
+                $logger->error("TodoModel::read failed: " . $e->getMessage());
+            }
+
+            return [
                 'error'   => true,
                 'message' => $e->getMessage()
-            );
+            ];
         }
-        
-        return $rs;
+    }
 
+    public function delete(string $id = ''): array
+    {
+        if (empty($id)) {
+            return ['error' => true, 'message' => 'Missing ID for deletion'];
+        }
+
+        try {
+            $this->db->delete('todo', ['id' => $id]);
+            return ['status' => 'deleted', 'id' => $id];
+        } catch (Throwable $e) {
+            return ['error' => true, 'message' => $e->getMessage()];
+        }
     }
 }
