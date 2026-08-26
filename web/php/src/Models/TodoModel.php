@@ -36,10 +36,15 @@ class TodoModel extends BaseModel
             ];
         }
 
-        if (!empty($id) && !empty($payload)) {
-            // Include ID in payload for Db::save to perform an UPDATE instead of INSERT
-            $payload['id'] = $id;
-            $this->db->save('todo', $payload);
+        if (!empty($id)) {
+            // Fetch existing record to preserve fields omitted in the request payload
+            $existing = $this->read($id);
+            $currentData = $existing[0] ?? [];
+
+            // Merge existing data with incoming updates and enforce ID
+            $mergedPayload = array_merge($currentData, $payload, ['id' => (int)$id]);
+
+            $this->db->save('todo', $mergedPayload);
         }
 
         return ['result' => $this->read($id)];
