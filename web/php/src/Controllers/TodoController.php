@@ -1,43 +1,49 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Controllers;
 
 use App\Models\TodoModel;
 
-class TodoController extends BaseController {
-
-
+class TodoController extends BaseController 
+{
     public function __construct()
     {
         parent::__construct();
-
         $this->model = new TodoModel();
     }    
 
-    public function create(){
+    public function create(): void
+    {
+        $payload = $this->request();
+        $result  = $this->model->create($payload);
 
-        $data = array(
-            'function'  => __FUNCTION__,
-            'model'     => __CLASS__,
-            'method'    => __METHOD__
-        );
-
-        $rs = $this->model->create();
-
-        $data['response'] = $rs;
-        
-        $this->json($data);
+        $this->json([
+            'status'   => 'success',
+            'function' => __FUNCTION__,
+            'class'    => __CLASS__,
+            'method'   => __METHOD__,
+            'response' => $result
+        ]);
     }
 
-    public function read(){
-        $this->json($this->data);
+    public function read(string $id = ''): void
+    {
+        $result = $this->model->read($id);
+        $this->json(['status' => 'success', 'data' => $result]);
     }
 
-    public function update(){
-        $this->json($this->data);
+    public function update(string $id = ''): void
+    {
+        $payload = $this->request();
+        $result  = $this->model->update($id, $payload);
+        $this->json(['status' => 'success', 'data' => $result]);
     }
 
-    public function delete(){
-        $this->json($this->data);
+    public function delete(string $id = ''): void
+    {
+        $result = $this->model->delete($id);
+        $this->json(['status' => 'success', 'data' => $result]);
     }
 }
