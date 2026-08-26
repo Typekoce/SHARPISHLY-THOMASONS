@@ -318,6 +318,33 @@ class ScaffoldModel extends BaseModel
                 'pref'        => 'VARCHAR(255) DEFAULT NULL',
                 'content'     => 'LONGTEXT NULL DEFAULT NULL',
             ],
+            // todo end
+
+            // sample start
+            'sample' => [
+                'id'          => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'title'       => 'VARCHAR(255) DEFAULT NULL',
+                'description' => 'VARCHAR(255) DEFAULT NULL',
+                'status'      => 'VARCHAR(255) DEFAULT "pending"',
+                'created_at'  => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+                'pref'        => 'VARCHAR(255) DEFAULT NULL',
+                'content'     => 'LONGTEXT NULL DEFAULT NULL',
+            ],
+            // sample end
+
+
+            // timetable start
+            'timetable' => [
+                'id'          => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'title'       => 'VARCHAR(255) DEFAULT NULL',
+                'description' => 'VARCHAR(255) DEFAULT NULL',
+                'status'      => 'VARCHAR(255) DEFAULT "pending"',
+                'created_at'  => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+                'pref'        => 'VARCHAR(255) DEFAULT NULL',
+                'content'     => 'LONGTEXT NULL DEFAULT NULL',
+            ],
+            // timetable end
+
         ];
     }
 }
