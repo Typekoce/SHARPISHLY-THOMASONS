@@ -2199,16 +2199,37 @@ function renderMobileAgentItem(item) {
 
                 const actionsTd = App.item('td');
 
-                const toggleBtn = App.item('button');
-                toggleBtn.textContent = task.status === 'completed' ? 'Mark Pending' : 'Mark Completed';
-                toggleBtn.onclick = () => this.toggle(task.id, task.status);
+                const dropdown = App.item('select');
+                dropdown.className = 'form-select form-select-sm';
 
-                const deleteBtn = App.item('button');
-                deleteBtn.textContent = 'Delete';
-                deleteBtn.onclick = () => this.delete(task.id);
+                const defaultOpt = App.item('option');
+                defaultOpt.textContent = 'Actions...';
+                defaultOpt.value = '';
+                defaultOpt.disabled = true;
+                defaultOpt.selected = true;
+                dropdown.appendChild(defaultOpt);
 
-                actionsTd.appendChild(toggleBtn);
-                actionsTd.appendChild(deleteBtn);
+                const toggleOpt = App.item('option');
+                toggleOpt.textContent = task.status === 'completed' ? 'Mark Pending' : 'Mark Completed';
+                toggleOpt.value = 'toggle';
+                dropdown.appendChild(toggleOpt);
+
+                const deleteOpt = App.item('option');
+                deleteOpt.textContent = 'Delete';
+                deleteOpt.value = 'delete';
+                dropdown.appendChild(deleteOpt);
+
+                dropdown.onchange = (e) => {
+                    const val = e.target.value;
+                    e.target.value = ''; 
+                    if (val === 'toggle') {
+                        this.toggle(task.id, task.status);
+                    } else if (val === 'delete') {
+                        this.delete(task.id);
+                    }
+                };
+
+                actionsTd.appendChild(dropdown);
 
                 tr.appendChild(titleTd);
                 tr.appendChild(categoryTd);

@@ -1228,17 +1228,30 @@ h1 {
     background-color: #0b5ed7;
 }
 
-/* Task Table */
+/* Records Container & Tasks Table */
+#todo-records {
+    margin-top: 1rem;
+    width: 100%;
+    overflow-x: auto;
+}
+
+#todo-records p {
+    color: #6c757d;
+    font-style: italic;
+    padding: 1rem 0;
+    margin: 0;
+}
+
 #todo table.table {
     width: 100%;
     border-collapse: collapse;
-    margin-top: 1rem;
+    margin-top: 0.5rem;
 }
 
 #todo table.table th,
 #todo table.table td {
     padding: 0.75rem;
-    vertical-align: top;
+    vertical-align: middle;
     border-bottom: 1px solid #dee2e6;
     text-align: left;
 }
@@ -1246,6 +1259,7 @@ h1 {
 #todo table.table th {
     font-weight: 600;
     background-color: #f8f9fa;
+    color: #212529;
 }
 
 #todo table.table td small {
@@ -1255,6 +1269,25 @@ h1 {
 #todo table.table td button {
     padding: 0.25rem 0.5rem;
     font-size: 0.75rem;
+}
+
+/* Form Select Controls inside Records */
+#todo table.table .form-select,
+#todo table.table select {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    background-color: #fff;
+    color: #212529;
+    cursor: pointer;
+}
+
+#todo table.table .form-select:focus,
+#todo table.table select:focus {
+    border-color: #86b7fe;
+    outline: 0;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
 }/* Mobile Detail View Styling */
 #mobile #screen-agent-detail {
     display: none;
