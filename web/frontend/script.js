@@ -2032,9 +2032,12 @@ function renderMobileAgentItem(item) {
         if (badge) { badge.className = config.badge; badge.textContent = config.text; }
     }
 };const TodoController = {
+    activeTaskId: null,
+    tasks: [],
+
     async init() {
-        const recordsContainer = document.getElementById('todo-records');
-        if (!recordsContainer) return;
+        const container = document.getElementById('todo-records');
+        if (!container) return;
 
         let form = document.getElementById('todo-form');
         if (!form) {
@@ -2042,21 +2045,20 @@ function renderMobileAgentItem(item) {
             form.id = 'todo-form';
             form.className = 'mb-4';
 
-            const schema = {
+            App.eForm?.(form, {
                 'title': { id: 'todo-title', placeholder: 'Task title...' },
                 'category': { id: 'todo-category', placeholder: 'Category...' },
                 'description': { id: 'todo-desc', type: 'textarea', placeholder: 'Description...' }
-            };
-            App.eForm(form, schema);
+            });
 
-            const submitBtn = App.item('button');
-            submitBtn.type = 'submit';
-            submitBtn.textContent = 'Add Task';
-            form.appendChild(submitBtn);
+            const btn = App.item('button');
+            btn.type = 'submit';
+            btn.id = 'todo-submit-btn';
+            btn.textContent = 'Add Task';
+            form.appendChild(btn);
 
-            form.onsubmit = (e) => this.create(e);
-
-            recordsContainer.parentNode.insertBefore(form, recordsContainer);
+            form.onsubmit = (e) => this.save(e);
+            container.parentNode.insertBefore(form, container);
         }
 
         this.submenu();
@@ -2064,76 +2066,51 @@ function renderMobileAgentItem(item) {
     },
 
     submenu() {
-        const menuItems = [
-            {
-                label: 'All Tasks',
-                action: () => TodoController.read()
-            },
-            {
-                label: 'Pending Tasks',
-                action: () => TodoController.read('', { status: 'pending' })
-            },
-            {
-                label: 'Completed Tasks',
-                action: () => TodoController.read('', { status: 'completed' })
-            },
-            {
-                label: 'Refresh',
-                class: 'btn btn-sm btn-outline-primary me-2',
-                action: () => TodoController.init()
-            }
-        ];
+        if (typeof SubMenuController === 'undefined') return;
 
-        App.dBug(menuItems);
-        SubMenuController.menu(menuItems);
+        SubMenuController.menu([
+            { label: 'All Tasks', action: () => this.read() },
+            { label: 'Pending Tasks', action: () => this.read('', { status: 'pending' }) },
+            { label: 'Completed Tasks', action: () => this.read('', { status: 'completed' }) },
+            { label: 'Refresh', class: 'btn btn-sm btn-outline-primary', action: () => this.init() }
+        ]);
     },
 
-    async create(e) {
+    async save(e) {
         e.preventDefault();
-        const titleEl = document.getElementById('todo-title');
-        const categoryEl = document.getElementById('todo-category');
-        const descEl = document.getElementById('todo-desc');
 
         const payload = {
-            title: titleEl?.value.trim(),
-            category: categoryEl?.value.trim() || 'internal',
-            description: descEl?.value.trim(),
+            title: document.getElementById('todo-title')?.value.trim(),
+            category: document.getElementById('todo-category')?.value.trim() || 'internal',
+            description: document.getElementById('todo-desc')?.value.trim(),
             status: 'pending'
         };
 
-        if (!payload.title) {
-            if (typeof App.flash === 'function') {
-                App.flash('Please provide a task title.', 'warning');
-            }
-            return;
-        }
+        if (!payload.title) return App.flash?.('Please provide a task title.', 'warning');
 
-        App.spinner();
+        App.spinner?.();
         try {
-            const res = await fetch(App.url('todo/create'), {
+            const endpoint = this.activeTaskId ? `todo/update/${this.activeTaskId}` : 'todo/create';
+            const res = await fetch(App.url(endpoint), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
+
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const result = await res.json();
 
-            if (result.status === 'success') {
-                document.getElementById('todo-form').reset();
-                if (typeof App.flash === 'function') {
-                    App.flash('Task created successfully!', 'success');
-                }
+            if (result.status === 'success' || result.result) {
+                this.resetForm();
+                App.flash?.(this.activeTaskId ? 'Task updated!' : 'Task created!', 'success');
                 await this.read();
             } else {
-                if (typeof App.flash === 'function') {
-                    App.flash(result.message || 'Failed to create task.', 'danger');
-                }
+                App.flash?.(result.message || 'Operation failed.', 'danger');
             }
         } catch (err) {
-            if (typeof App.flash === 'function') {
-                App.flash('Network or server error during creation.', 'danger');
-            }
+            App.flash?.('Network or server error.', 'danger');
         } finally {
-            App.clearSpinner();
+            App.clearSpinner?.();
         }
     },
 
@@ -2141,21 +2118,24 @@ function renderMobileAgentItem(item) {
         const recordsDiv = document.getElementById('todo-records');
         if (!recordsDiv) return;
 
-        App.spinner();
+        App.spinner?.();
         try {
             const endpoint = id ? `todo/read/${id}` : 'todo/read';
-            const res = await fetch(App.url(endpoint));
-            const result = await res.json();
-
-            recordsDiv.textContent = '';
-
-            let data = result.data || [];
-
-            if (params.status) {
-                data = data.filter(task => task.status === params.status);
+            const url = new URL(App.url(endpoint), window.location.origin);
+            
+            if (params && typeof params === 'object') {
+                Object.entries(params).forEach(([k, v]) => {
+                    if (v != null) url.searchParams.set(k, v);
+                });
             }
 
-            if (result.status !== 'success' || data.length === 0) {
+            const res = await fetch(url.toString());
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const result = await res.json();
+            recordsDiv.textContent = '';
+
+            const data = result.data || [];
+            if (!data.length) {
                 const emptyMsg = App.item('p');
                 emptyMsg.textContent = 'No tasks found.';
                 recordsDiv.appendChild(emptyMsg);
@@ -2176,60 +2156,55 @@ function renderMobileAgentItem(item) {
             table.appendChild(thead);
 
             const tbody = App.item('tbody');
-            data.forEach(task => {
+            data.forEach(t => {
                 const tr = App.item('tr');
 
                 const titleTd = App.item('td');
                 const titleStrong = App.item('strong');
-                titleStrong.textContent = task.title;
+                titleStrong.textContent = t.title;
                 titleTd.appendChild(titleStrong);
 
-                if (task.description) {
+                if (t.description) {
                     titleTd.appendChild(App.item('br'));
                     const descSmall = App.item('small');
-                    descSmall.textContent = task.description;
+                    descSmall.textContent = t.description;
                     titleTd.appendChild(descSmall);
                 }
 
                 const categoryTd = App.item('td');
-                categoryTd.textContent = task.category || 'internal';
+                categoryTd.textContent = t.category || 'internal';
 
                 const statusTd = App.item('td');
-                statusTd.textContent = task.status;
+                statusTd.textContent = t.status;
 
                 const actionsTd = App.item('td');
-
-                const dropdown = App.item('select');
-                dropdown.className = 'form-select form-select-sm';
+                const select = App.item('select');
+                select.className = 'form-select form-select-sm';
 
                 const defaultOpt = App.item('option');
-                defaultOpt.textContent = 'Actions...';
                 defaultOpt.value = '';
+                defaultOpt.textContent = 'Actions...';
                 defaultOpt.disabled = true;
                 defaultOpt.selected = true;
-                dropdown.appendChild(defaultOpt);
+                select.appendChild(defaultOpt);
+
+                const editOpt = App.item('option');
+                editOpt.value = 'edit';
+                editOpt.textContent = 'Edit';
+                select.appendChild(editOpt);
 
                 const toggleOpt = App.item('option');
-                toggleOpt.textContent = task.status === 'completed' ? 'Mark Pending' : 'Mark Completed';
                 toggleOpt.value = 'toggle';
-                dropdown.appendChild(toggleOpt);
+                toggleOpt.textContent = t.status === 'completed' ? 'Mark Pending' : 'Mark Completed';
+                select.appendChild(toggleOpt);
 
                 const deleteOpt = App.item('option');
-                deleteOpt.textContent = 'Delete';
                 deleteOpt.value = 'delete';
-                dropdown.appendChild(deleteOpt);
+                deleteOpt.textContent = 'Delete';
+                select.appendChild(deleteOpt);
 
-                dropdown.onchange = (e) => {
-                    const val = e.target.value;
-                    e.target.value = ''; 
-                    if (val === 'toggle') {
-                        this.toggle(task.id, task.status);
-                    } else if (val === 'delete') {
-                        this.delete(task.id);
-                    }
-                };
-
-                actionsTd.appendChild(dropdown);
+                select.onchange = (e) => this.handleAction(e.target, t.id, t.status);
+                actionsTd.appendChild(select);
 
                 tr.appendChild(titleTd);
                 tr.appendChild(categoryTd);
@@ -2241,51 +2216,74 @@ function renderMobileAgentItem(item) {
 
             table.appendChild(tbody);
             recordsDiv.appendChild(table);
+
+            this.tasks = data;
+        } catch (err) {
+            App.flash?.('Failed to fetch tasks.', 'danger');
         } finally {
-            App.clearSpinner();
+            App.clearSpinner?.();
         }
+    },
+
+    handleAction(select, id, currentStatus) {
+        const val = select.value;
+        select.value = '';
+        if (!val) return;
+
+        if (val === 'edit') this.populateEdit(id);
+        else if (val === 'toggle') this.toggle(id, currentStatus);
+        else if (val === 'delete') this.delete(id);
+    },
+
+    populateEdit(id) {
+        const task = this.tasks?.find(t => t.id == id);
+        if (!task) return;
+
+        this.activeTaskId = id;
+        document.getElementById('todo-title').value = task.title || '';
+        document.getElementById('todo-category').value = task.category || '';
+        document.getElementById('todo-desc').value = task.description || '';
+        
+        const btn = document.getElementById('todo-submit-btn');
+        if (btn) btn.textContent = 'Update Task';
+    },
+
+    resetForm() {
+        this.activeTaskId = null;
+        document.getElementById('todo-form')?.reset();
+        const btn = document.getElementById('todo-submit-btn');
+        if (btn) btn.textContent = 'Add Task';
     },
 
     async toggle(id, currentStatus) {
         const newStatus = currentStatus === 'completed' ? 'pending' : 'completed';
-        App.spinner();
+        App.spinner?.();
         try {
             const res = await fetch(App.url(`todo/update/${id}`), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status: newStatus })
             });
-            const result = await res.json();
-
-            if (result.status === 'success') {
-                if (typeof App.flash === 'function') {
-                    App.flash(`Task status updated to ${newStatus}.`, 'info');
-                }
-                await this.read();
-            }
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            await this.read();
+        } catch (err) {
+            App.flash?.('Failed to update task status.', 'danger');
         } finally {
-            App.clearSpinner();
+            App.clearSpinner?.();
         }
     },
 
     async delete(id) {
         if (!confirm('Delete task?')) return;
-        App.spinner();
+        App.spinner?.();
         try {
-            const res = await fetch(App.url(`todo/delete/${id}`), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
-            });
-            const result = await res.json();
-
-            if (result.status === 'success') {
-                if (typeof App.flash === 'function') {
-                    App.flash('Task deleted.', 'warning');
-                }
-                await this.read();
-            }
+            const res = await fetch(App.url(`todo/delete/${id}`), { method: 'POST' });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            await this.read();
+        } catch (err) {
+            App.flash?.('Failed to delete task.', 'danger');
         } finally {
-            App.clearSpinner();
+            App.clearSpinner?.();
         }
     }
 };TodoController.submenu = function() {
