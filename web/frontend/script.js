@@ -55,12 +55,36 @@ const App = {
     },
     getApp() { return document.getElementById('app'); },
     item(e) { return document.createElement(e); },
-    flash(msg) {
+    old_flash(msg) {
         const flash = document.getElementById('flash');
         if (!flash) return;
         const alert = App.item('div');
         alert.style.cssText = 'width:100%;border-radius:16px;margin-bottom:10px;padding-top:10px;padding-bottom:10px;background-color:#ccc;text-align:center';
         alert.innerHTML = msg;
+        flash.appendChild(alert);
+    },
+    flash(msg, type = 'info') {
+        const flash = document.getElementById('flash');
+        if (!flash) return;
+
+        const colors = {
+            info: '#ccc',
+            success: '#d4edda',
+            warning: '#fff3cd',
+            danger: '#f8d7da'
+        };
+
+        const alert = App.item('div');
+        alert.style.cssText = `width:100%;border-radius:16px;margin-bottom:10px;padding:10px;background-color:${colors[type] || colors.info};text-align:center;position:relative`;
+
+        alert.appendChild(document.createTextNode(msg));
+
+        const closeBtn = App.item('button');
+        closeBtn.textContent = '×';
+        closeBtn.style.cssText = 'position:absolute;right:15px;top:50%;transform:translateY(-50%);border:none;background:none;font-size:20px;cursor:pointer;line-height:1';
+        closeBtn.onclick = () => alert.remove();
+
+        alert.appendChild(closeBtn);
         flash.appendChild(alert);
     },
     getItem(e){return document.getElementById(e)},
