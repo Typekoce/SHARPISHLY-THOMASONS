@@ -47,6 +47,13 @@ $aliases = [
     'phd-tasks'      => ['Phd', 'tasks'],
     'phd-save-task'  => ['Phd', 'saveTask'],
     'phd-literature' => ['Phd', 'queryLiterature'],
+
+    // Integrations Workflow
+    'integrationworkflow-create'          => ['IntegrationWorkflow', 'create'],
+    'integrationworkflow-read'            => ['IntegrationWorkflow', 'read'],
+    'integrationworkflow-update'          => ['IntegrationWorkflow', 'update'],
+    'integrationworkflow-delete'          => ['IntegrationWorkflow', 'delete'],
+    'integrationworkflow-executeAiIngest' => ['IntegrationWorkflow', 'executeAiIngest'],
 ];
 
 // 3. Parse the URI (CLI-aware fallback)
