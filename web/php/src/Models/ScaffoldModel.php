@@ -345,6 +345,20 @@ class ScaffoldModel extends BaseModel
             ],
             // timetable end
 
+
+            // Integrations Workflows
+            'integration_workflows' => [
+                    'id'            => 'INT AUTO_INCREMENT PRIMARY KEY',
+                    'title'         => 'VARCHAR(255) NOT NULL',
+                    'source_system' => 'VARCHAR(100) NOT NULL',
+                    'target_system' => 'VARCHAR(100) NOT NULL',
+                    'payload'       => 'LONGTEXT NULL',
+                    'status'        => 'VARCHAR(50) DEFAULT "pending"',
+                    'created_at'    => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+                    'updated_at'    => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
+                ],
+            // Integrations Workflows
+
         ];
     }
 }
