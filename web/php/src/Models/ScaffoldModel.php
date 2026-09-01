@@ -358,6 +358,20 @@ class ScaffoldModel extends BaseModel
                     'updated_at'    => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
                 ],
             // Integrations Workflows
+            
+            // notes start
+            'notes' => [
+                'id'          => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'todo_id'     => 'INT NOT NULL',
+                'title'       => 'VARCHAR(255) DEFAULT NULL',
+                'note'        => 'LONGTEXT NULL DEFAULT NULL',
+                'status'      => 'VARCHAR(255) DEFAULT "active"',
+                'created_at'  => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+                'updated_at'  => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
+                'pref'        => 'VARCHAR(255) DEFAULT NULL',
+                'content'     => 'LONGTEXT NULL DEFAULT NULL',
+            ],
+            // notes end
 
         ];
     }
