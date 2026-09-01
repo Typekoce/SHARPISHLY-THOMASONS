@@ -356,7 +356,7 @@ const ${PASCAL_NAME}Controller = {
 
         App.spinner();
         try {
-            const endpoint = id ? `${LOWER_NAME}/read/\${id}` : '${LOWER_NAME}/read';
+            const endpoint = id ? \`${LOWER_NAME}/read/\${id}\` : '${LOWER_NAME}/read';
             const res = await fetch(App.url(endpoint));
             const result = await res.json();
 
@@ -442,7 +442,7 @@ const ${PASCAL_NAME}Controller = {
         const newStatus = currentStatus === 'completed' ? 'pending' : 'completed';
         App.spinner();
         try {
-            const res = await fetch(App.url(`${LOWER_NAME}/update/\${id}`), {
+            const res = await fetch(App.url(\`${LOWER_NAME}/update/\${id}\`), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status: newStatus })
@@ -458,7 +458,7 @@ const ${PASCAL_NAME}Controller = {
         if (!confirm('Delete record?')) return;
         App.spinner();
         try {
-            const res = await fetch(App.url(`${LOWER_NAME}/delete/\${id}`), {
+            const res = await fetch(App.url(\`${LOWER_NAME}/delete/\${id}\`), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
             });
