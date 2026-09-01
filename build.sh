@@ -28,6 +28,8 @@ cat web/frontend/js/app.js \
     web/frontend/js/home_controller.js \
     web/frontend/js/todo_controller.js \
     web/frontend/js/todo_submenu_controller.js \
+    web/frontend/js/notes_controller.js \
+    web/frontend/js/notes_submenu_controller.js \
     web/frontend/js/model.js \
     web/frontend/js/view.js >> $OUTPUT
 
@@ -56,6 +58,7 @@ cat web/frontend/css/app.css \
     web/frontend/css/pentest.css \
     web/frontend/css/mobile.css \
     web/frontend/css/todo.css \
+    web/frontend/css/notes.css \
     web/frontend/css/screen-agent-detail.css \
     web/frontend/css/leads.css >> $OUTPUT
 

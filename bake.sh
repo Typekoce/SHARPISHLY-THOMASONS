@@ -79,15 +79,17 @@ CONTROLLER_FILE="${CONTROLLER_DIR}/${PASCAL_NAME}Controller.php"
 # Frontend Paths
 FRONTEND_DIR="${PROJECT_ROOT}/web/frontend"
 JS_DIR="${FRONTEND_DIR}/js"
+CSS_DIR="${FRONTEND_DIR}/css"
 VIEWS_DIR="${FRONTEND_DIR}/views/pages"
 
 JS_SUBMENU_FILE="${JS_DIR}/${LOWER_NAME}_submenu_controller.js"
 JS_CONTROLLER_FILE="${JS_DIR}/${LOWER_NAME}_controller.js"
+CSS_FILE="${CSS_DIR}/${LOWER_NAME}.css"
 HTML_VIEW_FILE="${VIEWS_DIR}/${LOWER_NAME}.html"
 
 # Safeguard check to prevent overwriting existing files without --force
 if [[ "$FORCE" = false ]]; then
-    for FILE in "$MODEL_FILE" "$CONTROLLER_FILE" "$JS_SUBMENU_FILE" "$JS_CONTROLLER_FILE" "$HTML_VIEW_FILE"; do
+    for FILE in "$MODEL_FILE" "$CONTROLLER_FILE" "$JS_SUBMENU_FILE" "$JS_CONTROLLER_FILE" "$CSS_FILE" "$HTML_VIEW_FILE"; do
         if [[ -f "$FILE" ]]; then
             echo "Error: File already exists at $FILE. Use --force to overwrite."
             exit 1
@@ -96,7 +98,7 @@ if [[ "$FORCE" = false ]]; then
 fi
 
 # Ensure output directories exist
-mkdir -p "${MODEL_DIR}" "${CONTROLLER_DIR}" "${JS_DIR}" "${VIEWS_DIR}"
+mkdir -p "${MODEL_DIR}" "${CONTROLLER_DIR}" "${JS_DIR}" "${CSS_DIR}" "${VIEWS_DIR}"
 
 # ==============================================================================
 # 1. Generate PHP Model
@@ -472,7 +474,121 @@ const ${PASCAL_NAME}Controller = {
 JS
 
 # ==============================================================================
-# 5. Generate HTML View File
+# 5. Generate Frontend CSS File
+# ==============================================================================
+cat <<CSS > "${CSS_FILE}"
+#${LOWER_NAME} {
+    border: 1px dashed #ccc;
+    padding: 10px;
+    font-family: inherit;
+}
+
+#${LOWER_NAME} h2 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+#${LOWER_NAME} #${LOWER_NAME}-form {
+    margin-bottom: 1.5rem;
+}
+
+#${LOWER_NAME} #${LOWER_NAME}-form .mb-3 {
+    margin-bottom: 1rem;
+}
+
+#${LOWER_NAME} #${LOWER_NAME}-form label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+#${LOWER_NAME} #${LOWER_NAME}-form input,
+#${LOWER_NAME} #${LOWER_NAME}-form textarea {
+    width: 100%;
+    padding: 0.375rem 0.75rem;
+    font-size: 1rem;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+#${LOWER_NAME} #${LOWER_NAME}-form textarea {
+    min-height: 80px;
+    resize: vertical;
+}
+
+#${LOWER_NAME} button {
+    cursor: pointer;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+    border: 1px solid #6c757d;
+    background-color: #6c757d;
+    color: #fff;
+    border-radius: 4px;
+    margin-right: 0.5rem;
+    transition: background-color 0.15s ease-in-out;
+}
+
+#${LOWER_NAME} button:hover {
+    background-color: #5c636a;
+}
+
+#${LOWER_NAME} #${LOWER_NAME}-form button[type="submit"] {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+#${LOWER_NAME} #${LOWER_NAME}-form button[type="submit"]:hover {
+    background-color: #0b5ed7;
+}
+
+#${LOWER_NAME}-records {
+    margin-top: 1rem;
+    width: 100%;
+    overflow-x: auto;
+}
+
+#${LOWER_NAME}-records p {
+    color: #6c757d;
+    font-style: italic;
+    padding: 1rem 0;
+    margin: 0;
+}
+
+#${LOWER_NAME} table.table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 0.5rem;
+}
+
+#${LOWER_NAME} table.table th,
+#${LOWER_NAME} table.table td {
+    padding: 0.75rem;
+    vertical-align: middle;
+    border-bottom: 1px solid #dee2e6;
+    text-align: left;
+}
+
+#${LOWER_NAME} table.table th {
+    font-weight: 600;
+    background-color: #f8f9fa;
+    color: #212529;
+}
+
+#${LOWER_NAME} table.table td small {
+    color: #6c757d;
+}
+
+#${LOWER_NAME} table.table td button {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+}
+CSS
+
+# ==============================================================================
+# 6. Generate HTML View File
 # ==============================================================================
 cat <<HTML > "${HTML_VIEW_FILE}"
 <div id="${LOWER_NAME}">
@@ -496,11 +612,12 @@ cat <<HTML > "${HTML_VIEW_FILE}"
 HTML
 
 # Permissions
-chmod 755 "${MODEL_FILE}" "${CONTROLLER_FILE}" "${JS_SUBMENU_FILE}" "${JS_CONTROLLER_FILE}" "${HTML_VIEW_FILE}"
+chmod 755 "${MODEL_FILE}" "${CONTROLLER_FILE}" "${JS_SUBMENU_FILE}" "${JS_CONTROLLER_FILE}" "${CSS_FILE}" "${HTML_VIEW_FILE}"
 
 echo "Baked backend & frontend successfully:"
 echo " - Model:                  ${MODEL_FILE}"
 echo " - Controller:             ${CONTROLLER_FILE}"
 echo " - JS Submenu Controller:  ${JS_SUBMENU_FILE}"
 echo " - JS Controller:          ${JS_CONTROLLER_FILE}"
+echo " - CSS Stylesheet:         ${CSS_FILE}"
 echo " - HTML View:              ${HTML_VIEW_FILE}"
