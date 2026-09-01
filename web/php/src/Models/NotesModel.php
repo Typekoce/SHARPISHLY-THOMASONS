@@ -16,10 +16,9 @@ class NotesModel extends BaseModel
     {
         if ($this->debug === true && empty($payload)) {
             $payload = [
-                'title'       => 'Notes Entry',
-                'description' => 'Default notes record generated via bake script',
-                'source_id'   => 1,
-                'status'      => 'active'
+                'todo_id'     => 1,
+                'note'        => 'Secondary test data entry of todo',
+                'created_at'  => date('Y-m-d H:i:s')
             ];
         }
 
@@ -31,10 +30,7 @@ class NotesModel extends BaseModel
     {
         if ($this->debug === true && empty($payload)) {
             $payload = [
-                'title'       => 'Notes Entry - Updated',
-                'description' => 'Updated notes record',
-                'source_id'   => 1,
-                'status'      => 'completed'
+                'note' => 'Updated note record content'
             ];
         }
 
@@ -67,6 +63,26 @@ class NotesModel extends BaseModel
             $logger = $GLOBALS['logger'] ?? null;
             if ($logger) {
                 $logger->error("NotesModel::read failed: " . $e->getMessage());
+            }
+
+            return [
+                'error'   => true,
+                'message' => $e->getMessage()
+            ];
+        }
+    }
+
+    public function getDetails(string $id): array
+    {
+        try {
+            return $this->db->find([
+                'tbl'   => $this->tbl,
+                'where' => ['id' => $id]
+            ]);
+        } catch (Throwable $e) {
+            $logger = $GLOBALS['logger'] ?? null;
+            if ($logger) {
+                $logger->error("NotesModel::getDetails failed: " . $e->getMessage());
             }
 
             return [
