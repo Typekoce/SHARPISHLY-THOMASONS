@@ -2,107 +2,60 @@
 
 declare(strict_types=1);
 
-namespace App\Models;
+namespace App\Controllers;
 
+use App\Models\NotesModel;
 use Throwable;
 
-class NotesModel extends BaseModel
+class NotesController extends BaseController 
 {
-    public bool $debug = true;
-
-    public string $tbl = 'notes';
-
-    public function create(array $payload = []): array
+    public function __construct()
     {
-        if ($this->debug === true && empty($payload)) {
-            $payload = [
-                'todo_id'     => 1,
-                'note'        => 'Default note generated via bake script',
-                'created_at'  => date('Y-m-d H:i:s')
-            ];
-        }
+        parent::__construct();
+        $this->model = new NotesModel();
+    }    
 
-        $this->db->save($this->tbl, $payload);
-        return ['result' => $this->read()];
+    public function create(): void
+    {
+        $payload = $this->request();
+        $result  = $this->model->create($payload);
+
+        $this->json([
+            'status'   => 'success',
+            'function' => __FUNCTION__,
+            'class'    => __CLASS__,
+            'method'   => __METHOD__,
+            'response' => $result
+        ]);
     }
 
-    public function update(string $id = '', array $payload = []): array
+    public function read(string $id = ''): void
     {
-        if ($this->debug === true && empty($payload)) {
-            $payload = [
-                'note' => 'Updated note record content'
-            ];
-        }
-
-        if (!empty($id)) {
-            $existing = $this->read($id);
-            $currentData = $existing[0] ?? [];
-
-            $mergedPayload = array_merge($currentData, $payload, ['id' => (int)$id]);
-
-            $this->db->save($this->tbl, $mergedPayload);
-        }
-
-        return ['result' => $this->read($id)];
+        $result = $this->model->read($id);
+        $this->json(['status' => 'success', 'data' => $result]);
     }
 
-    public function read(string $id = ''): array
-    {
-        try {
-            $conditions = [
-                'tbl'   => $this->tbl,
-                'order' => ['id' => 'DESC']
-            ];
-
-            if (!empty($id)) {
-                $conditions['where'] = ['id' => $id];
-            }
-
-            return $this->db->find($conditions);
-        } catch (Throwable $e) {
-            $logger = $GLOBALS['logger'] ?? null;
-            if ($logger) {
-                $logger->error("NotesModel::read failed: " . $e->getMessage());
-            }
-
-            return [
-                'error'   => true,
-                'message' => $e->getMessage()
-            ];
-        }
-    }
-
-    public function getDetails(string $id): array
-    {
-        try {
-            return $this->db->find([
-                'tbl'   => $this->tbl,
-                'where' => ['id' => $id]
-            ]);
-        } catch (Throwable $e) {
-            $logger = $GLOBALS['logger'] ?? null;
-            if ($logger) {
-                $logger->error("NotesModel::getDetails failed: " . $e->getMessage());
-            }
-
-            return [
-                'error'   => true,
-                'message' => $e->getMessage()
-            ];
-        }
-    }
-
-    public function delete(string $id = ''): array
+    public function details(string $id = ''): void
     {
         if (empty($id)) {
-            return ['error' => true, 'message' => 'Missing ID for deletion'];
+            $this->json(['status' => 'error', 'message' => 'Missing ID for details'], 400);
+            return;
         }
 
-        try {
-            $this->db->delete($this->tbl, ['id' => $id]);
-            return ['status' => 'deleted', 'id' => $id];
-        } catch (Throwable $e) {
-            return ['error' => true, 'message' => $e->getMessage()];
-        }
+        $result = $this->model->getDetails($id);
+        $this->json(['status' => 'success', 'data' => $result]);
+    }
+
+    public function update(string $id = ''): void
+    {
+        $payload = $this->request();
+        $result  = $this->model->update($id, $payload);
+        $this->json(['status' => 'success', 'data' => $result]);
+    }
+
+    public function delete(string $id = ''): void
+    {
+        $result = $this->model->delete($id);
+        $this->json(['status' => 'success', 'data' => $result]);
     }
 }
