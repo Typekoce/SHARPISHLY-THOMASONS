@@ -95,6 +95,8 @@ class TestController extends BaseController
                     'MobileAgentController.php' => 'Completed',
                     'AwsController.php'          => 'active',
                     'AzureController.php'        => 'active',
+                    'TodoController.php'        => 'active',
+                    'NotesController.php'        => 'active',
                     'AzureFoundryController.php' => 'Pending',
                     'BaseCloudController.php'   => 'Pending',
                     'GoogleapiController.php'   => 'Pending',
