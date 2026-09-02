@@ -1692,6 +1692,9 @@ PentestController.examine = async function(examine){
     'mobile': () => MobileController.init(),
     'todo': () => TodoController.init(),
     'notes': () => NotesController.init()
+};App.setPageRegistry = function(key,value){
+    //
+    PageRegistry[key] = value;
 };/**
  * Mobile Controller
  */
@@ -2139,6 +2142,21 @@ function renderMobileAgentItem(item) {
         }
     },
 
+    goToNote(t) {
+        const titleLink = App.item('a');
+        const noteTargetId = t.note_id || t.id;
+        titleLink.href = `#notes/${noteTargetId}`;
+        titleLink.textContent = t.title;
+        titleLink.onclick = (e) => {
+            console.log('TodoController.goToNote', e);
+
+            e.preventDefault();
+            App.setPageRegistry?.('activeNoteId', noteTargetId);
+            window.location.hash = `notes/${noteTargetId}`;
+        };
+        return titleLink;
+    },
+
     async read(id = '', params = {}) {
         const recordsDiv = document.getElementById('todo-records');
         if (!recordsDiv) return;
@@ -2186,7 +2204,10 @@ function renderMobileAgentItem(item) {
 
                 const titleTd = App.item('td');
                 const titleStrong = App.item('strong');
-                titleStrong.textContent = t.title;
+
+                const titleLink = this.goToNote(t);
+
+                titleStrong.appendChild(titleLink);
                 titleTd.appendChild(titleStrong);
 
                 if (t.description) {
