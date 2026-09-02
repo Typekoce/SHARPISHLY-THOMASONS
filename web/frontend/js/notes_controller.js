@@ -90,6 +90,17 @@ const NotesController = {
         }
     },
 
+    renderDisplay(recordsDiv, data) {
+        if (!data || data.length === 0) return;
+
+        const test = App.item('div');
+        test.textContent = data[0].note;
+
+        recordsDiv.appendChild(test);
+
+        console.log('NotesController.renderDisplay', { note: data[0].note });
+    },
+
     async read(id = '', params = {}) {
         const recordsDiv = document.getElementById('notes-records');
         if (!recordsDiv) return;
@@ -109,15 +120,44 @@ const NotesController = {
 
             recordsDiv.textContent = '';
 
-            let rawData = result.data || [];
+            // Extract raw data safely
+            let rawData = result.data ?? [];
             let data = Array.isArray(rawData) ? rawData : [rawData];
 
-            // Filter out null/undefined elements safely
-            data = data.filter(Boolean);
+            // 1. Unwrap obvious single-key wrappers (e.g. { note: { id, title, ... } })
+            data = data.map(item => {
+                if (!item || typeof item !== 'object') return item;
 
+                const keys = Object.keys(item);
+                if (keys.length === 1 && item.title === undefined) {
+                    const inner = item[keys[0]];
+                    if (inner && typeof inner === 'object') {
+                        return inner;
+                    }
+                }
+                return item;
+            });
+
+            // 2. Strictly filter out empty or invalid records
+            data = data.filter(item =>
+                item &&
+                typeof item === 'object' &&
+                Object.keys(item).length > 0 &&
+                item.title !== undefined
+            );
+
+            // 3. Apply status filtering if requested
             if (params.status) {
                 data = data.filter(item => item.status === params.status);
             }
+
+            // Diagnostic logging for raw vs normalized data evaluation
+            console.log('NotesController.read:normalized', { rawData, data });
+            App.dBug({ context: 'NotesController.read:normalized', rawData, data, div: 'notes-records' });
+
+            // Hardcode output for testing purposes
+            this.renderDisplay(recordsDiv,data);
+
 
             if (result.status !== 'success' || data.length === 0) {
                 const emptyMsg = App.item('p');
