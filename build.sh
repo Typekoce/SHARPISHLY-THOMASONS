@@ -24,6 +24,7 @@ cat web/frontend/js/app.js \
     web/frontend/js/snapshots_controller.js \
     web/frontend/js/pentest_controller.js \
     web/frontend/js/page_registry.js \
+    web/frontend/js/app_page_registry.js \
     web/frontend/js/mobile_controller.js \
     web/frontend/js/home_controller.js \
     web/frontend/js/todo_controller.js \
