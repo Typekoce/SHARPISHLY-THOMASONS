@@ -14,12 +14,13 @@ class NotesModel extends BaseModel
 
     public function create(array $payload = []): array
     {
-        if ($this->debug === true && empty($payload)) {
-            $payload = [
-                'todo_id'     => 1,
-                'note'        => 'Secondary test data entry of todo',
-                'created_at'  => date('Y-m-d H:i:s')
-            ];
+        // Centralized fallback defaults for essential fields
+        if (empty($payload['todo_id'])) {
+            $payload['todo_id'] = 1;
+        }
+
+        if (!isset($payload['note']) && isset($payload['description'])) {
+            $payload['note'] = $payload['description'];
         }
 
         $this->db->save($this->tbl, $payload);
