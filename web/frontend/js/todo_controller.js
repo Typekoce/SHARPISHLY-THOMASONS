@@ -91,7 +91,7 @@ const TodoController = {
         titleLink.setAttribute('style','cursor:pointer;');       
         titleLink.onclick = (e) => {
             
-            console.log('TodoController.goToNote', e);
+            console.log('TodoController.goToNote', {event:e,clicked:this});
 
             e.preventDefault();
 
