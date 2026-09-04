@@ -1,6 +1,7 @@
 const TodoController = {
     activeTaskId: null,
     tasks: [],
+    currentNoteId: '',
 
     async init() {
         const container = document.getElementById('todo-records');
@@ -81,23 +82,31 @@ const TodoController = {
         }
     },
 
+    setNoteId(id){
+        this.currentNoteId = id;
+    },
+
+    getNoteId(){
+        return this.currentNoteId;
+    },
+
     goToNote(t) {
         const titleLink = App.item('a');
         const noteTargetId = t.note_id || t.id;
         titleLink.href = `#`;
         titleLink.textContent = t.title;
         titleLink.setAttribute('data-page','notes');
-        titleLink.setAttribute('note_id',noteTargetId);
-        titleLink.setAttribute('style','cursor:pointer;');       
+        titleLink.setAttribute('data-note-id', noteTargetId);
+        titleLink.setAttribute('style', 'cursor:pointer;');       
         titleLink.onclick = (e) => {
-            
-            console.log('TodoController.goToNote', {event:e,clicked:this});
-
             e.preventDefault();
 
-            //App.flash?.(this.activeTaskId ? 'Task updated!' : 'Task created!', 'success');
-            //App.setPageRegistry?.('activeNoteId', noteTargetId);
-            //window.location.hash = `notes/${noteTargetId}`;
+            // Option A: Using e.currentTarget with getAttribute
+            const noteId = e.currentTarget.getAttribute('data-note-id');
+
+            this.setNoteId(noteId);
+
+            console.log('TodoController.goToNote', { event: e, clicked: noteId });
         };
         return titleLink;
     },

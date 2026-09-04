@@ -2062,6 +2062,7 @@ function renderMobileAgentItem(item) {
 };const TodoController = {
     activeTaskId: null,
     tasks: [],
+    currentNoteId: '',
 
     async init() {
         const container = document.getElementById('todo-records');
@@ -2142,23 +2143,31 @@ function renderMobileAgentItem(item) {
         }
     },
 
+    setNoteId(id){
+        this.currentNoteId = id;
+    },
+
+    getNoteId(){
+        return this.currentNoteId;
+    },
+
     goToNote(t) {
         const titleLink = App.item('a');
         const noteTargetId = t.note_id || t.id;
         titleLink.href = `#`;
         titleLink.textContent = t.title;
         titleLink.setAttribute('data-page','notes');
-        titleLink.setAttribute('note_id',noteTargetId);
-        titleLink.setAttribute('style','cursor:pointer;');       
+        titleLink.setAttribute('data-note-id', noteTargetId);
+        titleLink.setAttribute('style', 'cursor:pointer;');       
         titleLink.onclick = (e) => {
-            
-            console.log('TodoController.goToNote', e);
-
             e.preventDefault();
 
-            //App.flash?.(this.activeTaskId ? 'Task updated!' : 'Task created!', 'success');
-            //App.setPageRegistry?.('activeNoteId', noteTargetId);
-            //window.location.hash = `notes/${noteTargetId}`;
+            // Option A: Using e.currentTarget with getAttribute
+            const noteId = e.currentTarget.getAttribute('data-note-id');
+
+            this.setNoteId(noteId);
+
+            console.log('TodoController.goToNote', { event: e, clicked: noteId });
         };
         return titleLink;
     },
@@ -2362,6 +2371,8 @@ function renderMobileAgentItem(item) {
     App.dBug(menuItems);
     SubMenuController.menu(menuItems);
 };const NotesController = {
+    currentNoteId: null,
+
     async init() {
         console.log('NotesController.init');
         App.dBug({ context: 'NotesController.init', div: 'notes-records' });
@@ -2393,7 +2404,35 @@ function renderMobileAgentItem(item) {
         }
 
         this.submenu();
-        await this.read();
+
+        // Check for local noteId or retrieve from TodoController if available
+        const activeNoteId = this.getNoteId();
+        if (activeNoteId) {
+            await this.read(activeNoteId);
+        } else {
+            await this.read();
+        }
+    },
+
+    setNoteId(id) {
+        this.currentNoteId = id;
+    },
+
+    getNoteId() {
+        if (this.currentNoteId) {
+            return this.currentNoteId;
+        }
+
+        if (typeof TodoController !== 'undefined' && TodoController.getNoteId) {
+            const todoNoteId = TodoController.getNoteId();
+            if (todoNoteId) {
+                this.setNoteId(todoNoteId);
+                return todoNoteId;
+            }
+        }
+
+        App.flash('No note id present', 'error');
+        return null;
     },
 
     submenu() {
@@ -2410,49 +2449,51 @@ function renderMobileAgentItem(item) {
         App.dBug({ context: 'NotesController.submenu', menuItems, div: 'notes-records' });
         SubMenuController.menu(menuItems);
     },
+async create(e) {
+    e.preventDefault();
+    const titleEl = document.getElementById('notes-title');
+    const categoryEl = document.getElementById('notes-category');
+    const descEl = document.getElementById('notes-desc');
 
-    async create(e) {
-        e.preventDefault();
-        const titleEl = document.getElementById('notes-title');
-        const categoryEl = document.getElementById('notes-category');
-        const descEl = document.getElementById('notes-desc');
+    const activeTodoId = this.getNoteId() || 1;
 
-        const payload = {
-            title: titleEl?.value.trim(),
-            category: categoryEl?.value.trim() || 'internal',
-            description: descEl?.value.trim(),
-            status: 'pending'
-        };
+    const payload = {
+        todo_id: activeTodoId,
+        title: titleEl?.value.trim(),
+        note: descEl?.value.trim() || titleEl?.value.trim(),
+        category: categoryEl?.value.trim() || 'internal',
+        description: descEl?.value.trim(),
+        status: 'pending'
+    };
 
-        console.log('NotesController.create:payload', payload);
-        App.dBug({ context: 'NotesController.create', payload, div: 'notes-records' });
+    console.log('NotesController.create:payload', payload);
+    App.dBug({ context: 'NotesController.create', payload, div: 'notes-records' });
 
-        if (!payload.title) return;
+    if (!payload.title) return;
 
-        App.spinner();
-        try {
-            const res = await fetch(App.url('notes/create'), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            const result = await res.json();
+    App.spinner();
+    try {
+        const res = await fetch(App.url('notes/create'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const result = await res.json();
 
-            console.log('NotesController.create:response', result);
-            App.dBug({ context: 'NotesController.create:response', result, div: 'notes-records' });
+        console.log('NotesController.create:response', result);
+        App.dBug({ context: 'NotesController.create:response', result, div: 'notes-records' });
 
-            if (result.status === 'success') {
-                document.getElementById('notes-form').reset();
-                await this.read();
-            }
-        } catch (err) {
-            console.error('NotesController.create:error', err);
-            App.dBug({ context: 'NotesController.create:error', error: err.message, div: 'notes-records' });
-        } finally {
-            App.clearSpinner();
+        if (result.status === 'success') {
+            document.getElementById('notes-form').reset();
+            await this.read();
         }
-    },
-
+    } catch (err) {
+        console.error('NotesController.create:error', err);
+        App.dBug({ context: 'NotesController.create:error', error: err.message, div: 'notes-records' });
+    } finally {
+        App.clearSpinner();
+    }
+},
     renderDisplay(recordsDiv, data) {
         if (!data || data.length === 0) return;
 
@@ -2483,11 +2524,9 @@ function renderMobileAgentItem(item) {
 
             recordsDiv.textContent = '';
 
-            // Extract raw data safely
             let rawData = result.data ?? [];
             let data = Array.isArray(rawData) ? rawData : [rawData];
 
-            // 1. Unwrap obvious single-key wrappers (e.g. { note: { id, title, ... } })
             data = data.map(item => {
                 if (!item || typeof item !== 'object') return item;
 
@@ -2501,7 +2540,6 @@ function renderMobileAgentItem(item) {
                 return item;
             });
 
-            // 2. Strictly filter out empty or invalid records
             data = data.filter(item =>
                 item &&
                 typeof item === 'object' &&
@@ -2509,18 +2547,14 @@ function renderMobileAgentItem(item) {
                 item.title !== undefined
             );
 
-            // 3. Apply status filtering if requested
             if (params.status) {
                 data = data.filter(item => item.status === params.status);
             }
 
-            // Diagnostic logging for raw vs normalized data evaluation
             console.log('NotesController.read:normalized', { rawData, data });
             App.dBug({ context: 'NotesController.read:normalized', rawData, data, div: 'notes-records' });
 
-            // Hardcode output for testing purposes
-            this.renderDisplay(recordsDiv,data);
-
+            this.renderDisplay(recordsDiv, data);
 
             if (result.status !== 'success' || data.length === 0) {
                 const emptyMsg = App.item('p');
@@ -2529,12 +2563,14 @@ function renderMobileAgentItem(item) {
                 return;
             }
 
-            // If single ID was requested, show a Back button toolbar above the record
             if (id) {
                 const backBtn = App.item('button');
                 backBtn.className = 'btn btn-sm btn-secondary mb-3';
                 backBtn.textContent = '← Back to All Notes';
-                backBtn.onclick = () => this.read();
+                backBtn.onclick = () => {
+                    this.setNoteId(null);
+                    this.read();
+                };
                 recordsDiv.appendChild(backBtn);
             }
 
@@ -2640,6 +2676,7 @@ function renderMobileAgentItem(item) {
     async display(id) {
         console.log('NotesController.display', { id });
         App.dBug({ context: 'NotesController.display', id, div: 'notes-records' });
+        this.setNoteId(id);
         await this.read(id);
     },
 
