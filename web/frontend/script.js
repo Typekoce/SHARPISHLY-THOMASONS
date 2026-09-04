@@ -2145,14 +2145,20 @@ function renderMobileAgentItem(item) {
     goToNote(t) {
         const titleLink = App.item('a');
         const noteTargetId = t.note_id || t.id;
-        titleLink.href = `#notes/${noteTargetId}`;
+        titleLink.href = `#`;
         titleLink.textContent = t.title;
+        titleLink.setAttribute('data-page','notes');
+        titleLink.setAttribute('note_id',noteTargetId);
+        titleLink.setAttribute('style','cursor:pointer;');       
         titleLink.onclick = (e) => {
+            
             console.log('TodoController.goToNote', e);
 
             e.preventDefault();
-            App.setPageRegistry?.('activeNoteId', noteTargetId);
-            window.location.hash = `notes/${noteTargetId}`;
+
+            //App.flash?.(this.activeTaskId ? 'Task updated!' : 'Task created!', 'success');
+            //App.setPageRegistry?.('activeNoteId', noteTargetId);
+            //window.location.hash = `notes/${noteTargetId}`;
         };
         return titleLink;
     },
