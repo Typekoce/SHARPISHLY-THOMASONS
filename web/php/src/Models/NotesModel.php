@@ -56,7 +56,7 @@ class NotesModel extends BaseModel
             ];
 
             if (!empty($id)) {
-                $conditions['where'] = ['id' => $id];
+                $conditions['where'] = ['todo_id' => $id];
             }
 
             return $this->db->find($conditions);
