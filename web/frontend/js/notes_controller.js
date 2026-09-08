@@ -2,10 +2,16 @@ const NotesController = {
     currentNoteId: null,
 
     async init() {
+
         console.log('NotesController.init');
+
         App.dBug({ context: 'NotesController.init', div: 'notes-records' });
 
+        // Testing initial startUp()
+        await this.startUp();
+
         const recordsContainer = document.getElementById('notes-records');
+
         if (!recordsContainer) return;
 
         let form = document.getElementById('notes-form');
@@ -40,6 +46,20 @@ const NotesController = {
         } else {
             await this.read();
         }
+    },
+
+    async startUp(){
+
+        App.dBug({ context: 'NotesController.startUp', div: 'notes-records' });
+
+        console.log('NotesController.startUp');
+
+        const res = await fetch(App.url('notes/read/66'));
+
+        const result = await res.json();
+
+        console.log({result:result});
+
     },
 
     setNoteId(id) {
@@ -134,28 +154,38 @@ async create(e) {
     },
 
     async read(id = '', params = {}) {
+
         const recordsDiv = document.getElementById('notes-records');
+
+        console.log('NotesController.read', { recordsDiv, id, params });
+
         if (!recordsDiv) return;
 
         const endpoint = id ? `notes/read/${id}` : 'notes/read';
 
         console.log('NotesController.read', { endpoint, id, params });
+
         App.dBug({ context: 'NotesController.read', endpoint, id, params, div: 'notes-records' });
 
         App.spinner();
+
         try {
             const res = await fetch(App.url(endpoint));
+
             const result = await res.json();
 
             console.log('NotesController.read:response', result);
+
             App.dBug({ context: 'NotesController.read:response', result, div: 'notes-records' });
 
             recordsDiv.textContent = '';
 
             let rawData = result.data ?? [];
+
             let data = Array.isArray(rawData) ? rawData : [rawData];
 
             data = data.map(item => {
+
                 if (!item || typeof item !== 'object') return item;
 
                 const keys = Object.keys(item);
@@ -180,6 +210,7 @@ async create(e) {
             }
 
             console.log('NotesController.read:normalized', { rawData, data });
+
             App.dBug({ context: 'NotesController.read:normalized', rawData, data, div: 'notes-records' });
 
             this.renderDisplay(recordsDiv, data);
