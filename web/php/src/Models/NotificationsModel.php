@@ -4,50 +4,91 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Services\Orm;
 use Throwable;
 
 class NotificationsModel extends BaseModel
 {
-    public bool $debug = true;
-
     public string $tbl = 'notifications';
+    protected Orm $orm;
 
-    public function create(array $payload = []): array
+    private const ALLOWED_SOURCES = ['GoogleCal', 'Hotmail', 'Outlook', 'EventBriteHello', 'AzureHelloWorld'];
+
+    public function __construct()
     {
-        if ($this->debug === true && empty($payload)) {
-            $payload = [
-                'title'       => 'Notifications Entry',
-                'description' => 'Default notifications record generated via bake script',
-                // 'source_id'   => 1,
-                'status'      => 'active'
+        parent::__construct();
+        $this->orm = new Orm();
+    }
+
+    /**
+     * Safely fetches external notifications using the Orm service.
+     */
+    public function fetchExternalNotifications(string $source): array
+    {
+        if (!in_array($source, self::ALLOWED_SOURCES, true)) {
+            return [
+                'error'   => true,
+                'message' => "Unsupported notification source: {$source}"
             ];
         }
+
+        $response = $this->orm->execute([
+            'source' => $source,
+            'action' => 'read'
+        ]);
+
+        if (isset($response['error'])) {
+            return [
+                'error'   => true,
+                'message' => "Failed to aggregate from {$source}: " . ($response['message'] ?? 'Unknown error')
+            ];
+        }
+
+        $data = $response['data'] ?? $response;
+        if (!is_array($data)) {
+            $data = [$data];
+        }
+
+        return [
+            'source' => $source,
+            'data'   => $data
+        ];
+    }
+
+    /**
+     * Stores aggregated third-party notification items explicitly.
+     */
+    public function createFromAggregation(string $source, array $externalData): array
+    {
+        $payload = [
+            'title'       => "Notification from {$source}",
+            'description' => json_encode($externalData),
+            'status'      => 'unread',
+            'source'      => $source,
+            'created_at'  => date('Y-m-d H:i:s')
+        ];
 
         $this->db->save($this->tbl, $payload);
         return ['result' => $this->read()];
     }
 
-    public function update(string $id = '', array $payload = []): array
+    /**
+     * Explicit payload creation with required field validation.
+     */
+    public function create(array $payload = []): array
     {
-        if ($this->debug === true && empty($payload)) {
-            $payload = [
-                'title'       => 'Notifications Entry - Updated',
-                'description' => 'Updated notifications record',
-                // 'source_id'   => 1,
-                'status'      => 'completed'
+        if (empty($payload['title'])) {
+            return [
+                'error'   => true,
+                'message' => 'Notification title is required'
             ];
         }
 
-        if (!empty($id)) {
-            $existing = $this->read($id);
-            $currentData = $existing[0] ?? [];
+        $payload['created_at'] ??= date('Y-m-d H:i:s');
+        $payload['status']     ??= 'unread';
 
-            $mergedPayload = array_merge($currentData, $payload, ['id' => (int)$id]);
-
-            $this->db->save($this->tbl, $mergedPayload);
-        }
-
-        return ['result' => $this->read($id)];
+        $this->db->save($this->tbl, $payload);
+        return ['result' => $this->read()];
     }
 
     public function read(string $id = ''): array
@@ -74,6 +115,20 @@ class NotificationsModel extends BaseModel
                 'message' => $e->getMessage()
             ];
         }
+    }
+
+    public function update(string $id = '', array $payload = []): array
+    {
+        if (empty($id)) {
+            return ['error' => true, 'message' => 'Missing ID for update'];
+        }
+
+        $existing = $this->read($id);
+        $currentData = $existing[0] ?? [];
+        $mergedPayload = array_merge($currentData, $payload, ['id' => (int)$id]);
+
+        $this->db->save($this->tbl, $mergedPayload);
+        return ['result' => $this->read($id)];
     }
 
     public function delete(string $id = ''): array
