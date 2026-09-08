@@ -373,6 +373,20 @@ class ScaffoldModel extends BaseModel
             ],
             // notes end
 
+            // notifications start
+            'notifications' => [
+                'id'          => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'notifications_id'     => 'INT NOT NULL',
+                'title'       => 'VARCHAR(255) DEFAULT NULL',
+                'note'        => 'LONGTEXT NULL DEFAULT NULL',
+                'status'      => 'VARCHAR(255) DEFAULT "active"',
+                'created_at'  => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+                'updated_at'  => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
+                'pref'        => 'VARCHAR(255) DEFAULT NULL',
+                'content'     => 'LONGTEXT NULL DEFAULT NULL',
+            ],
+            // notifications end
+
         ];
     }
 }
