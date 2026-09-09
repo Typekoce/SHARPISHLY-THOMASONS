@@ -177,6 +177,9 @@ App.eForm = function(form, schema) {
         el.className = 'form-control';
         
         if (field.placeholder) el.placeholder = field.placeholder;
+        if (field.value !== undefined) el.value = field.value;
+        if (field.disabled) el.disabled = field.disabled;
+        if (field.readOnly) el.readOnly = field.readOnly;
         if (type !== 'textarea') el.type = type;
 
         const label = App.item('label');
