@@ -2377,6 +2377,10 @@ function renderMobileAgentItem(item) {
     currentNoteId: null,
 
     async init() {
+
+        const activeNoteId = this.getNoteId();
+        const todoTitle = this.getTodoTitle();
+
         console.log('NotesController.init');
         App.dBug({ context: 'NotesController.init', div: 'notes-records' });
 
@@ -2384,13 +2388,24 @@ function renderMobileAgentItem(item) {
         if (!recordsContainer) return;
 
         let form = document.getElementById('notes-form');
+
+        this.setForm(form,recordsContainer,activeNoteId,todoTitle);
+        this.submenu();
+
+        await this.read(activeNoteId || '');
+    },
+
+    setForm(form,recordsContainer,activeNoteId,todoTitle){
+
         if (!form) {
             form = App.item('form');
             form.id = 'notes-form';
             form.className = 'mb-4';
 
+            const todo = 'Todo ID: ' + activeNoteId + ' Title: ' + todoTitle;
+
             const schema = {
-                'todo': { id: 'todo', placeholder: 'Title...', value: 'Todo title goes here', disabled: 'TRUE' },
+                'todo': { id: 'todo', placeholder: 'Title...', value: todo, disabled: 'TRUE' },
                 'title': { id: 'notes-title', placeholder: 'Title...' },
                 'category': { id: 'notes-category', placeholder: 'Category...' },
                 'description': { id: 'notes-desc', type: 'textarea', placeholder: 'Description...' }
@@ -2412,10 +2427,10 @@ function renderMobileAgentItem(item) {
             recordsContainer.parentNode.insertBefore(form, recordsContainer);
         }
 
-        this.submenu();
+    },
 
-        const activeNoteId = this.getNoteId();
-        await this.read(activeNoteId || '');
+    getTodoTitle(){
+        return 'I want to work for Spacex...'
     },
 
     setNoteId(id) {
