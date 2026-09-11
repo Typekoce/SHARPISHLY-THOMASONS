@@ -2,7 +2,6 @@ const NotesController = {
     currentNoteId: null,
 
     async init() {
-
         const activeNoteId = this.getNoteId();
         const todoTitle = this.getTodoTitle();
 
@@ -14,20 +13,26 @@ const NotesController = {
 
         let form = document.getElementById('notes-form');
 
-        this.setForm(form,recordsContainer,activeNoteId,todoTitle);
+        this.setForm(form, recordsContainer, activeNoteId, todoTitle);
+
+        // Ensure current state displays on tab switches even if form is cached in DOM
+        const todoInput = document.getElementById('todo');
+        if (todoInput) {
+            todoInput.value = `Todo ID: ${activeNoteId || ''} Title: ${todoTitle || ''}`;
+        }
+
         this.submenu();
 
         await this.read(activeNoteId || '');
     },
 
-    setForm(form,recordsContainer,activeNoteId,todoTitle){
-
+    setForm(form, recordsContainer, activeNoteId, todoTitle){
         if (!form) {
             form = App.item('form');
             form.id = 'notes-form';
             form.className = 'mb-4';
 
-            const todo = 'Todo ID: ' + activeNoteId + ' Title: ' + todoTitle;
+            const todo = 'Todo ID: ' + (activeNoteId || '') + ' Title: ' + (todoTitle || '');
 
             const schema = {
                 'todo': { id: 'todo', placeholder: 'Title...', value: todo, disabled: 'TRUE' },
@@ -51,11 +56,13 @@ const NotesController = {
             form.onsubmit = (e) => this.create(e);
             recordsContainer.parentNode.insertBefore(form, recordsContainer);
         }
-
     },
 
     getTodoTitle(){
-        return 'I want to work for Spacex...'
+        if (typeof TodoController !== 'undefined' && typeof TodoController.getTodoTitle === 'function') {
+            return TodoController.getTodoTitle() || '';
+        }
+        return '';
     },
 
     setNoteId(id) {
@@ -128,9 +135,11 @@ const NotesController = {
                 const form = document.getElementById('notes-form');
                 if (form) form.reset();
 
+                const activeNoteId = this.getNoteId();
+                const todoTitle = this.getTodoTitle();
                 const todoInput = document.getElementById('todo');
                 if (todoInput) {
-                    todoInput.value = 'Todo title goes here';
+                    todoInput.value = `Todo ID: ${activeNoteId || ''} Title: ${todoTitle || ''}`;
                     todoInput.disabled = true;
                     todoInput.readOnly = true;
                 }

@@ -2,6 +2,7 @@ const TodoController = {
     activeTaskId: null,
     tasks: [],
     currentNoteId: '',
+    todoTitle: '',
 
     async init() {
         const container = document.getElementById('todo-records');
@@ -90,6 +91,28 @@ const TodoController = {
         return this.currentNoteId;
     },
 
+    // Fixed typo from setTodoTile to setTodoTitle
+    setTodoTitle(title){
+        this.todoTitle = title;
+    },
+
+    getTodoTitle(){
+        if (this.todoTitle) {
+            return this.todoTitle;
+        }
+
+        // Fallback: lookup title from loaded tasks via active note ID
+        const activeId = this.getNoteId();
+        if (activeId && Array.isArray(this.tasks)) {
+            const match = this.tasks.find(t => (t.note_id || t.id) == activeId);
+            if (match && match.title) {
+                return match.title;
+            }
+        }
+
+        return '';
+    },
+
     goToNote(t) {
         const titleLink = App.item('a');
         const noteTargetId = t.note_id || t.id;
@@ -97,16 +120,18 @@ const TodoController = {
         titleLink.textContent = t.title;
         titleLink.setAttribute('data-page','notes');
         titleLink.setAttribute('data-note-id', noteTargetId);
+        titleLink.setAttribute('data-todo-title', t.title);
         titleLink.setAttribute('style', 'cursor:pointer;');       
         titleLink.onclick = (e) => {
             e.preventDefault();
 
-            // Option A: Using e.currentTarget with getAttribute
             const noteId = e.currentTarget.getAttribute('data-note-id');
+            const noteTitle = e.currentTarget.getAttribute('data-todo-title');
 
             this.setNoteId(noteId);
+            this.setTodoTitle(noteTitle);
 
-            console.log('TodoController.goToNote', { event: e, clicked: noteId });
+            console.log('TodoController.goToNote', { event: e, clicked: noteId, title: noteTitle });
         };
         return titleLink;
     },
