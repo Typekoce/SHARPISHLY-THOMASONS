@@ -63,6 +63,7 @@ cat web/frontend/css/app.css \
     web/frontend/css/todo.css \
     web/frontend/css/notes.css \
     web/frontend/css/screen-agent-detail.css \
+    web/frontend/css/login.css \
     web/frontend/css/leads.css >> $OUTPUT
 
 echo "Successfully built $OUTPUT"
