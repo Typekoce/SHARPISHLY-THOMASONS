@@ -18,5 +18,6 @@ const PageRegistry = {
     'agentic': () => AgenticController.init(),
     'mobile': () => MobileController.init(),
     'todo': () => TodoController.init(),
-    'notes': () => NotesController.init()
+    'notes': () => NotesController.init(),
+    'login': () => LoginController.init()
 };
