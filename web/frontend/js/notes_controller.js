@@ -154,6 +154,26 @@ const NotesController = {
         }
     },
 
+    isSingleView(recordsDiv, data, isSingleView = false) {
+        if (isSingleView) {
+            const backBtn = App.item('button');
+            backBtn.className = 'btn btn-sm btn-secondary mb-3';
+            backBtn.textContent = '← Back to Todo';
+            backBtn.onclick = () => {
+                this.setNoteId(null);
+
+                if (typeof App.router !== 'undefined' && App.router.navigate) {
+                    App.router.navigate('todo');
+                } else if (typeof TodoController !== 'undefined' && TodoController.init) {
+                    TodoController.init();
+                } else {
+                    this.read();
+                }
+            };
+            recordsDiv.appendChild(backBtn);
+        }
+    },
+
     renderDisplay(recordsDiv, data, isSingleView = false) {
         recordsDiv.textContent = '';
 
@@ -164,16 +184,8 @@ const NotesController = {
             return;
         }
 
-        if (isSingleView) {
-            const backBtn = App.item('button');
-            backBtn.className = 'btn btn-sm btn-secondary mb-3';
-            backBtn.textContent = '← Back to All Notes';
-            backBtn.onclick = () => {
-                this.setNoteId(null);
-                this.read();
-            };
-            recordsDiv.appendChild(backBtn);
-        }
+        // TODO: Refactored to a method
+        this.isSingleView(recordsDiv, data, isSingleView);
 
         const table = App.item('table');
         table.className = 'table';
