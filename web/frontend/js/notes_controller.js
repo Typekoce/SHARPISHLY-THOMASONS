@@ -144,7 +144,7 @@ const NotesController = {
                     todoInput.readOnly = true;
                 }
 
-                await this.read();
+                await this.read(activeNoteId || '');
             }
         } catch (err) {
             console.error('NotesController.create:error', err);
