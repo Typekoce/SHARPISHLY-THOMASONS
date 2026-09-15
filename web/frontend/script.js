@@ -370,6 +370,19 @@ App.dBug = function(data, typeName = null) {
     });
 
     return table;
+};/** 
+ * Application data
+ * Store global data
+ * */
+
+App.data = {};
+
+App.setData = function(key,value){
+    App.data[key]=value;
+};
+
+App.getData = function(key){
+    return App.data[key]
 };/* app_spinner.js */
 App.spinner = function(){
     const spinner = document.getElementById('spinner');
@@ -2178,26 +2191,34 @@ function renderMobileAgentItem(item) {
         return '';
     },
 
-    goToNote(t) {
+goToNote(t) {
         const titleLink = App.item('a');
         const noteTargetId = t.note_id || t.id;
-        titleLink.href = `#`;
-        titleLink.textContent = t.title;
-        titleLink.setAttribute('data-page','notes');
-        titleLink.setAttribute('data-note-id', noteTargetId);
-        titleLink.setAttribute('data-todo-title', t.title);
-        titleLink.setAttribute('style', 'cursor:pointer;');       
+        const noteTitle = t.title || '';
+
+        titleLink.href = '#';
+        titleLink.textContent = noteTitle;
+        titleLink.setAttribute('data-page', 'notes');
+        titleLink.setAttribute('style', 'cursor:pointer;');
+
         titleLink.onclick = (e) => {
             e.preventDefault();
 
-            const noteId = e.currentTarget.getAttribute('data-note-id');
-            const noteTitle = e.currentTarget.getAttribute('data-todo-title');
+            // Write target payload directly to global App.data store
+            App.setData('note-details', {
+                id: noteTargetId,
+                title: noteTitle
+            });
 
-            this.setNoteId(noteId);
-            this.setTodoTitle(noteTitle);
+            console.log('TodoController.goToNote -> App.data stored:', App.getData('note-details'));
 
-            console.log('TodoController.goToNote', { event: e, clicked: noteId, title: noteTitle });
+            if (typeof App.router !== 'undefined' && App.router.navigate) {
+                App.router.navigate('notes');
+            } else if (typeof NotesController !== 'undefined' && NotesController.init) {
+                NotesController.init();
+            }
         };
+
         return titleLink;
     },
 
@@ -2400,390 +2421,168 @@ function renderMobileAgentItem(item) {
     App.dBug(menuItems);
     SubMenuController.menu(menuItems);
 };const NotesController = {
-    currentNoteId: null,
-
     async init() {
-        const activeNoteId = this.getNoteId();
-        const todoTitle = this.getTodoTitle();
+        App.refresh?.({ context: this });
 
-        console.log('NotesController.init');
-        App.dBug({ context: 'NotesController.init', div: 'notes-records' });
-
-        const recordsContainer = document.getElementById('notes-records');
-        if (!recordsContainer) return;
+        const container = document.getElementById('notes-records');
+        if (!container) return;
 
         let form = document.getElementById('notes-form');
-
-        this.setForm(form, recordsContainer, activeNoteId, todoTitle);
-
-        // Ensure current state displays on tab switches even if form is cached in DOM
-        const todoInput = document.getElementById('todo');
-        if (todoInput) {
-            todoInput.value = `Todo ID: ${activeNoteId || ''} Title: ${todoTitle || ''}`;
-        }
-
-        this.submenu();
-
-        await this.read(activeNoteId || '');
-    },
-
-    setForm(form, recordsContainer, activeNoteId, todoTitle){
         if (!form) {
             form = App.item('form');
             form.id = 'notes-form';
             form.className = 'mb-4';
 
-            const todo = 'Todo ID: ' + (activeNoteId || '') + ' Title: ' + (todoTitle || '');
+            App.eForm?.(form, {
+                'title': { id: 'note-title', placeholder: 'Note title...' },
+                'content': { id: 'note-content', type: 'textarea', placeholder: 'Write note here...' }
+            });
 
-            const schema = {
-                'todo': { id: 'todo', placeholder: 'Title...', value: todo, disabled: 'TRUE' },
-                'title': { id: 'notes-title', placeholder: 'Title...' },
-                'category': { id: 'notes-category', placeholder: 'Category...' },
-                'description': { id: 'notes-desc', type: 'textarea', placeholder: 'Description...' }
-            };
-            App.eForm(form, schema);
+            const btn = App.item('button');
+            btn.type = 'submit';
+            btn.id = 'note-submit-btn';
+            btn.textContent = 'Save Note';
+            form.appendChild(btn);
 
-            const todoInput = document.getElementById('todo');
-            if (todoInput) {
-                todoInput.disabled = true;
-                todoInput.readOnly = true;
-            }
-
-            const submitBtn = App.item('button');
-            submitBtn.type = 'submit';
-            submitBtn.textContent = 'Add Entry';
-            form.appendChild(submitBtn);
-
-            form.onsubmit = (e) => this.create(e);
-            recordsContainer.parentNode.insertBefore(form, recordsContainer);
-        }
-    },
-
-    getTodoTitle(){
-        if (typeof TodoController !== 'undefined' && typeof TodoController.getTodoTitle === 'function') {
-            return TodoController.getTodoTitle() || '';
-        }
-        return '';
-    },
-
-    setNoteId(id) {
-        this.currentNoteId = id;
-    },
-
-    getNoteId() {
-        if (this.currentNoteId) {
-            return this.currentNoteId;
+            form.onsubmit = (e) => this.save(e);
+            container.parentNode.insertBefore(form, container);
         }
 
-        if (typeof TodoController !== 'undefined' && TodoController.getNoteId) {
-            const todoNoteId = TodoController.getNoteId();
-            if (todoNoteId) {
-                this.setNoteId(todoNoteId);
-                return todoNoteId;
-            }
+        this.submenu();
+
+        // 1. Read incoming target payload from global App.data
+        const noteData = App.getData?.('note-details') || null;
+        const activeId = noteData?.id || null;
+
+        // 2. Display associated TODO title if present
+        const titleHeader = document.getElementById('notes-todo-title');
+        if (titleHeader) {
+            titleHeader.textContent = noteData?.title ? `Task: ${noteData.title}` : '';
         }
 
-        App.flash('No note id present', 'error');
-        return null;
+        // 3. Always perform fresh fetch from server
+        await this.read(activeId);
     },
 
     submenu() {
         if (typeof SubMenuController === 'undefined') return;
 
-        const menuItems = [
+        SubMenuController.menu([
             { label: 'All Notes', action: () => this.read() },
-            { label: 'Pending Notes', action: () => this.read('', { status: 'pending' }) },
-            { label: 'Completed Notes', action: () => this.read('', { status: 'completed' }) },
             { label: 'Refresh', class: 'btn btn-sm btn-outline-primary', action: () => this.init() }
-        ];
-
-        App.dBug({ context: 'NotesController.submenu', menuItems, div: 'notes-records' });
-        SubMenuController.menu(menuItems);
+        ]);
     },
 
-    async create(e) {
+    getTodoTitle() {
+        const noteData = App.getData?.('note-details');
+        return noteData?.title || '';
+    },
+
+    async save(e) {
         e.preventDefault();
-        const titleEl = document.getElementById('notes-title');
-        const categoryEl = document.getElementById('notes-category');
-        const descEl = document.getElementById('notes-desc');
 
-        const activeTodoId = this.getNoteId() || 1;
-
+        const noteData = App.getData?.('note-details');
         const payload = {
-            todo_id: activeTodoId,
-            title: titleEl?.value.trim(),
-            note: descEl?.value.trim() || titleEl?.value.trim(),
-            category: categoryEl?.value.trim() || 'internal',
-            description: descEl?.value.trim(),
-            status: 'pending'
+            todo_id: noteData?.id || null,
+            title: document.getElementById('note-title')?.value.trim(),
+            content: document.getElementById('note-content')?.value.trim()
         };
 
-        App.dBug({ context: 'NotesController.create', payload, div: 'notes-records' });
-        if (!payload.title) return;
+        if (!payload.title || !payload.content) {
+            return App.flash?.('Please provide both a title and content.', 'warning');
+        }
 
-        App.spinner();
+        App.spinner?.();
         try {
             const res = await fetch(App.url('notes/create'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
+
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const result = await res.json();
 
-            App.dBug({ context: 'NotesController.create:response', result, div: 'notes-records' });
-
-            if (result.status === 'success') {
-                const form = document.getElementById('notes-form');
-                if (form) form.reset();
-
-                const activeNoteId = this.getNoteId();
-                const todoTitle = this.getTodoTitle();
-                const todoInput = document.getElementById('todo');
-                if (todoInput) {
-                    todoInput.value = `Todo ID: ${activeNoteId || ''} Title: ${todoTitle || ''}`;
-                    todoInput.disabled = true;
-                    todoInput.readOnly = true;
-                }
-
-                await this.read(activeNoteId || '');
+            if (result.status === 'success' || result.result) {
+                this.resetForm();
+                App.flash?.('Note saved!', 'success');
+                await this.read(payload.todo_id);
+            } else {
+                App.flash?.(result.message || 'Failed to save note.', 'danger');
             }
         } catch (err) {
-            console.error('NotesController.create:error', err);
-            App.dBug({ context: 'NotesController.create:error', error: err.message, div: 'notes-records' });
+            App.flash?.('Network or server error.', 'danger');
         } finally {
-            App.clearSpinner();
+            App.clearSpinner?.();
         }
     },
 
-    isSingleView(recordsDiv, data, isSingleView = false) {
-        if (isSingleView) {
-            const backBtn = App.item('button');
-            backBtn.className = 'btn btn-sm btn-secondary mb-3';
-            backBtn.textContent = '← Back to Todo';
-            backBtn.onclick = () => {
-                this.setNoteId(null);
+    async read(id = '') {
+        const container = document.getElementById('notes-records');
+        if (!container) return;
 
-                if (typeof App.router !== 'undefined' && App.router.navigate) {
-                    App.router.navigate('todo');
-                } else if (typeof TodoController !== 'undefined' && TodoController.init) {
-                    TodoController.init();
-                } else {
-                    this.read();
-                }
-            };
-            recordsDiv.appendChild(backBtn);
+        App.spinner?.();
+        try {
+            const endpoint = id ? `notes/read/${id}` : 'notes/read';
+            const res = await fetch(App.url(endpoint));
+
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const result = await res.json();
+
+            this.renderNotes(result.data || []);
+        } catch (err) {
+            App.flash?.('Failed to fetch notes.', 'danger');
+        } finally {
+            App.clearSpinner?.();
         }
     },
 
-    renderDisplay(recordsDiv, data, isSingleView = false) {
+    renderNotes(data) {
+        const recordsDiv = document.getElementById('notes-records');
+        if (!recordsDiv) return;
+
         recordsDiv.textContent = '';
 
         if (!data || data.length === 0) {
             const emptyMsg = App.item('p');
-            emptyMsg.textContent = 'No records found.';
+            emptyMsg.textContent = 'No notes found.';
             recordsDiv.appendChild(emptyMsg);
             return;
         }
 
-        // TODO: Refactored to a method
-        this.isSingleView(recordsDiv, data, isSingleView);
+        const listGroup = App.item('div');
+        listGroup.className = 'list-group';
 
-        const table = App.item('table');
-        table.className = 'table';
+        data.forEach(note => {
+            const item = App.item('div');
+            item.className = 'list-group-item';
 
-        const thead = App.item('thead');
-        const headerRow = App.item('tr');
-        ['Title', 'Category', 'Status', 'Actions'].forEach(text => {
-            const th = App.item('th');
-            th.textContent = text;
-            headerRow.appendChild(th);
-        });
-        thead.appendChild(headerRow);
-        table.appendChild(thead);
+            const header = App.item('h5');
+            header.className = 'mb-1';
+            header.textContent = note.title;
 
-        const tbody = App.item('tbody');
-        data.forEach(item => {
-            tbody.appendChild(this.buildRow(item));
-        });
+            const body = App.item('p');
+            body.className = 'mb-1';
+            body.textContent = note.content;
 
-        table.appendChild(tbody);
-        recordsDiv.appendChild(table);
-    },
+            item.appendChild(header);
+            item.appendChild(body);
 
-    async read(id = '', params = {}) {
-        const recordsDiv = document.getElementById('notes-records');
-        if (!recordsDiv) return;
-
-        const endpoint = id ? `notes/read/${id}` : 'notes/read';
-        App.dBug({ context: 'NotesController.read', endpoint, id, params, div: 'notes-records' });
-
-        App.spinner();
-        try {
-            const res = await fetch(App.url(endpoint));
-            const result = await res.json();
-
-            App.dBug({ context: 'NotesController.read:response', result, div: 'notes-records' });
-
-            let rawData = result.data ?? [];
-            let data = Array.isArray(rawData) ? rawData : [rawData];
-
-            data = data.map(item => {
-                if (!item || typeof item !== 'object') return item;
-                const keys = Object.keys(item);
-                if (keys.length === 1 && item.title === undefined) {
-                    const inner = item[keys[0]];
-                    if (inner && typeof inner === 'object') return inner;
-                }
-                return item;
-            });
-
-            data = data.filter(item =>
-                item &&
-                typeof item === 'object' &&
-                Object.keys(item).length > 0 &&
-                item.title !== undefined
-            );
-
-            if (params.status) {
-                data = data.filter(item => item.status === params.status);
+            if (note.created_at) {
+                const footer = App.item('small');
+                footer.className = 'text-muted';
+                footer.textContent = `Created: ${note.created_at}`;
+                item.appendChild(footer);
             }
 
-            App.dBug({ context: 'NotesController.read:normalized', rawData, data, div: 'notes-records' });
+            listGroup.appendChild(item);
+        });
 
-            this.renderDisplay(recordsDiv, data, Boolean(id));
-        } catch (err) {
-            console.error('NotesController.read:error', err);
-            App.dBug({ context: 'NotesController.read:error', error: err.message, div: 'notes-records' });
-        } finally {
-            App.clearSpinner();
-        }
+        recordsDiv.appendChild(listGroup);
     },
 
-    buildRow(item) {
-        const tr = App.item('tr');
-
-        const titleTd = App.item('td');
-        const titleStrong = App.item('strong');
-        titleStrong.textContent = item.title;
-        titleTd.appendChild(titleStrong);
-
-        if (item.description) {
-            titleTd.appendChild(App.item('br'));
-            const descSmall = App.item('small');
-            descSmall.textContent = item.description;
-            titleTd.appendChild(descSmall);
-        }
-
-        const categoryTd = App.item('td');
-        categoryTd.textContent = item.category || 'internal';
-
-        const statusTd = App.item('td');
-        statusTd.textContent = item.status;
-
-        const actionsTd = App.item('td');
-        const select = App.item('select');
-        select.className = 'form-select form-select-sm';
-
-        const defaultOpt = App.item('option');
-        defaultOpt.value = '';
-        defaultOpt.textContent = 'Actions...';
-        defaultOpt.disabled = true;
-        defaultOpt.selected = true;
-        select.appendChild(defaultOpt);
-
-        const displayOpt = App.item('option');
-        displayOpt.value = 'display';
-        displayOpt.textContent = 'Display';
-        select.appendChild(displayOpt);
-
-        const toggleOpt = App.item('option');
-        toggleOpt.value = 'toggle';
-        toggleOpt.textContent = item.status === 'completed' ? 'Mark Pending' : 'Mark Completed';
-        select.appendChild(toggleOpt);
-
-        const deleteOpt = App.item('option');
-        deleteOpt.value = 'delete';
-        deleteOpt.textContent = 'Delete';
-        select.appendChild(deleteOpt);
-
-        select.onchange = (e) => this.handleAction(e.target, item.id, item.status);
-        actionsTd.appendChild(select);
-
-        tr.appendChild(titleTd);
-        tr.appendChild(categoryTd);
-        tr.appendChild(statusTd);
-        tr.appendChild(actionsTd);
-
-        return tr;
-    },
-
-    handleAction(select, id, currentStatus) {
-        const val = select.value;
-        select.value = '';
-        if (!val) return;
-
-        App.dBug({ context: 'NotesController.handleAction', action: val, id, currentStatus, div: 'notes-records' });
-
-        if (val === 'display') this.display(id);
-        else if (val === 'toggle') this.toggle(id, currentStatus);
-        else if (val === 'delete') this.delete(id);
-    },
-
-    async display(id) {
-        App.dBug({ context: 'NotesController.display', id, div: 'notes-records' });
-        this.setNoteId(id);
-        await this.read(id);
-    },
-
-    async toggle(id, currentStatus) {
-        const newStatus = currentStatus === 'completed' ? 'pending' : 'completed';
-        const endpoint = `notes/update/${id}`;
-
-        App.dBug({ context: 'NotesController.toggle', id, currentStatus, newStatus, endpoint, div: 'notes-records' });
-
-        App.spinner();
-        try {
-            const res = await fetch(App.url(endpoint), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: newStatus })
-            });
-            const result = await res.json();
-
-            App.dBug({ context: 'NotesController.toggle:response', result, div: 'notes-records' });
-
-            if (result.status === 'success') await this.read();
-        } catch (err) {
-            console.error('NotesController.toggle:error', err);
-            App.dBug({ context: 'NotesController.toggle:error', error: err.message, div: 'notes-records' });
-        } finally {
-            App.clearSpinner();
-        }
-    },
-
-    async delete(id) {
-        if (!confirm('Delete record?')) return;
-        const endpoint = `notes/delete/${id}`;
-
-        App.dBug({ context: 'NotesController.delete', id, endpoint, div: 'notes-records' });
-
-        App.spinner();
-        try {
-            const res = await fetch(App.url(endpoint), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
-            });
-            const result = await res.json();
-
-            App.dBug({ context: 'NotesController.delete:response', result, div: 'notes-records' });
-
-            if (result.status === 'success') await this.read();
-        } catch (err) {
-            console.error('NotesController.delete:error', err);
-            App.dBug({ context: 'NotesController.delete:error', error: err.message, div: 'notes-records' });
-        } finally {
-            App.clearSpinner();
-        }
+    resetForm() {
+        document.getElementById('notes-form')?.reset();
     }
 };NotesController.submenu = function() {
     const menuItems = [
@@ -2811,9 +2610,7 @@ function renderMobileAgentItem(item) {
 };
 const LoginController = {
     async init() {
-
         this.submenu();
-        //await this.read();
         this.buttons();
     },
 
@@ -2826,19 +2623,37 @@ const LoginController = {
                 id: 'login-email', 
                 label: 'Continue with Email', 
                 class: 'btn btn-outline-light w-100 mb-2',
-                action: () => this.handleAuth('email')
+                action: () => this.setEmail()
             },
             'google': { 
                 id: 'login-google', 
                 label: 'Sign in with Google', 
                 class: 'btn btn-outline-danger w-100 mb-2',
-                action: () => this.handleAuth('google')
+                action: () => this.setGoogle()
             },
             'github': { 
                 id: 'login-github', 
                 label: 'Sign in with GitHub', 
                 class: 'btn btn-outline-dark w-100 mb-2',
-                action: () => this.handleAuth('github')
+                action: () => this.setGitHub()
+            },
+            'microsoft': { 
+                id: 'login-microsoft', 
+                label: 'Sign in with Microsoft', 
+                class: 'btn btn-outline-primary w-100 mb-2',
+                action: () => this.setMicrosoft()
+            },
+            'apple': { 
+                id: 'login-apple', 
+                label: 'Sign in with Apple', 
+                class: 'btn btn-outline-secondary w-100 mb-2',
+                action: () => this.setApple()
+            },
+            'passkey': { 
+                id: 'login-passkey', 
+                label: 'Sign in with Passkey', 
+                class: 'btn btn-outline-info w-100 mb-2',
+                action: () => this.setPasskey()
             }
         };
 
@@ -2860,13 +2675,34 @@ const LoginController = {
 
     handleAuth(provider) {
         App.dBug({ context: 'LoginController.handleAuth', provider });
-        if (provider === 'google' || provider === 'github') {
-            window.location.href = App.url(`auth/${provider}`);
-        }
+        App.spinner();
+        window.location.href = App.url(`auth/${provider}`);
     },
 
-};
-LoginController.submenu = function() {
+    async setEmail() {
+        App.dBug({ context: 'LoginController.setEmail' });
+    },
+
+    async setGoogle() {
+        this.handleAuth('google');
+    },
+
+    async setGitHub() {
+        this.handleAuth('github');
+    },
+
+    async setMicrosoft() {
+        this.handleAuth('microsoft');
+    },
+
+    async setApple() {
+        this.handleAuth('apple');
+    },
+
+    async setPasskey() {
+        App.dBug({ context: 'LoginController.setPasskey' });
+    }
+};LoginController.submenu = function() {
     const menuItems = [
         {
             label: 'All Items',

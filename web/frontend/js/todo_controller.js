@@ -113,26 +113,34 @@ const TodoController = {
         return '';
     },
 
-    goToNote(t) {
+goToNote(t) {
         const titleLink = App.item('a');
         const noteTargetId = t.note_id || t.id;
-        titleLink.href = `#`;
-        titleLink.textContent = t.title;
-        titleLink.setAttribute('data-page','notes');
-        titleLink.setAttribute('data-note-id', noteTargetId);
-        titleLink.setAttribute('data-todo-title', t.title);
-        titleLink.setAttribute('style', 'cursor:pointer;');       
+        const noteTitle = t.title || '';
+
+        titleLink.href = '#';
+        titleLink.textContent = noteTitle;
+        titleLink.setAttribute('data-page', 'notes');
+        titleLink.setAttribute('style', 'cursor:pointer;');
+
         titleLink.onclick = (e) => {
             e.preventDefault();
 
-            const noteId = e.currentTarget.getAttribute('data-note-id');
-            const noteTitle = e.currentTarget.getAttribute('data-todo-title');
+            // Write target payload directly to global App.data store
+            App.setData('note-details', {
+                id: noteTargetId,
+                title: noteTitle
+            });
 
-            this.setNoteId(noteId);
-            this.setTodoTitle(noteTitle);
+            console.log('TodoController.goToNote -> App.data stored:', App.getData('note-details'));
 
-            console.log('TodoController.goToNote', { event: e, clicked: noteId, title: noteTitle });
+            if (typeof App.router !== 'undefined' && App.router.navigate) {
+                App.router.navigate('notes');
+            } else if (typeof NotesController !== 'undefined' && NotesController.init) {
+                NotesController.init();
+            }
         };
+
         return titleLink;
     },
 
