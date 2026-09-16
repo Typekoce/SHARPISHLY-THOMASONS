@@ -386,6 +386,27 @@ class ScaffoldModel extends BaseModel
                 'content'     => 'LONGTEXT NULL DEFAULT NULL',
             ],
             // notifications end
+            
+            // auth start
+            'auth' => [
+                'id'            => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'user_id'       => 'INT DEFAULT NULL',
+                'provider'      => 'VARCHAR(32) NOT NULL DEFAULT "email"',
+                'provider_uid'  => 'VARCHAR(255) DEFAULT NULL',
+                'email'         => 'VARCHAR(255) DEFAULT NULL',
+                'password_hash' => 'VARCHAR(255) DEFAULT NULL',
+                'access_token'  => 'TEXT DEFAULT NULL',
+                'refresh_token' => 'TEXT DEFAULT NULL',
+                'expires_at'    => 'DATETIME DEFAULT NULL',
+                'title'         => 'VARCHAR(255) DEFAULT NULL',
+                'description'   => 'LONGTEXT NULL DEFAULT NULL',
+                'status'        => 'VARCHAR(255) DEFAULT "active"',
+                'pref'          => 'VARCHAR(255) DEFAULT NULL',
+                'content'       => 'LONGTEXT NULL DEFAULT NULL',
+                'created_at'    => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+                'updated_at'    => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
+            ],
+            // auth end
 
         ];
     }
