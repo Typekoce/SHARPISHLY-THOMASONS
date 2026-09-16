@@ -54,6 +54,10 @@ $aliases = [
     'integrationworkflow-update'          => ['IntegrationWorkflow', 'update'],
     'integrationworkflow-delete'          => ['IntegrationWorkflow', 'delete'],
     'integrationworkflow-executeAiIngest' => ['IntegrationWorkflow', 'executeAiIngest'],
+
+
+    // React Native
+    'react-native'      => ['ReactNative', 'index'],
 ];
 
 // 3. Parse the URI (CLI-aware fallback)
