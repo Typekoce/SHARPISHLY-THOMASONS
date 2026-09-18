@@ -34,6 +34,7 @@ cat web/frontend/js/app.js \
     web/frontend/js/notes_submenu_controller.js \
     web/frontend/js/login_controller.js \
     web/frontend/js/login_submenu_controller.js \
+    web/frontend/js/breadcrumbs_controller.js \
     web/frontend/js/model.js \
     web/frontend/js/view.js >> $OUTPUT
 
