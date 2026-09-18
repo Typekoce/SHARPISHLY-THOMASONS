@@ -1,10 +1,19 @@
     <!-- web/frontend/views/layouts/header.html -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
+
+        <!-- container-->
         <div class="container">
+
+            <!-- logo-->
             <a class="navbar-brand fw-bold" href="#" data-page="home">Sharpishly <span class="text-primary">V3</span></a>
+            <!-- logo-->
+
+            <!-- burger not functioning -->
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
+            <!-- burger not functioning -->
+
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto text-uppercase small fw-bold">
                     <li class="nav-item"><a class="nav-link" href="#" data-page="home">Home</a></li>
@@ -22,6 +31,22 @@
                     <!--li class="nav-item"><a class="nav-link" href="#" data-page="settings">Settings</a></li-->
                 </ul>
             </div>
+
         </div>
+        <!-- container end-->
     </nav>
+
+
+    <!-- breadcrumbs -->
+    <div id="breadcrumbs">
+        <!-- mock links-->
+        <a href="#">home</a>
+        <a href="#">todo</a>
+        <a href="#">LLM</a>
+        <!-- mock links-->
+    </div>
+    <!-- breadcrumbs -->
+
+    <!-- h1 -->
     <h1>{{h1}}</h1>
+    <!-- h1 -->
