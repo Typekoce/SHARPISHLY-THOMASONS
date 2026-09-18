@@ -4,89 +4,71 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use Throwable;
-
 class AuthModel extends BaseModel
 {
-    public bool $debug = true;
-
+    public bool $debug = false; 
     public string $tbl = 'auth';
 
-    public function create(array $payload = []): array
+    /**
+     * Find existing auth record by provider/provider_uid or create new one.
+     * Updates tokens on existing records.
+     */
+    public function findOrCreateOuser(array $profile): array
     {
-        if ($this->debug === true && empty($payload)) {
-            $payload = [
-                'title'       => 'Auth Entry',
-                'description' => 'Default auth record generated via bake script',
-                'source_id'   => 1,
-                'status'      => 'active'
-            ];
+        $existing = $this->db->find([
+            'tbl'   => $this->tbl,
+            'where' => [
+                'provider'     => $profile['provider'],
+                'provider_uid' => $profile['provider_uid'],
+            ],
+        ]);
+
+        if (!empty($existing)) {
+            $row = $existing[0];
+
+            $update = [];
+            if (!empty($profile['access_token'])) {
+                $update['access_token'] = $profile['access_token'];
+            }
+            if (!empty($profile['refresh_token'])) {
+                $update['refresh_token'] = $profile['refresh_token'];
+            }
+            if (!empty($profile['expires_at'])) {
+                $update['expires_at'] = $profile['expires_at'];
+            }
+
+            if (!empty($update)) {
+                $this->db->save($this->tbl, array_merge($update, [
+                    'id' => (int) $row['id'],
+                ]));
+                
+                $row = $this->db->find([
+                    'tbl'   => $this->tbl,
+                    'where' => ['id' => $row['id']],
+                ])[0] ?? $row;
+            }
+
+            return $row;
         }
+
+        $payload = [
+            'provider'      => $profile['provider'],
+            'provider_uid'  => $profile['provider_uid'],
+            'email'         => $profile['email'] ?? null,
+            'title'         => $profile['name'] ?? null,
+            'access_token'  => $profile['access_token'] ?? null,
+            'refresh_token' => $profile['refresh_token'] ?? null,
+            'expires_at'    => $profile['expires_at'] ?? null,
+            'status'        => 'active',
+        ];
 
         $this->db->save($this->tbl, $payload);
-        return ['result' => $this->read()];
-    }
 
-    public function update(string $id = '', array $payload = []): array
-    {
-        if ($this->debug === true && empty($payload)) {
-            $payload = [
-                'title'       => 'Auth Entry - Updated',
-                'description' => 'Updated auth record',
-                'source_id'   => 1,
-                'status'      => 'completed'
-            ];
-        }
+        $created = $this->db->find([
+            'tbl'   => $this->tbl,
+            'where' => ['provider_uid' => $profile['provider_uid']],
+        ]);
 
-        if (!empty($id)) {
-            $existing = $this->read($id);
-            $currentData = $existing[0] ?? [];
-
-            $mergedPayload = array_merge($currentData, $payload, ['id' => (int)$id]);
-
-            $this->db->save($this->tbl, $mergedPayload);
-        }
-
-        return ['result' => $this->read($id)];
-    }
-
-    public function read(string $id = ''): array
-    {
-        try {
-            $conditions = [
-                'tbl'   => $this->tbl,
-                'order' => ['id' => 'DESC']
-            ];
-
-            if (!empty($id)) {
-                $conditions['where'] = ['id' => $id];
-            }
-
-            return $this->db->find($conditions);
-        } catch (Throwable $e) {
-            $logger = $GLOBALS['logger'] ?? null;
-            if ($logger) {
-                $logger->error("AuthModel::read failed: " . $e->getMessage());
-            }
-
-            return [
-                'error'   => true,
-                'message' => $e->getMessage()
-            ];
-        }
-    }
-
-    public function delete(string $id = ''): array
-    {
-        if (empty($id)) {
-            return ['error' => true, 'message' => 'Missing ID for deletion'];
-        }
-
-        try {
-            $this->db->delete($this->tbl, ['id' => $id]);
-            return ['status' => 'deleted', 'id' => $id];
-        } catch (Throwable $e) {
-            return ['error' => true, 'message' => $e->getMessage()];
-        }
+        return $created[0] ?? [];
     }
 }
