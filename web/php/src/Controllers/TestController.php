@@ -102,6 +102,7 @@ class TestController extends BaseController
                     'GoogleapiController.php'   => 'Pending',
                     'HotmailapiController.php'  => 'Pending',
                     'ReactNativeController.php'  => 'Pending',
+                    'DashboardController.php'  => 'Pending',
                 ],
                 'services'      => ['Orm.php'],
                 'documentation' => [
