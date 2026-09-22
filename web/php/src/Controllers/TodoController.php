@@ -46,4 +46,15 @@ class TodoController extends BaseController
         $result = $this->model->delete($id);
         $this->json(['status' => 'success', 'data' => $result]);
     }
+
+    public function all(): void
+    {
+        // Fetch all todos/ideas via the model primitive
+        $todos = $this->model->readAll(); 
+
+        $this->json([
+            'status' => 'success',
+            'data'   => $todos
+        ]);
+    }
 }
