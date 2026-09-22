@@ -19,5 +19,6 @@ const PageRegistry = {
     'mobile': () => MobileController.init(),
     'todo': () => TodoController.init(),
     'notes': () => NotesController.init(),
-    'login': () => LoginController.init()
+    'login': () => LoginController.init(),
+    'projects': () => ProjectsController.init()
 };
