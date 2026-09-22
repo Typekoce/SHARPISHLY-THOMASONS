@@ -294,27 +294,20 @@ handleMenuClick(field, form) {
     },
 
     showCookieConsent() {
-        // TODO: Replace inline HTML with App.item('');
-        // TODO: Add id of #cookie
-        App.modal.open(`
-            <h3>Cookie Policy</h3>
-            <p>We use cookies to enhance your neural-pipeline experience. Do you accept our terms?</p>
-            <div style="display:flex; gap:10px; justify-content:end; margin-top:20px;">
-                <button id="btn-reject" class="btn btn-outline-secondary">Reject</button>
-                <button id="btn-accept" class="btn btn-primary">Accept</button>
-            </div>
-        `, { closeOnBackdrop: false, closeOnEscape: false });
+            const cookie = App.cookiePolicy();
 
-        document.getElementById('btn-accept').onclick = () => {
-            console.log("Cookies accepted");
-            App.modal.close();
-        };
+            App.modal.open(cookie, { closeOnBackdrop: false, closeOnEscape: false });
 
-        document.getElementById('btn-reject').onclick = () => {
-            console.log("Cookies rejected");
-            App.modal.close();
-        };
-    },
+            document.getElementById('btn-accept').onclick = () => {
+                console.log("Cookies accepted");
+                App.modal.close();
+            };
+
+            document.getElementById('btn-reject').onclick = () => {
+                console.log("Cookies rejected");
+                App.modal.close();
+            };
+        },
 
     async render() {
         const target = document.getElementById('app');
