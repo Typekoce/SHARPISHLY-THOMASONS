@@ -21,10 +21,10 @@ class TodoModel extends BaseModel
             ];
         }
 
-    // Provide a default source_id if missing from the incoming request payload
-    if (!isset($payload['source_id'])) {
-        $payload['source_id'] = 1;
-    }
+        // Provide a default source_id if missing from the incoming request payload
+        if (!isset($payload['source_id'])) {
+            $payload['source_id'] = 1;
+        }
 
         $this->db->save('todo', $payload);
         return ['result' => $this->read()];
@@ -79,6 +79,14 @@ class TodoModel extends BaseModel
                 'message' => $e->getMessage()
             ];
         }
+    }
+
+    /**
+     * Retrieve all todo records for selection in linked interfaces (e.g., Projects).
+     */
+    public function readAll(): array
+    {
+        return $this->read();
     }
 
     public function delete(string $id = ''): array
