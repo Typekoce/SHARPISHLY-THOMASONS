@@ -69,6 +69,7 @@ cat web/frontend/css/app.css \
     web/frontend/css/screen-agent-detail.css \
     web/frontend/css/login.css \
     web/frontend/css/projects.css \
+    web/frontend/css/breadcrumbs.css \
     web/frontend/css/leads.css >> $OUTPUT
 
 echo "Successfully built $OUTPUT"
