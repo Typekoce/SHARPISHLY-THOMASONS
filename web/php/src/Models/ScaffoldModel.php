@@ -412,6 +412,7 @@ class ScaffoldModel extends BaseModel
             // projects start
             'projects' => [
                 'id'          => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'todo_id'     => 'INT NULL DEFAULT NULL', // Foreign key linking to todo.id
                 'source'      => 'VARCHAR(100) DEFAULT NULL',
                 'title'       => 'VARCHAR(255) DEFAULT NULL',
                 'description' => 'LONGTEXT NULL DEFAULT NULL',
