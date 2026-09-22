@@ -2819,20 +2819,34 @@ const BreadcrumbsController = {
             form.id = 'projects-form';
             form.className = 'mb-4';
 
-            const schema = {
+            App.eForm(form, {
                 'title': { id: 'projects-title', placeholder: 'Title...' },
                 'category': { id: 'projects-category', placeholder: 'Category...' },
                 'description': { id: 'projects-desc', type: 'textarea', placeholder: 'Description...' }
-            };
-            App.eForm(form, schema);
+            });
+
+            // Fetch and inject Todo Dropdown
+            const todoSelect = await this.getTodos();
+            if (todoSelect) {
+                const row = App.item('div');
+                row.className = 'mb-3';
+                
+                const label = App.item('label');
+                label.className = 'form-label fw-bold';
+                label.textContent = 'Associated Todo';
+                
+                row.appendChild(label);
+                row.appendChild(todoSelect);
+                form.appendChild(row);
+            }
 
             const submitBtn = App.item('button');
             submitBtn.type = 'submit';
+            submitBtn.className = 'btn btn-primary';
             submitBtn.textContent = 'Add Entry';
             form.appendChild(submitBtn);
 
             form.onsubmit = (e) => this.create(e);
-
             recordsContainer.parentNode.insertBefore(form, recordsContainer);
         }
 
@@ -2840,16 +2854,72 @@ const BreadcrumbsController = {
         await this.read();
     },
 
+    async getTodos() {
+        try {
+            const res = await fetch(App.url('todo/read'));
+            const result = await res.json();
+            const todos = result.data || result || [];
+
+            const select = App.item('select');
+            select.id = 'projects-todo-id';
+            select.className = 'form-control';
+
+            const defaultOpt = App.item('option');
+            defaultOpt.value = '';
+            defaultOpt.textContent = '-- Select Associated Todo --';
+            select.appendChild(defaultOpt);
+
+            todos.forEach(todo => {
+                const opt = App.item('option');
+                opt.value = todo.id;
+                opt.textContent = todo.title || todo.name || `Todo #${todo.id}`;
+                select.appendChild(opt);
+            });
+
+            return select;
+        } catch (e) {
+            App.log('Error fetching todos: ' + e.message);
+            return null;
+        }
+    },
+
+    submenu() {
+        const recordsContainer = document.getElementById('projects-records');
+        if (!recordsContainer) return;
+
+        let submenuNav = document.getElementById('projects-submenu');
+        if (!submenuNav) {
+            submenuNav = App.item('div');
+            submenuNav.id = 'projects-submenu';
+            submenuNav.className = 'mb-3 btn-group';
+
+            const filters = [
+                { label: 'All Projects', status: '' },
+                { label: 'Pending', status: 'pending' },
+                { label: 'Completed', status: 'completed' }
+            ];
+
+            filters.forEach(f => {
+                const btn = App.item('button');
+                btn.type = 'button';
+                btn.className = 'btn btn-secondary';
+                btn.textContent = f.label;
+                btn.onclick = () => this.read(f.status);
+                submenuNav.appendChild(btn);
+            });
+
+            recordsContainer.parentNode.insertBefore(submenuNav, recordsContainer);
+        }
+    },
+
     async create(e) {
         e.preventDefault();
-        const titleEl = document.getElementById('projects-title');
-        const categoryEl = document.getElementById('projects-category');
-        const descEl = document.getElementById('projects-desc');
 
         const payload = {
-            title: titleEl?.value.trim(),
-            category: categoryEl?.value.trim() || 'internal',
-            description: descEl?.value.trim(),
+            title: document.getElementById('projects-title')?.value.trim(),
+            category: document.getElementById('projects-category')?.value.trim() || 'internal',
+            description: document.getElementById('projects-desc')?.value.trim(),
+            todo_id: document.getElementById('projects-todo-id')?.value || null,
             status: 'pending'
         };
 
@@ -2873,22 +2943,20 @@ const BreadcrumbsController = {
         }
     },
 
-    async read(id = '', params = {}) {
+    async read(statusFilter = '') {
         const recordsDiv = document.getElementById('projects-records');
         if (!recordsDiv) return;
 
         App.spinner();
         try {
-            const endpoint = id ? `projects/read/${id}` : 'projects/read';
-            const res = await fetch(App.url(endpoint));
+            const res = await fetch(App.url('projects/read'));
             const result = await res.json();
 
             recordsDiv.textContent = '';
-
             let data = result.data || [];
 
-            if (params.status) {
-                data = data.filter(item => item.status === params.status);
+            if (statusFilter) {
+                data = data.filter(item => item.status === statusFilter);
             }
 
             if (result.status !== 'success' || data.length === 0) {
@@ -2903,7 +2971,7 @@ const BreadcrumbsController = {
 
             const thead = App.item('thead');
             const headerRow = App.item('tr');
-            ['Title', 'Category', 'Status', 'Actions'].forEach(text => {
+            ['Title', 'Category', 'Todo', 'Status', 'Actions'].forEach(text => {
                 const th = App.item('th');
                 th.textContent = text;
                 headerRow.appendChild(th);
@@ -2930,27 +2998,28 @@ const BreadcrumbsController = {
                 const categoryTd = App.item('td');
                 categoryTd.textContent = item.category || 'internal';
 
+                const todoTd = App.item('td');
+                todoTd.textContent = item.todo_title || item.todo_id || '-';
+
                 const statusTd = App.item('td');
                 statusTd.textContent = item.status;
 
                 const actionsTd = App.item('td');
 
                 const toggleBtn = App.item('button');
+                toggleBtn.className = 'btn btn-sm btn-outline-primary me-2';
                 toggleBtn.textContent = item.status === 'completed' ? 'Mark Pending' : 'Mark Completed';
                 toggleBtn.onclick = () => this.toggle(item.id, item.status);
 
                 const deleteBtn = App.item('button');
+                deleteBtn.className = 'btn btn-sm btn-outline-danger';
                 deleteBtn.textContent = 'Delete';
                 deleteBtn.onclick = () => this.delete(item.id);
 
                 actionsTd.appendChild(toggleBtn);
                 actionsTd.appendChild(deleteBtn);
 
-                tr.appendChild(titleTd);
-                tr.appendChild(categoryTd);
-                tr.appendChild(statusTd);
-                tr.appendChild(actionsTd);
-
+                tr.append(titleTd, categoryTd, todoTd, statusTd, actionsTd);
                 tbody.appendChild(tr);
             });
 
@@ -2991,8 +3060,7 @@ const BreadcrumbsController = {
             App.clearSpinner();
         }
     }
-};
-ProjectsController.submenu = function() {
+};ProjectsController.submenu = function() {
     const menuItems = [
         {
             label: 'All Items',
