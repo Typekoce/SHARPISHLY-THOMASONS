@@ -408,6 +408,21 @@ class ScaffoldModel extends BaseModel
             ],
             // auth end
 
+
+            // projects start
+            'projects' => [
+                'id'          => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'source'      => 'VARCHAR(100) DEFAULT NULL',
+                'title'       => 'VARCHAR(255) DEFAULT NULL',
+                'description' => 'LONGTEXT NULL DEFAULT NULL',
+                'status'      => 'VARCHAR(255) DEFAULT "unread"',
+                'created_at'  => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+                'updated_at'  => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
+                'pref'        => 'VARCHAR(255) DEFAULT NULL',
+                'content'     => 'LONGTEXT NULL DEFAULT NULL',
+            ],
+            // projects end
+
         ];
     }
 }
