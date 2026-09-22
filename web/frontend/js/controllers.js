@@ -260,6 +260,12 @@ handleMenuClick(field, form) {
         this.eForm(form, fields);
     },    
     async init() {
+
+        App.spinner();
+
+        // TODO: Add breadcrumbs
+        //BreadcrumbsController.updateForPage(page);
+
         const host = window.location.hostname;
         const sub = host.split('.')[0];
         try {
@@ -278,15 +284,18 @@ handleMenuClick(field, form) {
         else if (sub === 'cyberdeck') App.cyberdeck();
         else this.navigate('home');
 
+        BreadcrumbsController.updateForPage(Model.currentPage);
+
         document.addEventListener('click', (e) => {
             const page = e.target.closest('[data-page]')?.dataset.page;
             if (page) { e.preventDefault(); this.navigate(page); }
         });
-        App.spinner();
         App.clearSpinner();
     },
 
     showCookieConsent() {
+        // TODO: Replace inline HTML with App.item('');
+        // TODO: Add id of #cookie
         App.modal.open(`
             <h3>Cookie Policy</h3>
             <p>We use cookies to enhance your neural-pipeline experience. Do you accept our terms?</p>
@@ -344,13 +353,24 @@ handleMenuClick(field, form) {
         if (PageRegistry[Model.currentPage]) PageRegistry[Model.currentPage]();
     },
 
-    navigate(page) { 
+    navigate(page) {
         
-        const debug = {page: page};
+        //BreadcrumbsController.updateForPage(page);
+        
+        const debug = {
+            page: page, 
+            file: 'controllers.js', 
+            method: 'Controller.navigate()'
+
+        };
 
         console.log(debug);
         
-        Model.currentPage = page; this.render(); 
+        Model.currentPage = page; 
+        
+        this.render();
+        
+        BreadcrumbsController.updateForPage(page);
 
     },
 

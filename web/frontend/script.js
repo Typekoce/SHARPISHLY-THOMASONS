@@ -1095,6 +1095,12 @@ handleMenuClick(field, form) {
         this.eForm(form, fields);
     },    
     async init() {
+
+        App.spinner();
+
+        // TODO: Add breadcrumbs
+        //BreadcrumbsController.updateForPage(page);
+
         const host = window.location.hostname;
         const sub = host.split('.')[0];
         try {
@@ -1113,15 +1119,18 @@ handleMenuClick(field, form) {
         else if (sub === 'cyberdeck') App.cyberdeck();
         else this.navigate('home');
 
+        BreadcrumbsController.updateForPage(Model.currentPage);
+
         document.addEventListener('click', (e) => {
             const page = e.target.closest('[data-page]')?.dataset.page;
             if (page) { e.preventDefault(); this.navigate(page); }
         });
-        App.spinner();
         App.clearSpinner();
     },
 
     showCookieConsent() {
+        // TODO: Replace inline HTML with App.item('');
+        // TODO: Add id of #cookie
         App.modal.open(`
             <h3>Cookie Policy</h3>
             <p>We use cookies to enhance your neural-pipeline experience. Do you accept our terms?</p>
@@ -1179,13 +1188,24 @@ handleMenuClick(field, form) {
         if (PageRegistry[Model.currentPage]) PageRegistry[Model.currentPage]();
     },
 
-    navigate(page) { 
+    navigate(page) {
         
-        const debug = {page: page};
+        //BreadcrumbsController.updateForPage(page);
+        
+        const debug = {
+            page: page, 
+            file: 'controllers.js', 
+            method: 'Controller.navigate()'
+
+        };
 
         console.log(debug);
         
-        Model.currentPage = page; this.render(); 
+        Model.currentPage = page; 
+        
+        this.render();
+        
+        BreadcrumbsController.updateForPage(page);
 
     },
 
@@ -2727,86 +2747,84 @@ const LoginController = {
     App.dBug(menuItems);
     SubMenuController.menu(menuItems);
 };
+/**
+ * BreadcrumbsController
+ * Simplified breadcrumb manager targeting `#breadcrumbs`.
+ */
 const BreadcrumbsController = {
     /**
-     * Retrieve current breadcrumbs array from state store
-     */
-    get() {
-        const breadcrumbs = App.getItem('breadcrumbs');
-        return Array.isArray(breadcrumbs) ? breadcrumbs : [];
-    },
-
-    /**
-     * Set breadcrumbs array in state store and update UI
-     * @param {Array<{label: string, url: string}>} crumbs 
+     * Set and render live breadcrumbs in #breadcrumbs
+     * @param {Array<{label: string, page?: string, url?: string}>} crumbs
      */
     set(crumbs = []) {
-        const validatedCrumbs = Array.isArray(crumbs) && crumbs.length > 0 
+        console.log('[BreadcrumbsController] set() called with crumbs:', crumbs);
+
+        const target = document.querySelector('#breadcrumbs');
+        if (!target) {
+            console.warn('[BreadcrumbsController] Target element #breadcrumbs was not found in the DOM.');
+            return;
+        }
+
+        // Default fallback if empty
+        const list = Array.isArray(crumbs) && crumbs.length > 0 
             ? crumbs 
-            : [{ label: 'Home', url: '/' }];
+            : [{ label: 'Home', page: 'home' }];
 
-        App.setItem('breadcrumbs', validatedCrumbs);
-        this.render();
-    },
-
-    /**
-     * Reset state back to root
-     */
-    reset() {
-        this.set([{ label: 'Home', url: '/' }]);
-    },
-
-    /**
-     * Render breadcrumb elements directly into the DOM using programmatic nodes
-     * @param {string} containerSelector 
-     */
-    render(containerSelector = '#breadcrumbs-container') {
-        const container = document.querySelector(containerSelector);
-        if (!container) return;
-
-        // Clear existing children
-        container.textContent = '';
-
-        const crumbs = this.get();
-        if (crumbs.length === 0) return;
-
-        const nav = document.createElement('nav');
-        nav.setAttribute('aria-label', 'breadcrumb');
-
-        const ol = document.createElement('ol');
-        ol.className = 'breadcrumb-list';
-        ol.style.display = 'flex';
-        ol.style.listStyle = 'none';
-        ol.style.padding = '0';
-        ol.style.margin = '0';
-
-        crumbs.forEach((crumb, index) => {
-            const isLast = index === crumbs.length - 1;
-            const li = document.createElement('li');
-            li.className = `breadcrumb-item${isLast ? ' active' : ''}`;
-
+        // Generate clean HTML string
+        target.innerHTML = list.map((crumb, index) => {
+            const isLast = index === list.length - 1;
+            const label = this.escape(crumb.label);
+            
             if (isLast) {
-                const span = document.createElement('span');
-                span.textContent = crumb.label;
-                li.appendChild(span);
-            } else {
-                const a = document.createElement('a');
-                a.href = crumb.url;
-                a.textContent = crumb.label;
-                li.appendChild(a);
-
-                const separator = document.createElement('span');
-                separator.className = 'separator';
-                separator.style.margin = '0 8px';
-                separator.textContent = '/';
-                li.appendChild(separator);
+                return `<span class="active">${label}</span>`;
             }
 
-            ol.appendChild(li);
-        });
+            // Supports single-page `data-page` navigation or traditional `href`
+            const attr = crumb.page 
+                ? `href="#" data-page="${this.escape(crumb.page)}"` 
+                : `href="${this.escape(crumb.url || '#')}"`;
 
-        nav.appendChild(ol);
-        container.appendChild(nav);
+            return `<a ${attr}>${label}</a> <span class="separator">/</span> `;
+        }).join('');
+
+        console.log('[BreadcrumbsController] Rendered HTML:', target.innerHTML);
+    },
+
+    /**
+     * Helper to update breadcrumbs by route/page name directly
+     * @param {string} page
+     * @param {string|null} activeSubItem Optional specific sub-item (e.g., Project Name or Todo Title)
+     */
+    updateForPage(page = 'home', activeSubItem = null) {
+        console.log(`[BreadcrumbsController] updateForPage('${page}', '${activeSubItem}')`);
+
+        const root = { label: 'Home', page: 'home' };
+
+        if (page === 'home' || !page) {
+            return this.set([root]);
+        }
+
+        const pageLabel = page.charAt(0).toUpperCase() + page.slice(1);
+        const crumbs = [root, { label: pageLabel, page: page }];
+
+        if (activeSubItem) {
+            crumbs.push({ label: activeSubItem });
+        }
+
+        this.set(crumbs);
+    },
+
+    /**
+     * Basic string escaping to prevent XSS in dynamic items
+     */
+    escape(str) {
+        return String(str).replace(/[&<>"']/g, match => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        }[match]));
     }
 };const ProjectsController = {
     async init() {
