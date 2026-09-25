@@ -383,4 +383,19 @@ abstract class BaseController
         curl_multi_close($mh);
         return $results;
     }
-}
+
+    /**
+     * Set data safely ensuring keys are not silently overwritten.
+     */
+    protected function setData(array $data, string $key, $value): array
+    {
+        if (!array_key_exists($key, $data)) {
+            $data[$key] = $value;
+        } else {
+            $this->logger->warning("JobApplyController: Attempted to overwrite existing key [{$key}] in data payload.");
+        }
+
+        return $data;
+    }
+
+}// end of BaseController
