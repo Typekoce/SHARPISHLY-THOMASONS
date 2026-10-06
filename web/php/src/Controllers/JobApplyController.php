@@ -19,6 +19,11 @@ final class JobApplyController extends BaseController
         $this->test();
     }
 
+    public function rag(){
+        $url = "http://localhost:8765/rag/ask?query=01_webdesigner";
+        return $this->request($url);
+    }
+
     public function prepare(): void
     {
         try {
@@ -40,7 +45,8 @@ final class JobApplyController extends BaseController
                 'cv_loaded' => !empty($cv),
                 'job_loaded' => !empty($job),
                 'cv' => $customizedCv,
-                'job' => $job
+                'job' => $job,
+                'rag' => $this->rag()
             ]);
         } catch (Throwable $e) {
             $this->json([
