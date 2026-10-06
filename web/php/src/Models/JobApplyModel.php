@@ -4,9 +4,7 @@ namespace App\Models;
 
 class JobApplyModel extends BaseModel {
 
-
-
-    public function customiseNewCv(array $cv, array $job): array
+public function customiseNewCv(array $cv, array $job): array
     {
         $customized = $cv;
         
@@ -15,6 +13,9 @@ class JobApplyModel extends BaseModel {
             $customized['tailored_for_company'] = $job['company'] ?? 'Target Company';
             $customized['target_role'] = $job['title'] ?? 'Target Role';
             
+            // Pass the job array so we can blend the title intelligently
+            $customized = $this->blendedJobtitle($customized, $job);
+            
             // Map and deconstruct vacancy elements to tailor the CV profile
             $customized = $this->settingFieldNameMappings($customized, $job);
         }
@@ -22,6 +23,31 @@ class JobApplyModel extends BaseModel {
         return $customized;
     }
 
+    public function blendedJobtitle(array $customized, array $job): array
+    {
+        $primaryTitle = $customized['title'] ?? '';
+        $targetTitle = $job['title'] ?? '';
+
+        if (empty($targetTitle)) {
+            return $customized;
+        }
+
+        // Avoid messy mashing. If the target title is specific (e.g., Senior Web Designer & Developer)
+        // and the primary is architectural, blend them cleanly or prioritize the target alignment 
+        // while preserving the candidate's core seniority and discipline.
+        
+        // Example intelligent mapping rule:
+        // If applying for a design/front-end heavy role, bridge systems architecture with the target focus.
+        if (stripos($targetTitle, 'Web Designer') !== false || stripos($targetTitle, 'Frontend') !== false) {
+            $customized['title'] = 'Systems Architect & ' . $targetTitle;
+        } else {
+            // Default to matching the target vacancy title closely for recruiter ATS alignment
+            $customized['title'] = $targetTitle;
+        }
+
+        return $customized;
+    }
+    
     public function settingFieldNameMappings(array $customized, array $job): array
     {
         $requirements = $job['requirements'] ?? [];
