@@ -60,7 +60,9 @@ $aliases = [
     'react-native'      => ['ReactNative', 'index'],
 
     // Job Applications
-    'job-apply'         => ['JobApply','index'],
+    //'job-apply'         => ['JobApply','index'],
+    'job-apply'         => ['JobApply','prepare'],
+
 ];
 
 // 3. Parse the URI (CLI-aware fallback)
