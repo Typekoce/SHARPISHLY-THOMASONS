@@ -9,6 +9,7 @@ use App\Repositories\ApplicationStateRepository;
 use App\Services\ApplicationPreparationService;
 use App\Services\ApplicationLock;
 use App\Services\AtomicJsonWriter;
+use App\Models\JobApplyModel;
 use Throwable;
 
 final class JobApplyController extends BaseController
@@ -21,12 +22,15 @@ final class JobApplyController extends BaseController
     public function prepare(): void
     {
         try {
+
+            $model = new JobApplyModel();
+
             $id = $this->getJobId();
             $cv = $this->getCv($id);
             $job = $this->getJob($id);
 
             // Tailor and save the customized CV
-            $customizedCv = $this->customiseNewCv($cv, $job);
+            $customizedCv = $model->customiseNewCv($cv, $job);
             $this->saveNewCv($id, $customizedCv);
 
             $this->json([
@@ -44,60 +48,6 @@ final class JobApplyController extends BaseController
             ], 500);
         }
     }
-
-    public function customiseNewCv(array $cv, array $job): array
-    {
-        $customized = $cv;
-        
-        // Inject target role and company context into the CV payload
-        if (!empty($job)) {
-            $customized['tailored_for_company'] = $job['company'] ?? 'Target Company';
-            $customized['target_role'] = $job['title'] ?? 'Target Role';
-            
-            // Map and deconstruct vacancy elements to tailor the CV profile
-            $customized = $this->settingFieldNameMappings($customized, $job);
-        }
-
-        return $customized;
-    }
-
-    public function settingFieldNameMappings(array $customized, array $job): array
-    {
-        // 1. Deconstruct job vacancy elements into digestible components
-        $requirements = $job['requirements'] ?? [];
-        $description = $job['description'] ?? '';
-        
-        // Extract matching skills or map target technologies from requirements
-        $mappedRequirements = [];
-        foreach ($requirements as $req) {
-            $mappedRequirements[] = [
-                'requirement' => $req,
-                'mapped_status' => 'aligned'
-            ];
-        }
-
-        // 2. Perform prompt-ready conversion mapping structure
-        $customized['vacancy_mapping'] = [
-            'core_focus' => $job['title'] ?? '',
-            'extracted_requirements' => $mappedRequirements,
-            'summary_alignment' => sprintf(
-                "Tailored profile for %s focusing on %s architecture and framework-free development.",
-                $job['company'] ?? 'Target Company',
-                $job['title'] ?? 'Role'
-            )
-        ];
-
-        // 3. Add placeholders/fallbacks if prompt conversion service experiences latency or fails
-        $customized['ai_customization_status'] = [
-            'status' => 'success',
-            'mode' => 'deterministic_mapping_fallback',
-            'timestamp' => date('c'),
-            'note' => 'Mapped vacancy elements successfully. Ready for RAG prompt injection when service is live.'
-        ];
-
-        return $customized;
-    }
-
     public function saveNewCv(string $id, array $cv): void
     {
         $cleanId = basename($id, '.json');
