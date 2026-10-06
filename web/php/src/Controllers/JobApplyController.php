@@ -25,17 +25,16 @@ final class JobApplyController extends BaseController
             $cv = $this->getCv($id);
             $job = $this->getJob($id);
 
-            // New method
-            $this->customiseNewCv();
-
-            $this->saveNewCv();
+            // Tailor and save the customized CV
+            $customizedCv = $this->customiseNewCv($cv, $job);
+            $this->saveNewCv($id, $customizedCv);
 
             $this->json([
                 'success' => true,
                 'job_id' => $id,
                 'cv_loaded' => !empty($cv),
                 'job_loaded' => !empty($job),
-                'cv' => $cv,
+                'cv' => $customizedCv,
                 'job' => $job
             ]);
         } catch (Throwable $e) {
@@ -46,19 +45,43 @@ final class JobApplyController extends BaseController
         }
     }
 
-    public function customiseNewCv(){
-        return;
+    public function customiseNewCv(array $cv, array $job): array
+    {
+        $customized = $cv;
+        
+        // Inject target role and company context into the CV payload
+        if (!empty($job)) {
+            $customized['tailored_for_company'] = $job['company'] ?? 'Target Company';
+            $customized['target_role'] = $job['title'] ?? 'Target Role';
+        }
+
+        return $customized;
     }
 
-    public function saveNewCv(){
-        return;
+    public function saveNewCv(string $id, array $cv): void
+    {
+        $cleanId = basename($id, '.json');
+        $directory = $this->loc->storage() . '/job_apply/' . $cleanId;
+
+        if (!is_dir($directory)) {
+            mkdir($directory, 0750, true);
+        }
+
+        $filePath = $directory . '/tailored_cv.json';
+
+        // Utilize AtomicJsonWriter by passing the array directly to match its type signature
+        $writer = new AtomicJsonWriter();
+        if (method_exists($writer, 'write')) {
+            $writer->write($filePath, $cv);
+        } else {
+            file_put_contents($filePath, json_encode($cv, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+        }
     }
 
     public function getJob(string $id): array
     {
         $cleanId = basename($id, '.json');
         
-        // Check standard storage locations for the vacancy/job file
         $paths = [
             $this->loc->storage() . '/job_apply/' . $cleanId . '/vacancy.json',
             $this->loc->storage() . '/jobs/' . $cleanId . '.json',
@@ -96,7 +119,6 @@ final class JobApplyController extends BaseController
             }
         }
 
-        // Return empty array if CV file is optional/missing rather than hard failing
         return [];
     }
 
