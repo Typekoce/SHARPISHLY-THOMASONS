@@ -1,64 +1,95 @@
-import os
 import json
+import os
+import re
+from pathlib import Path
 import requests
 
 class NatsController:
+    JOB_FILE_PATTERN = re.compile(r"^[A-Za-z0-9_.-]+\.json$")
 
     @staticmethod
-    def _ensure_dirs(base_dir):
-        """Guarantees directory layouts exist securely."""
-        for folder in ['ingest', 'process', 'fail']:
-            os.makedirs(os.path.join(base_dir, folder), exist_ok=True)
-            
-    @staticmethod
-    def consume():
-        """
-        Scans the NATS ingest directory for pending job handshakes.
-        Moves valid items to 'process' atomically to prevent race conditions.
-        """
-        # Ensure base path aligns with storage/uploads/nats
-        base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../storage/uploads/nats'))
-        NatsController._ensure_dirs(base_dir)
-        
-        ingest_dir = os.path.join(base_dir, 'ingest')
-        process_dir = os.path.join(base_dir, 'process')
+    def _base_dir() -> Path:
+        # nats_controller.py is in pymvc/app/controllers/
+        # parents[3] reaches SHARPISHLY-THOMASONS root
+        return (
+            Path(__file__).resolve()
+            .parents[3]
+            / "storage"
+            / "uploads"
+            / "nats"
+        )
 
-        # DEBUG: Verify directory status
-        if not os.path.exists(ingest_dir):
-            print(f"⚠️ Ingest directory missing: {ingest_dir}")
+    @classmethod
+    def _ensure_dirs(cls, base_dir: Path) -> None:
+        for folder in ("ingest", "process", "fail"):
+            (base_dir / folder).mkdir(
+                mode=0o750,
+                parents=True,
+                exist_ok=True
+            )
+
+    @classmethod
+    def consume(cls):
+        """
+        Scans the NATS ingest directory securely using scandir and atomic replacement
+        to prevent race conditions between workers.
+        """
+        base_dir = cls._base_dir()
+        cls._ensure_dirs(base_dir)
+
+        ingest_dir = base_dir / "ingest"
+        process_dir = base_dir / "process"
+
+        if not ingest_dir.exists():
             return None
 
-        files = os.listdir(ingest_dir)
-        # Optional: Uncomment the next line to see exactly what the worker sees
-        # print(f"DEBUG: Worker scanning {ingest_dir}. Found: {files}")
+        for entry in os.scandir(ingest_dir):
+            if not entry.is_file():
+                continue
 
-        for filename in files:
-            if filename.endswith('.json') and not filename.endswith('.tmp'):
-                ingest_path = os.path.join(ingest_dir, filename)
-                process_path = os.path.join(process_dir, filename)
-                
-                try:
-                    # Atomic directory shift to claim the job ownership
-                    os.rename(ingest_path, process_path)
-                    
-                    with open(process_path, 'r') as f:
-                        job_wrapper = json.load(f)
-                    
-                    job_data = job_wrapper.get('data', {})
-                    job_data['job_id'] = job_wrapper.get('job_id')
-                    
-                    print(f"📦 Successfully claimed handshake: {filename}")
-                    return job_data, process_path
-                except Exception as e:
-                    print(f"⚠️ Failed to safely consume handshake message packet: {e}")
-                    continue
+            filename = entry.name
+
+            if (
+                not cls.JOB_FILE_PATTERN.fullmatch(filename) or
+                filename.endswith(".tmp")
+            ):
+                continue
+
+            source = ingest_dir / filename
+            destination = process_dir / filename
+
+            try:
+                # Atomic cross-platform replacement/rename
+                os.replace(source, destination)
+
+                with destination.open("r", encoding="utf-8") as handle:
+                    job_wrapper = json.load(handle)
+
+                if not isinstance(job_wrapper, dict):
+                    raise ValueError("Job wrapper must be an object")
+
+                job_data = job_wrapper.get("data", {})
+
+                if not isinstance(job_data, dict):
+                    raise ValueError("Job data must be an object")
+
+                job_data = dict(job_data)
+                job_data["job_id"] = job_wrapper.get("job_id")
+
+                print(f"📦 Successfully claimed handshake: {filename}")
+                return job_data, str(destination)
+
+            except FileNotFoundError:
+                # Another worker claimed the file first.
+                continue
+            except (OSError, json.JSONDecodeError, ValueError) as exc:
+                print(f"⚠️ Failed to consume {filename}: {exc}")
+                continue
+
         return None
         
     @staticmethod
     def update_php(job_id: int, status: str, chunks: list = None):
-        """
-        Pushes state tracking payloads back up to the main MVC framework via PUT.
-        """
         url = f"http://sharpishly.dev/php/job/update/{job_id}"
         payload = {
             "status": status,
@@ -72,28 +103,26 @@ class NatsController:
 
     @staticmethod
     def acknowledge(file_path: str):
-        """
-        Cleans up the file system transaction safely and remains noisy on failure.
-        """
         try:
-            if os.path.exists(file_path):
-                os.remove(file_path)
-                print(f"🧹 Clean Closeout: Removed transaction file {os.path.basename(file_path)}")
-            else:
-                print(f"🧹 Acknowledge skipped; file missing: {file_path}")
+            path = Path(file_path)
+            if path.exists():
+                path.unlink()
+                print(f"🧹 Clean Closeout: Removed transaction file {path.name}")
         except Exception as e:
             print(f"⚠️ Failed to acknowledge handshake file context: {e}")
 
     @staticmethod
     def fail_job(file_path: str):
-        """
-        Dead-letter queue pattern. Shifts unprocessable handshakes out of process/.
-        """
         try:
-            if os.path.exists(file_path):
-                fail_dir = os.path.abspath(os.path.join(os.path.dirname(file_path), '../fail'))
-                fail_path = os.path.join(fail_dir, os.path.basename(file_path))
-                os.rename(file_path, fail_path)
+            path = Path(file_path)
+            if path.exists():
+                fail_dir = path.parents[1] / "fail"
+                fail_dir.mkdir(parents=True, exist_ok=True)
+                fail_path = fail_dir / path.name
+                path.replace(fail_path)
                 print(f"❌ Pipeline Failure: Isolated handshake file to dead-letter queue: {fail_path}")
         except Exception as e:
             print(f"⚠️ Emergency state transition failed to move file to fail/: {e}")
+
+# Backward-compatible import alias for ingestion_worker.py
+IngestionController = NatsController
