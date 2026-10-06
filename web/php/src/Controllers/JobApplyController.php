@@ -36,6 +36,7 @@ final class JobApplyController extends BaseController
             $this->json([
                 'success' => true,
                 'job_id' => $id,
+                'primary-cv' => $cv,
                 'cv_loaded' => !empty($cv),
                 'job_loaded' => !empty($job),
                 'cv' => $customizedCv,
