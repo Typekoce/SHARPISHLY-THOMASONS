@@ -29,6 +29,10 @@ class Orm extends BaseService
         'ClickUp'         => 'https://api.clickup.com/api/v2/team',
         'GoogleCal'       => 'https://www.googleapis.com/calendar/v3/calendars/primary/events',
         'EventBriteHello' => 'https://www.eventbriteapi.com/v3/users/me/',
+
+        // job boards
+        'GreenhouseBoard' => 'https://boards-api.greenhouse.io/v1/boards/{board}/jobs',
+        'AshbyBoard'      => 'https://api.ashbyhq.com/v1/job-board/{board}',
     ];
 
     private array $actions = [
