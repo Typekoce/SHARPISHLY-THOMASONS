@@ -392,7 +392,7 @@ abstract class BaseController
         if (!array_key_exists($key, $data)) {
             $data[$key] = $value;
         } else {
-            $this->logger->warning("JobApplyController: Attempted to overwrite existing key [{$key}] in data payload.");
+            $this->logger->warning("Controller: Attempted to overwrite existing key [{$key}] in data payload.");
         }
 
         return $data;

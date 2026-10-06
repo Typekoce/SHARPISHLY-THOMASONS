@@ -3,57 +3,69 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Repositories\JobApplicationRepository;
+use App\Repositories\CvRepository;
+use App\Repositories\ApplicationStateRepository;
+use App\Services\ApplicationPreparationService;
+use App\Services\ApplicationLock;
+use App\Services\AtomicJsonWriter;
 use Throwable;
 
-class JobApplyController extends BaseController
+final class JobApplyController extends BaseController
 {
-    /**
-     * Handles candidate job application requests across the abstraction layer.
-     */
-    public function index(): void
+    public function prepare(): void
     {
-        $data = [];
+        $jobId = $this->request('job_id');
 
-        $jobId         = $this->request('job_id');
-        $board         = $this->request('board') ?? 'generic_board';
-        $candidateData = $this->request('candidate') ?? [];
+        if (!is_string($jobId) || !preg_match('/^[a-zA-Z0-9_-]{1,100}$/', $jobId)) {
+            $this->json([
+                'success' => false,
+                'error' => 'Invalid job_id'
+            ], 400);
+
+            return;
+        }
 
         try {
-            // Populate data array safely using setData
-            $data = $this->setData($data, 'job_id', $jobId);
-            $data = $this->setData($data, 'board', $board);
-            $data = $this->setData($data, 'candidate', $candidateData);
-            $data = $this->setData($data, 'timestamp', $this->timestamp());
+            $service = $this->preparationService();
+            $result = $service->prepare($jobId);
 
-            $this->logger->info("JobApplyController: Processing application request for Job ID [{$jobId}] on board [{$board}]");
-
-            // Construct abstraction layer payload conditions for ORM execution
-            $conditions = [
-                'source' => 'JobApplyAbstraction',
-                'method' => 'POST',
-                'data'   => $data,
-            ];
-
-            // Dispatch through the framework ORM service layer
-            $response = $this->orm->execute($conditions);
-
-            //$data['result'] = $response;
-            $data = $this->setData($data, 'result', $response);
-            
             $this->json([
-                'status'  => 'success',
-                'message' => 'Job application successfully routed through the abstraction layer.',
-                'data'    => $data
+                'success' => true,
+                'job_id' => $jobId,
+                'status' => $result['status']
             ]);
-
-        } catch (Throwable $e) {
-
-            $this->logger->error("JobApplyController Error: " . $e->getMessage());
-            
+        } catch (\InvalidArgumentException $e) {
             $this->json([
-                'status'  => 'error',
-                'message' => $e->getMessage(),
+                'success' => false,
+                'error' => 'Invalid application identifier'
+            ], 400);
+        } catch (\RuntimeException $e) {
+            $this->logger->error($e->getMessage());
+
+            $this->json([
+                'success' => false,
+                'error' => $e->getMessage()
+            ], 409);
+        } catch (Throwable $e) {
+            $this->logger->error($e->getMessage());
+
+            $this->json([
+                'success' => false,
+                'error' => 'Application preparation failed'
             ], 500);
         }
+    }
+
+    private function preparationService(): ApplicationPreparationService
+    {
+        return new ApplicationPreparationService(
+            new JobApplicationRepository($this->loc->storage()),
+            new CvRepository($this->loc->storage()),
+            $this->prompt,
+            new AtomicJsonWriter(),
+            new ApplicationStateRepository(new AtomicJsonWriter()),
+            new ApplicationLock()
+        );
     }
 }

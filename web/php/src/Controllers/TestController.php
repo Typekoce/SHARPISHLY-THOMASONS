@@ -103,6 +103,7 @@ class TestController extends BaseController
                     'HotmailapiController.php'  => 'Pending',
                     'ReactNativeController.php'  => 'Pending',
                     'DashboardController.php'  => 'Pending',
+                    'JobApplyController.php'  => 'Pending',
                 ],
                 'services'      => ['Orm.php'],
                 'documentation' => [
