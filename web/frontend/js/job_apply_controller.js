@@ -26,6 +26,12 @@ const JobApplyController = {
         App.spinner();
 
         try {
+
+            // TODO Integrate JobApplyController.php functionality
+            // to help the creation of a custom cv for each role
+            // use rag to blend cv, job vacancy, personal statement, etc
+            // Please be creative
+
             const data = await App.api('rag/rag/01_webdesigner');
             
             const pre = App.item('pre');
