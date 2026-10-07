@@ -13,6 +13,7 @@ const PageRegistry = {
         HealthController.get();
         HealthController.chat('Hello');
         HealthController.testSuite();
+        JobApplyController.hello();
     },
     'pentest': () => PentestController.scan(),
     'agentic': () => AgenticController.init(),
