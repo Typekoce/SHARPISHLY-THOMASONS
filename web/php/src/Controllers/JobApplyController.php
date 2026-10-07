@@ -23,6 +23,8 @@ final class JobApplyController extends BaseController
     {
         try {
 
+            // TODO Integrate job_apply_controller.js
+
             $model = new JobApplyModel();
 
             $id = $this->getJobId();
