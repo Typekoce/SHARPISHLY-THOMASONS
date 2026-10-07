@@ -14,6 +14,8 @@ class VacanciesController extends BaseController {
 
         $this->setLog("NP Step 2: Get contents");
 
+        $file = $this->cleanHtml($file);
+
         $this->saveRawHtml($file);
 
         $this->setLog("NP Step 3: Save raw data to required directory");
@@ -40,6 +42,85 @@ class VacanciesController extends BaseController {
 
         file_put_contents($path,$file);
 
+    }
+
+    public function cleanHtml(string $html): string
+    {
+        if ($html === '') {
+            return '';
+        }
+
+        // Remove content that should never enter the RAG corpus.
+        $html = preg_replace(
+            [
+                '/<script\b[^>]*>.*?<\/script\s*>/is',
+                '/<style\b[^>]*>.*?<\/style\s*>/is',
+                '/<nav\b[^>]*>.*?<\/nav\s*>/is',
+                '/<footer\b[^>]*>.*?<\/footer\s*>/is',
+                '/<header\b[^>]*>.*?<\/header\s*>/is',
+                '/<noscript\b[^>]*>.*?<\/noscript\s*>/is',
+                '/<!--.*?-->/s'
+            ],
+            '',
+            $html
+        );
+
+        if ($html === null) {
+            throw new \RuntimeException('Unable to remove HTML noise');
+        }
+
+        // Preserve meaningful structure.
+        $html = preg_replace(
+            [
+                '/<\s*br\s*\/?\s*>/i',
+                '/<\s*\/\s*(p|div|section|article|tr|li|h[1-6]|ul|ol|dt|dd)\s*>/i',
+                '/<\s*(li)\b[^>]*>/i'
+            ],
+            [
+                "\n",
+                "\n",
+                "\n- "
+            ],
+            $html
+        );
+
+        if ($html === null) {
+            throw new \RuntimeException('Unable to preserve HTML structure');
+        }
+
+        // Remove remaining tags.
+        $text = preg_replace('/<[^>]*>/s', '', $html);
+
+        if ($text === null) {
+            throw new \RuntimeException('Unable to strip HTML tags');
+        }
+
+        $text = html_entity_decode(
+            $text,
+            ENT_QUOTES | ENT_HTML5 | ENT_SUBSTITUTE,
+            'UTF-8'
+        );
+
+        // Normalise non-breaking spaces and line endings.
+        $text = str_replace(
+            ["\xC2\xA0", "\r\n", "\r"],
+            [' ', "\n", "\n"],
+            $text
+        );
+
+        $lines = preg_split('/\n+/', $text) ?: [];
+        $cleanedLines = [];
+
+        foreach ($lines as $line) {
+            $line = preg_replace('/[ \t]+/', ' ', $line) ?? '';
+            $line = trim($line);
+
+            if ($line !== '') {
+                $cleanedLines[] = $line;
+            }
+        }
+
+        return trim(implode("\n", $cleanedLines));
     }
 
 }
