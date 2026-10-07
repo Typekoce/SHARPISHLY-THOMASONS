@@ -54,6 +54,21 @@ class RAGHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed = urlparse(self.path)
 
+        if parsed.path in ("/health", "/healthz/live"):
+            self.send_json(200, {
+                "status": "online",
+                "service": "rag",
+                "mode": "liveness"
+            })
+            return
+
+        if parsed.path == "/healthz/ready":
+            self.send_json(200, {
+                "status": "ready",
+                "service": "rag"
+            })
+            return
+
         if parsed.path != "/rag/ask":
             self.send_json(404, {"error": "not_found"})
             return
