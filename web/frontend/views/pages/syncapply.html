@@ -1,5 +1,42 @@
-<div id="syncapply">
+<div id="syncapply" class="cookie-panel">
+    <!-- Header Section -->
+    <div class="cookie-header">
+        <span class="cookie-icon">&#9881;</span>
+        <span class="cookie-title">JOB APPLICATION &amp; RAG ADMINISTRATION</span>
+        <span class="cookie-status">ACTIVE</span>
+    </div>
 
-    <!-- loading-->
-     <b>Syncing all job boards</b>
+    <!-- Body Section -->
+    <div class="cookie-text">
+        Administrate multi-board vacancies, clean HTML feeds, and orchestrate custom CV synthesis through local pipeline runners.
+    </div>
+
+    <!-- Tags / Status Chips -->
+    <div class="cookie-tags">
+        <span class="cookie-tag active">RAG: Online</span>
+        <span class="cookie-tag active">NATS: Synced</span>
+        <span class="cookie-tag optional">Storage: Atomic</span>
+    </div>
+
+    <!-- Control Form -->
+    <div id="syncapply-form" style="margin-bottom: 1.25rem;">
+        <div style="margin-bottom: 0.75rem;">
+            <label for="syncapply-job-select" style="display: block; margin-bottom: 0.35rem; font-size: 0.75rem; letter-spacing: 0.05em; text-transform: uppercase; color: #8b949e;">Target Vacancy ID</label>
+            <input type="text" id="syncapply-job-select" value="01_webdesigner" style="width: 100%; background: rgba(13, 17, 23, 0.8); border: 1px solid rgba(139, 148, 158, 0.3); color: #ffffff; padding: 0.45rem 0.75rem; border-radius: 3px; font-family: inherit; font-size: 0.8rem;">
+        </div>
+    </div>
+
+    <!-- Health / Output Container -->
+    <div id="health" style="margin-bottom: 1rem;">
+        <div id="job-apply-output" style="background: rgba(13, 17, 23, 0.6); border: 1px dashed rgba(0, 240, 255, 0.2); padding: 0.85rem; border-radius: 3px; font-size: 0.78rem; color: #8b949e;">
+            <strong style="color: #ffffff; display: block; margin-bottom: 0.25rem;">Pipeline Ready</strong>
+            Select vacancy identifier and trigger preparation to evaluate customized RAG alignment.
+        </div>
+    </div>
+
+    <!-- Footer & Action Buttons -->
+    <div class="cookie-footer">
+        <button type="button" class="btn-cookie btn-cookie-secondary" onclick="location.reload()">Refresh</button>
+        <button type="button" class="btn-cookie btn-cookie-primary" onclick="JobApplyController.hello(document.getElementById('syncapply-job-select').value)">Synthesize CV</button>
+    </div>
 </div>
