@@ -2,11 +2,13 @@
     max-width: 640px;
     margin: 1.5rem auto;
 }
+
 #syncapply input:focus {
     outline: none;
     border-color: #00f0ff;
     box-shadow: 0 0 8px rgba(0, 240, 255, 0.25);
 }
+
 #syncapply pre {
     background-color: #090d12 !important;
     color: #00f0ff !important;
@@ -17,4 +19,81 @@
     font-family: 'JetBrains Mono', monospace;
     max-height: 320px;
     overflow-y: auto;
+}
+
+#syncapply .syncapply-boards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+#syncapply #job-boards .platform {
+    background: rgba(13, 17, 23, 0.75);
+    border: 1px solid rgba(0, 240, 255, 0.2);
+    border-radius: 4px;
+    padding: 0.85rem 1rem;
+    transition: all 0.2s ease-in-out;
+}
+
+#syncapply #job-boards .platform:hover {
+    border-color: rgba(0, 240, 255, 0.6);
+    box-shadow: 0 0 12px rgba(0, 240, 255, 0.15);
+    transform: translateY(-2px);
+}
+
+#syncapply .platform-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    padding-bottom: 0.35rem;
+}
+
+#syncapply .platform-name {
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: #ffffff;
+    letter-spacing: 0.04em;
+}
+
+#syncapply .platform-status {
+    font-size: 0.6rem;
+    padding: 0.1rem 0.35rem;
+    border-radius: 3px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+#syncapply .platform-status.online {
+    background: rgba(0, 255, 128, 0.15);
+    color: #00ff80;
+    border: 1px solid rgba(0, 255, 128, 0.3);
+}
+
+#syncapply .platform-status.sync {
+    background: rgba(0, 240, 255, 0.15);
+    color: #00f0ff;
+    border: 1px solid rgba(0, 240, 255, 0.3);
+}
+
+#syncapply .platform-status.idle {
+    background: rgba(139, 148, 158, 0.15);
+    color: #8b949e;
+    border: 1px solid rgba(139, 148, 158, 0.3);
+}
+
+#syncapply .platform-search-criteria {
+    font-size: 0.75rem;
+    color: #00f0ff;
+    font-weight: 600;
+    margin-bottom: 0.35rem;
+    letter-spacing: 0.03em;
+}
+
+#syncapply .platform-meta {
+    font-size: 0.65rem;
+    color: #8b949e;
 }
